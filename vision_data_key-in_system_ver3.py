@@ -12,15 +12,6 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-# QR/바코드 스캔 라이브러리 (파이썬 백엔드 분석용)
-try:
-    from PIL import Image
-    import cv2
-    from pyzbar.pyzbar import decode
-    QR_AVAILABLE = True
-except ImportError:
-    QR_AVAILABLE = False
-
 # [설정] 작업자 명단
 worker_list = ["박경섭", "무고사", "재르소", "김동헌"] 
 
@@ -29,6 +20,36 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ==========================================
+# 화면 전환 및 상태 관리 및 쿼리 파라미터 처리 (최상단 배치 필수)
+# ==========================================
+if "current_page" not in st.session_state: st.session_state.current_page = "input"
+if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
+if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
+
+# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (LOT 번호 + 입고일 자동 설정)
+if "scanned_data" in st.query_params:
+    raw_scan = st.query_params["scanned_data"]
+    parts = [p for p in raw_scan.split('$') if p]
+    lot_val = parts[-1] if parts else raw_scan
+    parsed_date = None
+    
+    if len(parts) >= 2:
+        date_str_candidate = parts[-2]
+        date_str = date_str_candidate[-8:]
+        if date_str.isdigit():
+            try:
+                parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
+            except ValueError:
+                pass
+                
+    st.session_state.lot_input_field = lot_val
+    if parsed_date:
+        st.session_state.in_date_field = parsed_date
+        
+    st.query_params.clear()
+    st.rerun()
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -261,7 +282,7 @@ def save_data_overwrite(df):
         return False
 
 # ----------------------------------------------------
-# 팝업(모달) & Python 이미지 분석 기반 QR 스캐너
+# 팝업(모달) 인증 함수
 # ----------------------------------------------------
 @st.dialog("SBL Warning!")
 def show_sbl_warning(defect_type, rate):
@@ -281,78 +302,54 @@ def show_password_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
-@st.dialog("카메라 촬영 및 자동 분석")
-def open_camera_qr_scanner():
-    if not QR_AVAILABLE:
-        st.error("QR 라이브러리(opencv-python-headless, pyzbar)가 설치되지 않았습니다.")
-        return
-        
-    st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
+# ----------------------------------------------------
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (값 보관 후 [적용 및 닫기] 버튼 방식)
+# ----------------------------------------------------
+@st.dialog("전문 QR/바코드 스캐너")
+def open_web_qr_scanner():
+    st.markdown("카메라에 바코드를 비추고, 인식된 번호가 확인되면 **[적용 및 닫기]** 버튼을 누르세요.")
     
-    tab1, tab2 = st.tabs(["카메라 촬영", "갤러리 앨범"])
+    scanner_html = """
+    <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
+        <div id="reader" style="width: 100%;"></div>
+        <div style="margin-top: 15px;">
+            <input type="text" id="scannedValue" placeholder="스캔 대기 중..." readonly style="width: 100%; padding: 10px; font-size: 16px; text-align: center; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; color: #1e293b;">
+        </div>
+        <div style="margin-top: 15px;">
+            <button id="applyBtn" onclick="applyScannedData()" style="width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; display: none;">적용 및 닫기</button>
+        </div>
+    </div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let currentScannedText = "";
     
-    target_img = None
-    with tab1:
-        img_buffer = st.camera_input("카메라 촬영")
-        if img_buffer: target_img = img_buffer
-        
-    with tab2:
-        uploaded_img = st.file_uploader("앨범에서 사진 선택", type=['png', 'jpg', 'jpeg'])
-        if uploaded_img: target_img = uploaded_img
-        
-    if target_img:
-        with st.spinner("이미지 분석 중..."):
-            try:
-                image = Image.open(target_img)
-                cv2_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-                
-                gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-                enhanced_gray = clahe.apply(gray)
-                
-                objs = decode(cv2_img)
-                if not objs:
-                    objs = decode(enhanced_gray)
-                    
-                if objs:
-                    raw_data = objs[0].data.decode('utf-8')
-                    
-                    parts = [p for p in raw_data.split('$') if p]
-                    lot_val = parts[-1] if parts else raw_data
-                    parsed_date = None
-                    
-                    if len(parts) >= 2:
-                        date_str_candidate = parts[-2]
-                        date_str = date_str_candidate[-8:]
-                        if date_str.isdigit():
-                            try:
-                                parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
-                            except ValueError:
-                                pass
-                    
-                    if parsed_date:
-                        st.success(f"인식 성공! LOT: {lot_val} / 입고일: {parsed_date.strftime('%Y/%m/%d')}")
-                    else:
-                        st.success(f"인식 성공! LOT: {lot_val} (날짜 미인식)")
-                        
-                    st.caption(f"원본 바코드: {raw_data}")
-                    
-                    if st.button("입력창에 적용 및 닫기", type="primary", use_container_width=True):
-                        st.session_state.temp_lot = lot_val
-                        if parsed_date:
-                            st.session_state.temp_date = parsed_date
-                        st.rerun()
-                else:
-                    st.error("QR 코드를 찾을 수 없습니다. 초점을 맞춰서 다시 촬영해주세요.")
-            except Exception as e:
-                st.error(f"분석 중 오류 발생: {e}")
+    function onScanSuccess(decodedText, decodedResult) {
+        currentScannedText = decodedText;
+        document.getElementById('scannedValue').value = decodedText;
+        document.getElementById('applyBtn').style.display = 'block';
+    }
 
-# ==========================================
-# 화면 전환 및 상태 관리
-# ==========================================
-if "current_page" not in st.session_state: st.session_state.current_page = "input"
-if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
-if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
+    function applyScannedData() {
+        if (!currentScannedText) return;
+        const targetUrl = window.parent.location.origin + window.parent.location.pathname + "?scanned_data=" + encodeURIComponent(currentScannedText);
+        window.parent.location.href = targetUrl;
+    }
+
+    let html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        onScanSuccess
+    ).catch(err => {
+        console.error("Camera start failed", err);
+        document.getElementById('scannedValue').value = "카메라 권한을 확인해주세요.";
+    });
+    </script>
+    """
+    components.html(scanner_html, height=420)
+    
+    if st.button("스캔창 닫기", use_container_width=True):
+        st.rerun()
 
 # ==========================================
 # 종합 분석 데이터 화면 
@@ -543,14 +540,6 @@ if st.session_state.current_page == "input":
         st.session_state.lot_input_field = ""
         st.session_state.clear_lot = False
         
-    if "temp_lot" in st.session_state:
-        st.session_state.lot_input_field = st.session_state.temp_lot
-        del st.session_state["temp_lot"]
-        
-    if "temp_date" in st.session_state:
-        st.session_state.in_date_field = st.session_state.temp_date
-        del st.session_state["temp_date"]
-    
     if "comp_warned" not in st.session_state: st.session_state.comp_warned = False
     if "front_warned" not in st.session_state: st.session_state.front_warned = False
     if "rear_warned" not in st.session_state: st.session_state.rear_warned = False
@@ -589,8 +578,8 @@ if st.session_state.current_page == "input":
         
         lot_number = st.text_input("**LOT 입력**", placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_field")
         
-        if st.button("카메라 촬영 및 자동 분석", use_container_width=True):
-            open_camera_qr_scanner()
+        if st.button("📷 전문 QR/바코드 스캐너 실행", use_container_width=True, type="primary"):
+            open_web_qr_scanner()
             
         st.markdown("<br>", unsafe_allow_html=True)
         in_date = st.date_input("**입고일**", key="in_date_field")
@@ -708,7 +697,7 @@ if st.session_state.current_page == "input":
 
     with main_col1:
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>📥 VISION Data</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -750,7 +739,7 @@ if st.session_state.current_page == "input":
             comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
 
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>Coating Data</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -865,7 +854,7 @@ if st.session_state.current_page == "input":
 
     with main_col2:
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>Yield Report</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -984,7 +973,7 @@ if st.session_state.current_page == "input":
             recent_10 = df_history.iloc[::-1].head(10).copy()
             valid_cols = [col for col in EXCEL_COLUMNS if col in recent_10.columns]
             
-            num_cols = ["UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타", "소요시간", "휴동시간"]
+            num_cols = ["UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
             display_df = recent_10[valid_cols].copy()
             for col in num_cols:
                 if col in display_df.columns:
