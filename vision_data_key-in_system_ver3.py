@@ -28,28 +28,28 @@ if "current_page" not in st.session_state: st.session_state.current_page = "inpu
 if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
 if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
 
-# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (LOT 번호 + 입고일 자동 설정)
+# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (보안 우회 방식)
 if "scanned_data" in st.query_params:
-    raw_scan = st.query_params["scanned_data"]
-    parts = [p for p in raw_scan.split('$') if p]
-    lot_val = parts[-1] if parts else raw_scan
-    parsed_date = None
-    
-    if len(parts) >= 2:
-        date_str_candidate = parts[-2]
-        date_str = date_str_candidate[-8:]
-        if date_str.isdigit():
-            try:
-                parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
-            except ValueError:
-                pass
-                
-    st.session_state.lot_input_field = lot_val
-    if parsed_date:
-        st.session_state.in_date_field = parsed_date
+    raw_scan = st.query_params.get("scanned_data")
+    if raw_scan:
+        parts = [p for p in raw_scan.split('$') if p]
+        lot_val = parts[-1] if parts else raw_scan
+        parsed_date = None
         
+        if len(parts) >= 2:
+            date_str_candidate = parts[-2]
+            date_str = date_str_candidate[-8:]
+            if date_str.isdigit():
+                try:
+                    parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
+                except ValueError:
+                    pass
+                    
+        st.session_state.lot_input_field = lot_val
+        if parsed_date:
+            st.session_state.in_date_field = parsed_date
+            
     st.query_params.clear()
-    st.rerun()
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -303,7 +303,7 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (값 보관 후 [적용 및 닫기] 버튼 방식)
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (보안 우회 방식)
 # ----------------------------------------------------
 @st.dialog("전문 QR/바코드 스캐너")
 def open_web_qr_scanner():
@@ -322,33 +322,46 @@ def open_web_qr_scanner():
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
     let currentScannedText = "";
+    let html5QrCode = new Html5Qrcode("reader");
     
     function onScanSuccess(decodedText, decodedResult) {
         currentScannedText = decodedText;
         document.getElementById('scannedValue').value = decodedText;
         document.getElementById('applyBtn').style.display = 'block';
+        
+        // 스캔에 성공하면 카메라를 일시정지하여 배터리를 아끼고 화면을 멈춥니다.
+        if (html5QrCode.isScanning) {
+            html5QrCode.pause();
+        }
     }
 
     function applyScannedData() {
         if (!currentScannedText) return;
-        const targetUrl = window.parent.location.origin + window.parent.location.pathname + "?scanned_data=" + encodeURIComponent(currentScannedText);
-        window.parent.location.href = targetUrl;
+        document.getElementById('applyBtn').innerText = "데이터 적용 중...";
+        try {
+            // 보안 정책(CORS)을 우회하여 최상위 창의 주소를 직접 변경합니다.
+            let parentUrl = document.referrer; 
+            let baseUrl = parentUrl.split('?')[0];
+            let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(currentScannedText);
+            window.top.location.href = targetUrl;
+        } catch (e) {
+            document.getElementById('scannedValue').value = "적용 실패. 화면을 새로고침 해주세요.";
+        }
     }
 
-    let html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 150 } },
         onScanSuccess
     ).catch(err => {
         console.error("Camera start failed", err);
-        document.getElementById('scannedValue').value = "카메라 권한을 확인해주세요.";
+        document.getElementById('scannedValue').value = "카메라 권한을 허용해주세요.";
     });
     </script>
     """
-    components.html(scanner_html, height=420)
+    components.html(scanner_html, height=450)
     
-    if st.button("스캔창 닫기", use_container_width=True):
+    if st.button("스캔창 닫기 (취소)", use_container_width=True):
         st.rerun()
 
 # ==========================================
@@ -468,7 +481,6 @@ def render_analysis_page():
 
     is_single_x = len(df_grouped[base_col].unique()) == 1
 
-    # 💡 [핵심 디자인 엔진] 참조 파일 스타일 완벽 이식 (가시성 및 텍스트 섀도우)
     def create_single_chart(title, metric, base_color):
         fig = go.Figure()
         
@@ -576,13 +588,13 @@ if st.session_state.current_page == "input":
             </div>
         """, unsafe_allow_html=True)
         
-        lot_number = st.text_input("**LOT 입력**", placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_field")
+        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔")
         
         if st.button("📷 전문 QR/바코드 스캐너 실행", use_container_width=True, type="primary"):
             open_web_qr_scanner()
             
         st.markdown("<br>", unsafe_allow_html=True)
-        in_date = st.date_input("**입고일**", key="in_date_field")
+        in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
 
         # 3. 작업 정보
         st.markdown("""
@@ -697,7 +709,7 @@ if st.session_state.current_page == "input":
 
     with main_col1:
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>📥 VISION Data</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -739,7 +751,7 @@ if st.session_state.current_page == "input":
             comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
 
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>Coating Data</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -854,7 +866,7 @@ if st.session_state.current_page == "input":
 
     with main_col2:
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
+            <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1f2937;'>
                 <h4 style='margin: 0; color:#f9fafb; font-weight: 500;'>Yield Report</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -973,7 +985,7 @@ if st.session_state.current_page == "input":
             recent_10 = df_history.iloc[::-1].head(10).copy()
             valid_cols = [col for col in EXCEL_COLUMNS if col in recent_10.columns]
             
-            num_cols = ["UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
+            num_cols = ["UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타", "소요시간", "휴동시간"]
             display_df = recent_10[valid_cols].copy()
             for col in num_cols:
                 if col in display_df.columns:
