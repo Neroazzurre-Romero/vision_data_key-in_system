@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 from datetime import datetime
+import time
 from io import BytesIO
 from openpyxl.styles import Font
 import openpyxl
@@ -166,24 +167,29 @@ if "google_credentials" not in st.secrets:
     st.error("구글 스프레드시트 보안 키(Secrets)가 설정되지 않았습니다!")
     st.stop()
 
-@st.cache_resource
+# 💡 구글 503 에러 방지: 캐시 초기화 옵션 및 3회 자동 재시도 로직 적용
+@st.cache_resource(ttl=600)
 def get_sheet():
-    try:
-        creds_data = st.secrets["google_credentials"]
-        clean_data = creds_data.strip().strip("'").strip('"') if isinstance(creds_data, str) else dict(creds_data)
-        creds_dict = json.loads(clean_data, strict=False) if isinstance(creds_data, str) else clean_data
-        if "private_key" in creds_dict: creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
-        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
-        
-        doc = gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+    for attempt in range(3):
         try:
-            return doc.worksheet(TAB_NAME)
-        except gspread.exceptions.WorksheetNotFound:
-            return doc.sheet1
+            creds_data = st.secrets["google_credentials"]
+            clean_data = creds_data.strip().strip("'").strip('"') if isinstance(creds_data, str) else dict(creds_data)
+            creds_dict = json.loads(clean_data, strict=False) if isinstance(creds_data, str) else clean_data
+            if "private_key" in creds_dict: creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
             
-    except Exception as e:
-        st.error(f"구글 연결 초기화 에러 (권한이 없거나 키가 잘못되었습니다): {e}")
-        return None
+            doc = gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+            try:
+                return doc.worksheet(TAB_NAME)
+            except gspread.exceptions.WorksheetNotFound:
+                return doc.sheet1
+                
+        except Exception as e:
+            if "503" in str(e) and attempt < 2:
+                time.sleep(2)
+                continue
+            st.error(f"구글 연결 초기화 에러 (권한이 없거나 키가 잘못되었습니다): {e}")
+            return None
 
 @st.cache_data(ttl=60)
 def load_data():
@@ -303,12 +309,13 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (보안 우회 방식)
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (보안 우회 방식 + 전면 카메라 적용)
 # ----------------------------------------------------
 @st.dialog("전문 QR/바코드 스캐너")
 def open_web_qr_scanner():
-    st.markdown("카메라에 바코드를 비추고, 인식된 번호가 확인되면 **[적용 및 닫기]** 버튼을 누르세요.")
+    st.markdown("내측(전면) 카메라에 바코드를 비추고, 인식된 번호가 확인되면 **[적용 및 닫기]** 버튼을 누르세요.")
     
+    # 💡 facingMode: "user" 를 적용하여 내측 카메라 작동
     scanner_html = """
     <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
         <div id="reader" style="width: 100%;"></div>
@@ -329,7 +336,6 @@ def open_web_qr_scanner():
         document.getElementById('scannedValue').value = decodedText;
         document.getElementById('applyBtn').style.display = 'block';
         
-        // 스캔에 성공하면 카메라를 일시정지하여 배터리를 아끼고 화면을 멈춥니다.
         if (html5QrCode.isScanning) {
             html5QrCode.pause();
         }
@@ -339,7 +345,6 @@ def open_web_qr_scanner():
         if (!currentScannedText) return;
         document.getElementById('applyBtn').innerText = "데이터 적용 중...";
         try {
-            // 보안 정책(CORS)을 우회하여 최상위 창의 주소를 직접 변경합니다.
             let parentUrl = document.referrer; 
             let baseUrl = parentUrl.split('?')[0];
             let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(currentScannedText);
@@ -350,7 +355,7 @@ def open_web_qr_scanner():
     }
 
     html5QrCode.start(
-        { facingMode: "environment" },
+        { facingMode: "user" },
         { fps: 10, qrbox: { width: 250, height: 150 } },
         onScanSuccess
     ).catch(err => {
@@ -381,6 +386,7 @@ def render_analysis_page():
             st.rerun()
     with col_btn2:
         if st.button("🔄 최신 데이터 새로고침", use_container_width=True):
+            get_sheet.clear()
             load_data.clear()
             st.rerun()
             
@@ -701,6 +707,7 @@ if st.session_state.current_page == "input":
             
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄 최신 데이터 새로고침", use_container_width=True):
+            get_sheet.clear()
             load_data.clear()
             st.rerun()
 
@@ -877,7 +884,7 @@ if st.session_state.current_page == "input":
 
         with st.expander("🎨 Chart Option (색상 및 폰트 설정)", expanded=False):
             st.markdown("**폰트 크기 설정**")
-            chart_font_size = st.slider("그래프 폰트 텍스트 크기", min_value=10, max_value=30, value=16)
+            chart_font_size = st.slider("그래프 폰트 텍스트 크기", min_value=10, max_value=30, value=18)
 
             st.markdown("**그래프 색상 설정**")
             color_col1, color_col2, color_col3, color_col4, color_col5 = st.columns(5)
