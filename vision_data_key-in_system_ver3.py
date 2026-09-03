@@ -167,6 +167,7 @@ if "google_credentials" not in st.secrets:
     st.error("구글 스프레드시트 보안 키(Secrets)가 설정되지 않았습니다!")
     st.stop()
 
+# 💡 구글 503 에러 방지: 캐시 초기화 옵션 및 3회 자동 재시도 로직 적용
 @st.cache_resource(ttl=600)
 def get_sheet():
     for attempt in range(3):
@@ -308,12 +309,12 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (오토포커스 및 FPS 상향)
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (오토포커스 + 후면카메라 + 자동 전송 적용)
 # ----------------------------------------------------
 @st.dialog("전문 QR/바코드 스캐너")
 def open_web_qr_scanner():
-    st.markdown("내측(전면) 카메라에 바코드를 비추고, 인식된 번호가 확인되면 **[적용 및 닫기]** 버튼을 누르세요.")
-    st.caption("※ 기기에 따라 내측 카메라의 오토포커스(자동초점) 하드웨어 지원이 안될 수 있습니다.")
+    st.markdown("후면 카메라에 바코드를 비춰주세요. (인식 성공 시 자동으로 화면이 넘어갑니다)")
+    st.caption("※ 기기에 따라 오토포커스(자동초점) 속도에 차이가 있을 수 있습니다.")
     
     scanner_html = """
     <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
@@ -321,42 +322,40 @@ def open_web_qr_scanner():
         <div style="margin-top: 15px;">
             <input type="text" id="scannedValue" placeholder="스캔 대기 중..." readonly style="width: 100%; padding: 10px; font-size: 16px; text-align: center; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; color: #1e293b;">
         </div>
-        <div style="margin-top: 15px;">
-            <button id="applyBtn" onclick="applyScannedData()" style="width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; display: none;">적용 및 닫기</button>
-        </div>
     </div>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-    let currentScannedText = "";
+    let scanDone = false; // 중복 스캔 방지용 플래그
     let html5QrCode = new Html5Qrcode("reader");
     
     function onScanSuccess(decodedText, decodedResult) {
-        currentScannedText = decodedText;
-        document.getElementById('scannedValue').value = decodedText;
-        document.getElementById('applyBtn').style.display = 'block';
+        if (scanDone) return;
+        scanDone = true; // 최초 1회 인식 후 즉시 잠금
         
+        document.getElementById('scannedValue').value = "인식 성공! 데이터 적용 중...";
+        
+        // 스캔 성공 시 배터리 및 자원 절약을 위해 카메라 일시정지
         if (html5QrCode.isScanning) {
             html5QrCode.pause();
         }
+
+        // 버튼 클릭 없이 0.3초 대기 후 즉시 상위 페이지로 파라미터 전달 및 새로고침 진행
+        setTimeout(function() {
+            try {
+                let parentUrl = document.referrer; 
+                let baseUrl = parentUrl.split('?')[0];
+                let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(decodedText);
+                window.top.location.href = targetUrl;
+            } catch (e) {
+                document.getElementById('scannedValue').value = "자동 적용 실패. 화면을 새로고침 해주세요.";
+            }
+        }, 300);
     }
 
-    function applyScannedData() {
-        if (!currentScannedText) return;
-        document.getElementById('applyBtn').innerText = "데이터 적용 중...";
-        try {
-            let parentUrl = document.referrer; 
-            let baseUrl = parentUrl.split('?')[0];
-            let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(currentScannedText);
-            window.top.location.href = targetUrl;
-        } catch (e) {
-            document.getElementById('scannedValue').value = "적용 실패. 화면을 새로고침 해주세요.";
-        }
-    }
-
-    // 오토포커스(advanced: focusMode) 강제 적용 및 fps 상향
+    // 오토포커스(advanced: focusMode) 강제 적용 및 fps 상향, 후면카메라(environment) 적용
     html5QrCode.start(
         { 
-            facingMode: "user", 
+            facingMode: "environment", 
             advanced: [{ focusMode: "continuous" }] 
         },
         { fps: 15, qrbox: { width: 250, height: 150 } },
@@ -367,9 +366,9 @@ def open_web_qr_scanner():
     });
     </script>
     """
-    components.html(scanner_html, height=450)
+    components.html(scanner_html, height=350)
     
-    if st.button("스캔창 닫기 (취소)", use_container_width=True):
+    if st.button("스캔창 강제 닫기 (취소)", use_container_width=True):
         st.rerun()
 
 # ==========================================
