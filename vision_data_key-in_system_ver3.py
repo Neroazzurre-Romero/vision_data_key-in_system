@@ -167,7 +167,6 @@ if "google_credentials" not in st.secrets:
     st.error("구글 스프레드시트 보안 키(Secrets)가 설정되지 않았습니다!")
     st.stop()
 
-# 💡 구글 503 에러 방지: 캐시 초기화 옵션 및 3회 자동 재시도 로직 적용
 @st.cache_resource(ttl=600)
 def get_sheet():
     for attempt in range(3):
@@ -309,13 +308,13 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (보안 우회 방식 + 전면 카메라 적용)
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (오토포커스 및 FPS 상향)
 # ----------------------------------------------------
 @st.dialog("전문 QR/바코드 스캐너")
 def open_web_qr_scanner():
     st.markdown("내측(전면) 카메라에 바코드를 비추고, 인식된 번호가 확인되면 **[적용 및 닫기]** 버튼을 누르세요.")
+    st.caption("※ 기기에 따라 내측 카메라의 오토포커스(자동초점) 하드웨어 지원이 안될 수 있습니다.")
     
-    # 💡 facingMode: "user" 를 적용하여 내측 카메라 작동
     scanner_html = """
     <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
         <div id="reader" style="width: 100%;"></div>
@@ -354,9 +353,13 @@ def open_web_qr_scanner():
         }
     }
 
+    // 오토포커스(advanced: focusMode) 강제 적용 및 fps 상향
     html5QrCode.start(
-        { facingMode: "user" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
+        { 
+            facingMode: "user", 
+            advanced: [{ focusMode: "continuous" }] 
+        },
+        { fps: 15, qrbox: { width: 250, height: 150 } },
         onScanSuccess
     ).catch(err => {
         console.error("Camera start failed", err);
@@ -884,7 +887,7 @@ if st.session_state.current_page == "input":
 
         with st.expander("🎨 Chart Option (색상 및 폰트 설정)", expanded=False):
             st.markdown("**폰트 크기 설정**")
-            chart_font_size = st.slider("그래프 폰트 텍스트 크기", min_value=10, max_value=30, value=18)
+            chart_font_size = st.slider("그래프 폰트 텍스트 크기", min_value=10, max_value=30, value=16)
 
             st.markdown("**그래프 색상 설정**")
             color_col1, color_col2, color_col3, color_col4, color_col5 = st.columns(5)
