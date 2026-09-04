@@ -26,6 +26,7 @@ st.set_page_config(
 # ==========================================
 # 영구 세션 상태 초기화 (페이지 이동 시 데이터 증발 방지)
 # ==========================================
+if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "step" not in st.session_state: st.session_state.step = 1
 
@@ -44,8 +45,43 @@ for key, value in default_state.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
+# ==========================================
+# 메인 잠금 화면 (Splash Screen)
+# ==========================================
+if not st.session_state.unlocked:
+    # 잠금 화면에서는 사이드바를 숨깁니다.
+    hide_sidebar_style = """
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+    </style>
+    """
+    st.markdown(hide_sidebar_style, unsafe_allow_html=True)
+    
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        try:
+            st.image("at.png", use_container_width=True)
+        except:
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
+        
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        unlock_val = st.slider("👉 오른쪽으로 끝까지 밀어서 시스템 시작", 0, 100, 0, label_visibility="visible")
+        if unlock_val == 100:
+            st.session_state.unlocked = True
+            st.rerun()
+            
+    st.markdown(
+        "<div style='position: fixed; bottom: 15px; right: 15px; font-size: 8pt; color: #94a3b8; font-weight: bold;'>vision data key-in system --- Romero.K</div>", 
+        unsafe_allow_html=True
+    )
+    st.stop() # 잠금이 풀리기 전까지 시스템 실행 대기
+
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 태블릿 앱 최적화
+# 마법 코드 1: UI 디자인 커스텀 및 사이드바 스타일링
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -59,32 +95,40 @@ body { overscroll-behavior-y: none !important; }
     padding-left: 1.5rem !important; padding-right: 1.5rem !important;
 }
 
-/* 네비게이션(이전/다음)을 제외한 일반 Primary 버튼 설정 */
+/* 일반 Primary 버튼 설정 */
 button[kind="primary"] {
     background-color: #4b6584 !important; color: white !important; border: none !important;
     font-size: 16px !important; font-weight: bold !important; padding: 10px !important;
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 💡 사이드바 목차(WIZARD) 커스텀 스타일 (왼쪽 정렬, 들여쓰기, 높이 확장, 굵게) */
+/* 💡 사이드바 전체 배경색 및 텍스트 밝은색 변경 */
+[data-testid="stSidebar"] {
+    background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
+}
+[data-testid="stSidebar"] * {
+    color: #f8fafc !important;
+}
+
+/* 💡 사이드바 목차 버튼 스타일 (왼쪽 정렬, 들여쓰기, 굵게, 높이 확장) */
 [data-testid="stSidebar"] .stButton > button {
-    height: 85px !important; /* 버튼 높이를 오른쪽 화면만큼 길게 확장 */
-    justify-content: flex-start !important; /* 왼쪽 정렬 */
+    height: 65px !important; 
+    justify-content: flex-start !important; 
     padding-left: 15px !important; 
-    margin-bottom: 8px !important;
-    border-radius: 10px !important;
-    background-color: #1e293b !important;
+    margin-bottom: 6px !important;
+    border-radius: 8px !important;
+    background-color: transparent !important;
     color: #f8fafc !important;
     border: 1px solid #334155 !important;
 }
 [data-testid="stSidebar"] .stButton > button p {
-    font-weight: 800 !important; /* 굵게 */
-    font-size: 17px !important;
-    text-indent: 10px !important; /* 한칸 들여쓰기 */
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    text-indent: 10px !important; 
     text-align: left !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-    background-color: #3b82f6 !important; /* 현재 선택된 단계 하이라이트 */
+    background-color: #3b82f6 !important; /* 현재 선택된 목차 하이라이트 */
     color: white !important;
     border: 1px solid #2563eb !important;
 }
@@ -98,18 +142,18 @@ components.html(
     if (window.parent && !window.parent.appPluginLoaded) {
         window.parent.appPluginLoaded = true;
         
-        // 이전/다음 단계 버튼 색상 변경 (FFC000 / 00B050)
+        // 💡 이전/다음 버튼 색상 고정 (FFC000 / 00B050)
         const formatNavButtons = () => {
             if (!window.parent.document) return;
-            const buttons = window.parent.document.querySelectorAll('.stButton button');
+            const buttons = window.parent.document.querySelectorAll('button');
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
-                if (text.includes('이전 단계')) {
+                if (text.includes('⬅️ 이전')) {
                     btn.style.backgroundColor = '#FFC000';
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
-                if (text.includes('다음 단계')) {
+                if (text.includes('다음 ➡️')) {
                     btn.style.backgroundColor = '#00B050';
                     btn.style.color = '#FFFFFF';
                     btn.style.border = 'none';
@@ -237,23 +281,6 @@ def save_data_append(df):
         return False
 
 # ==========================================
-# UI 하단 네비게이션
-# ==========================================
-def navigation_buttons():
-    st.markdown("<br><hr>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.session_state.step > 1:
-            if st.button("⬅️ 이전 단계", use_container_width=True):
-                st.session_state.step -= 1
-                st.rerun()
-    with c2:
-        if st.session_state.step < 7:
-            if st.button("다음 단계 ➡️", use_container_width=True):
-                st.session_state.step += 1
-                st.rerun()
-
-# ==========================================
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
@@ -277,14 +304,28 @@ elif st.session_state.current_page == "input":
     with st.sidebar:
         st.markdown("### 📋 목차")
         steps_titles = [
-            "1. 생산 등록", "2. 작업 정보", "3. Coating Data", "4. Assemble Data", 
-            "5. VISION Data & ETC", "6. 데이터 저장", "7. Report & History"
+            "생산 등록", "작업 정보", "Coating Data", "Assemble Data", 
+            "VISION Data & ETC", "데이터 저장", "Report & History"
         ]
         for i, title in enumerate(steps_titles, 1):
             btn_type = "primary" if st.session_state.step == i else "secondary"
             if st.button(title, key=f"nav_btn_{i}", type=btn_type, use_container_width=True):
                 st.session_state.step = i
                 st.rerun()
+
+        # 💡 이전, 다음 버튼을 목차 밑에 고정
+        st.markdown("<br><hr style='border-color: #334155; margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.session_state.step > 1:
+                if st.button("⬅️ 이전", use_container_width=True):
+                    st.session_state.step -= 1
+                    st.rerun()
+        with c2:
+            if st.session_state.step < 7:
+                if st.button("다음 ➡️", use_container_width=True):
+                    st.session_state.step += 1
+                    st.rerun()
 
     step = st.session_state.step
 
@@ -332,8 +373,6 @@ elif st.session_state.current_page == "input":
         
         st.markdown("**도금 구분 (자동세팅됨)**")
         render_grid_buttons(["A", "B"], "plating_type", 2)
-        
-        navigation_buttons()
 
     elif step == 2:
         st.markdown("### 2. 작업 정보")
@@ -359,8 +398,6 @@ elif st.session_state.current_page == "input":
         raw_duration = int((end_dt - start_dt).total_seconds() / 60)
         duration_minutes = max(0, raw_duration - st.session_state.idle_time)
         st.text_input("**소요시간 (휴동시간 차감됨)**", value=f"{duration_minutes:,} 분", disabled=True)
-        
-        navigation_buttons()
 
     elif step == 3:
         st.markdown("### 3. Coating Data")
@@ -370,8 +407,6 @@ elif st.session_state.current_page == "input":
         
         st.markdown("**도장라인**")
         render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
-        
-        navigation_buttons()
 
     elif step == 4:
         st.markdown("### 4. Assemble Data")
@@ -384,8 +419,6 @@ elif st.session_state.current_page == "input":
 
         st.markdown("**조립기**")
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
-        
-        navigation_buttons()
 
     elif step == 5:
         st.markdown("### 5. VISION Data & ETC")
@@ -414,8 +447,6 @@ elif st.session_state.current_page == "input":
         st.markdown("<hr>", unsafe_allow_html=True)
         st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
-        
-        navigation_buttons()
 
     elif step == 6:
         st.markdown("### 6. 데이터 저장")
@@ -482,8 +513,6 @@ elif st.session_state.current_page == "input":
                         st.session_state.step = 7
                         st.rerun()
 
-        navigation_buttons()
-
     elif step == 7:
         st.markdown("### 7. Report & History")
         
@@ -507,5 +536,3 @@ elif st.session_state.current_page == "input":
             st.dataframe(recent_10, use_container_width=True, hide_index=True)
         else:
             st.caption("저장된 데이터가 없습니다.")
-
-        navigation_buttons()
