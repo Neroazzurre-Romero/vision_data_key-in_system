@@ -62,7 +62,6 @@ if not st.session_state.unlocked:
     
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
-    # 💡 로고 영역의 열 비율을 [1, 0.75, 1]로 조정하여 크기를 기존 대비 정확히 절반으로 축소
     c1, c2, c3 = st.columns([1, 0.75, 1])
     with c2:
         if os.path.exists("logo.png"):
@@ -194,6 +193,20 @@ body { overscroll-behavior-y: none !important; }
     padding-left: 1.5rem !important; padding-right: 1.5rem !important;
 }
 
+/* 입력칸 전체 크기 확대 */
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div {
+    min-height: 3.5rem !important;
+}
+div[data-baseweb="input"] input,
+div[data-baseweb="select"] div {
+    font-size: 1.15rem !important;
+}
+div[data-baseweb="textarea"] textarea {
+    font-size: 1.15rem !important;
+    min-height: 100px !important;
+}
+
 button[kind="primary"] {
     background-color: #4b6584 !important; color: white !important; border: none !important;
     font-size: 16px !important; font-weight: bold !important; padding: 10px !important;
@@ -235,8 +248,8 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 components.html(
     """
     <script>
-    if (window.parent && !window.parent.appPluginLoaded) {
-        window.parent.appPluginLoaded = true;
+    if (window.parent && !window.parent.appPluginLoadedFull) {
+        window.parent.appPluginLoadedFull = true;
         
         const formatNavButtons = () => {
             if (!window.parent.document) return;
@@ -256,6 +269,25 @@ components.html(
             });
         };
 
+        const styleScanner = () => {
+            if (!window.parent.document) return;
+            const targets = window.parent.document.querySelectorAll('div[id="scanner_target"]');
+            targets.forEach(t => {
+                let parent = t.parentElement;
+                while(parent && parent.getAttribute('data-testid') !== 'stVerticalBlock') {
+                    parent = parent.parentElement;
+                }
+                if(parent && !parent.dataset.styled) {
+                    parent.style.backgroundColor = '#D9E1F2';
+                    parent.style.padding = '20px';
+                    parent.style.borderRadius = '12px';
+                    parent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                    parent.style.marginBottom = '20px';
+                    parent.dataset.styled = 'true';
+                }
+            });
+        };
+
         const disableKeyboard = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
@@ -269,6 +301,7 @@ components.html(
         const observer = new MutationObserver(() => { 
             disableKeyboard(); 
             formatNavButtons();
+            styleScanner();
         });
         
         if (window.parent.document.body) {
@@ -277,6 +310,7 @@ components.html(
         
         disableKeyboard();
         formatNavButtons();
+        styleScanner();
     }
     </script>
     """, height=0, width=0
@@ -303,7 +337,6 @@ def render_grid_buttons(options, state_key, columns):
 # 구글 스프레드시트 연동
 # ----------------------------------------------------
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-
 EXCEL_COLUMNS = [
     "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", 
     "모델명(MI)", "도금구분", "UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", 
@@ -312,7 +345,6 @@ EXCEL_COLUMNS = [
     "도장라인", "도장일", "도장순서", "입고일", "LOT NO.", "CLIP", "BASE", "COVER", 
     "조립기", "월", "작업자"
 ]
-
 SPREADSHEET_ID = "1DeMJJkuq7bYa4XNK_NbkqZ-vOJKqGhmYXIvHm3yJl8E"
 TAB_NAME = "VISION_DATA_DB"
 
@@ -397,7 +429,6 @@ elif st.session_state.current_page == "input":
     """, unsafe_allow_html=True)
 
     with st.sidebar:
-        st.markdown("### 📋 목차")
         steps_titles = [
             "생산 등록", "작업 정보", "Coating Data", "Assemble Data", 
             "VISION Data & ETC", "데이터 저장", "Report & History"
@@ -424,8 +455,6 @@ elif st.session_state.current_page == "input":
     step = st.session_state.step
 
     if step == 1:
-        st.markdown("### 1. 생산 등록")
-        
         c1, c2 = st.columns(2)
         with c1: st.session_state.work_date = st.date_input("**근무일자**", value=st.session_state.work_date)
         with c2: st.session_state.model_name = st.selectbox("**모델명**", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0)
@@ -439,7 +468,6 @@ elif st.session_state.current_page == "input":
             raw_val = st.session_state._lot_input_temp
             if '$' in raw_val:
                 parts = [p for p in raw_val.split('$') if p]
-                
                 if len(parts) >= 5:
                     plating_code = parts[2]
                     if plating_code == 'S110': st.session_state.plating_type = 'A'
@@ -456,17 +484,20 @@ elif st.session_state.current_page == "input":
             else:
                 st.session_state.lot_input_field = raw_val
 
-        st.info("💡 스캐너 키보드 앱으로 바코드를 스캔하면 도금구분, 입고일, LOT 번호가 자동으로 분류됩니다.")
-        st.text_input("**LOT 직접 입력 및 스캔**", value=st.session_state.lot_input_field, key="_lot_input_temp", on_change=parse_scanned_data, placeholder="입력창 터치 후 스캔")
-        
-        st.session_state.in_date_field = st.date_input("**입고일 (자동세팅됨)**", value=st.session_state.in_date_field)
-        
-        st.markdown("**도금 구분 (자동세팅됨)**")
-        render_grid_buttons(["A", "B"], "plating_type", 2)
+        # 💡 스캐너 1x3 배열 카드 영역
+        with st.container():
+            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='color:#1e293b; font-weight:bold; font-size:18px; margin-bottom: 10px;'>QR code를 Scan 하세요. 자동으로 LOT, 입고일, 도금 구분 값이 입력됩니다.</div>", unsafe_allow_html=True)
+            
+            sc1, sc2, sc3 = st.columns(3)
+            with sc1:
+                st.text_input("**LOT**", value=st.session_state.lot_input_field, key="_lot_input_temp", on_change=parse_scanned_data, placeholder="터치 후 스캔")
+            with sc2:
+                st.session_state.in_date_field = st.date_input("**입고일**", value=st.session_state.in_date_field)
+            with sc3:
+                st.session_state.plating_type = st.selectbox("**도금 구분**", ["A", "B"], index=["A", "B"].index(st.session_state.plating_type))
 
     elif step == 2:
-        st.markdown("### 2. 작업 정보")
-        
         c1, c2 = st.columns(2)
         with c1: st.session_state.start_date = st.date_input("**시작일**", value=st.session_state.start_date)
         with c2: st.session_state.start_time = st.time_input("**시작시간**", value=st.session_state.start_time)
@@ -490,7 +521,6 @@ elif st.session_state.current_page == "input":
         st.text_input("**소요시간 (휴동시간 차감됨)**", value=f"{duration_minutes:,} 분", disabled=True)
 
     elif step == 3:
-        st.markdown("### 3. Coating Data")
         c1, c2 = st.columns(2)
         with c1: st.session_state.painting_date = st.date_input("**도장일**", value=st.session_state.painting_date)
         with c2: st.session_state.painting_order = st.number_input("**도장순서**", min_value=1, value=st.session_state.painting_order)
@@ -499,7 +529,6 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
 
     elif step == 4:
-        st.markdown("### 4. Assemble Data")
         num_options = ["선택안함"] + [str(i) for i in range(1, 11)]
         
         c1, c2, c3 = st.columns(3)
@@ -511,11 +540,9 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
 
     elif step == 5:
-        st.markdown("### 5. VISION Data & ETC")
-        
         st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
         
-        st.markdown("##### 🚨 불량 세부")
+        st.markdown("**🚨 불량 세부**")
         c1, c2, c3 = st.columns(3)
         with c1: st.session_state.comp_def = st.number_input("**완전불량**", min_value=0, value=st.session_state.comp_def)
         with c2: st.session_state.front_def = st.number_input("**전면불량**", min_value=0, value=st.session_state.front_def)
@@ -529,7 +556,7 @@ elif st.session_state.current_page == "input":
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
         
-        st.markdown("##### 합계")
+        st.markdown("**합계**")
         h1, h2 = st.columns(2)
         with h1: st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
         with h2: st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
@@ -539,8 +566,6 @@ elif st.session_state.current_page == "input":
         st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
 
     elif step == 6:
-        st.markdown("### 6. 데이터 저장")
-        
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
         
@@ -604,8 +629,6 @@ elif st.session_state.current_page == "input":
                         st.rerun()
 
     elif step == 7:
-        st.markdown("### 7. Report & History")
-        
         if st.button("📊 종합 분석 데이터 페이지로 이동", use_container_width=True, type="primary"):
             st.session_state.current_page = "analysis"
             st.rerun()
