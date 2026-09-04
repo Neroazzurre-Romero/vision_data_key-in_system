@@ -14,7 +14,14 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-# [설정] 작업자 명단
+try:
+    from PIL import Image
+    import cv2
+    from pyzbar.pyzbar import decode
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+
 worker_a_list = ["A조", "작업자입력1", "작업자입력2"]
 worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
 worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
@@ -23,7 +30,7 @@ model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Sea
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 영구 세션 상태 초기화
+# 영구 세션 상태 초기화 (입력 데이터 증발 방지)
 # ==========================================
 if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
@@ -46,6 +53,8 @@ default_state = {
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
     "rear_warned": False, "offset_warned": False
 }
+
+# 기본값이 없는 경우만 초기화하여 데이터 유지
 for key, value in default_state.items():
     if key not in st.session_state:
         st.session_state[key] = value
@@ -172,6 +181,8 @@ components.html(
     <script>
     if (window.parent && !window.parent.appPluginLoadedFull) {
         window.parent.appPluginLoadedFull = true;
+        
+        // 버튼 색상 및 높이 맞춤(저장 버튼, 분석 이동 버튼) 자동 적용 JS
         const formatNavButtons = () => {
             if (!window.parent.document) return;
             const buttons = window.parent.document.querySelectorAll('button');
@@ -179,6 +190,20 @@ components.html(
                 const text = btn.innerText || "";
                 if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; }
                 if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; }
+                
+                // 데이터 최종 저장 버튼 비고칸 높이 동기화
+                if (text.includes('데이터 최종 저장')) { 
+                    btn.style.height = '100px'; 
+                    btn.style.marginTop = '28px'; 
+                    btn.style.fontSize = '18px'; 
+                    btn.style.whiteSpace = 'pre-wrap'; 
+                }
+                // 종합 분석 데이터 상단 타이틀 높이 동기화
+                if (text.includes('종합 분석 데이터 페이지')) { 
+                    btn.style.height = '58px'; 
+                    btn.style.fontSize = '16px'; 
+                    btn.style.marginTop = '2px';
+                }
             });
         };
         const styleScanner = () => {
@@ -327,16 +352,25 @@ if st.session_state.current_page == "analysis":
     else: st.dataframe(df.head(50))
 
 elif st.session_state.current_page == "input":
-    st.markdown("""
-        <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
-            <h2 style='color: #f8fafc; margin: 0; font-weight: 600;'>VISION DATA KEY-IN SYSTEM</h2>
-        </div>
-    """, unsafe_allow_html=True)
+    
+    # 💡 타이틀 및 종합 분석 이동 버튼 (7:3 배열 적용)
+    top_c1, top_c2 = st.columns([0.7, 0.3])
+    with top_c1:
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
+                <h2 style='color: #f8fafc; margin: 0; font-weight: 600;'>VISION DATA KEY-IN SYSTEM</h2>
+            </div>
+        """, unsafe_allow_html=True)
+    with top_c2:
+        if st.button("📊 종합 분석 데이터 페이지로 이동", use_container_width=True, type="primary"):
+            st.session_state.current_page = "analysis"
+            st.rerun()
 
     with st.sidebar:
+        # 💡 데이터 저장 대분류를 없애고 6단계로 압축
         steps_titles = [
             "생산 등록", "작업 정보", "Coating Data", "Assemble Data", 
-            "VISION Data", "데이터 저장", "Report & History"
+            "VISION Data", "Report & History"
         ]
         for i, title in enumerate(steps_titles, 1):
             btn_type = "primary" if st.session_state.step == i else "secondary"
@@ -352,7 +386,7 @@ elif st.session_state.current_page == "input":
                     st.session_state.step -= 1
                     st.rerun()
         with c2:
-            if st.session_state.step < 7:
+            if st.session_state.step < 6:
                 if st.button("다음 ➡️", use_container_width=True):
                     st.session_state.step += 1
                     st.rerun()
@@ -466,13 +500,13 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
 
     elif step == 5:
-        # 💡 1x3 수량 상단 배치
+        # 1x3 수량 상단 배치
         q1, q2, q3 = st.columns(3)
         with q2: 
             st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
         
         st.markdown("**🚨 불량 세부**")
-        # 💡 불량 1x3, 1x4 압축 배치
+        # 불량 1x3, 1x4 압축 배치
         c1, c2, c3 = st.columns(3)
         with c1: st.session_state.comp_def = st.number_input("**완전불량**", min_value=0, value=st.session_state.comp_def)
         with c2: st.session_state.front_def = st.number_input("**전면불량**", min_value=0, value=st.session_state.front_def)
@@ -484,7 +518,6 @@ elif st.session_state.current_page == "input":
         with c6: st.session_state.etc_def = st.number_input("**기타**", min_value=0, value=st.session_state.etc_def)
         with c7: st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         
-        # 💡 하단에 자동 계산된 수량 값을 위로 띄워줌
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
         
@@ -492,8 +525,6 @@ elif st.session_state.current_page == "input":
             st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
         with q3: 
             st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
-
-        st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
 
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
@@ -556,78 +587,76 @@ elif st.session_state.current_page == "input":
         with g_col1: st.plotly_chart(fig_donut, use_container_width=True)
         with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
+        st.markdown("<hr>", unsafe_allow_html=True)
+        
+        # 💡 비고 7 : 데이터 저장 3 비율 배열 & 높이 맞춤 적용
+        rem_col, save_col = st.columns([0.7, 0.3])
+        with rem_col:
+            st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=100)
+            
+        with save_col:
+            if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
+                if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
+                elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
+                else:
+                    with st.spinner("저장 중..."):
+                        start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
+                        end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+                        raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+                        duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+
+                        uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
+                        upd_val = uph_val * 22
+                        good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
+                        
+                        if total_qty > 0:
+                            rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
+                            rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
+                            comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
+                            front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
+                            rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
+                            offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
+                        else:
+                            rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
+
+                        fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
+                        fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
+                        fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
+                        fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
+                        fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
+                        
+                        workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
+                        fmt_worker = ", ".join(workers) if workers else ""
+
+                        new_data = pd.DataFrame([{
+                            "날짜": fmt_date, "교대": st.session_state.shift_type,
+                            "시작시간": start_dt.strftime("%H:%M"), "종료시간": end_dt.strftime("%H:%M"),
+                            "휴동시간": f"{st.session_state.idle_time:,}", "소요시간": f"{duration_minutes:,}", "구분": st.session_state.category, "호기": st.session_state.unit, 
+                            "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
+                            "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
+                            "양품률": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
+                            "완전불량률": f"{comp_rate_num:.1f}%", "전면불량률": f"{front_rate_num:.1f}%", "배면불량률": f"{rear_rate_num:.1f}%",
+                            "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
+                            "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
+                            "비고": st.session_state.remarks, "도장라인": fmt_paint_line, "도장일": fmt_paint_date, 
+                            "도장순서": st.session_state.painting_order, "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
+                            "CLIP": "" if st.session_state.clip_val == "선택안함" else st.session_state.clip_val, 
+                            "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
+                            "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
+                            "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", 
+                            "작업자": fmt_worker
+                        }])
+                        
+                        # 💡 데이터 전송 완료 후 이전 데이터 모두 완벽 초기화(Reset) 로직
+                        if save_data_append(new_data):
+                            st.success("저장 완료!")
+                            for k, v in default_state.items():
+                                st.session_state[k] = v
+                            time.sleep(1)
+                            st.session_state.step = 6
+                            st.rerun()
+
     elif step == 6:
-        bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
-        total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
-        
-        st.info("입력된 데이터를 구글 스프레드시트에 전송합니다. 마지막으로 확인 후 아래 저장 버튼을 눌러주세요.")
-        st.write(f"- **LOT NO:** {st.session_state.lot_input_field}")
-        st.write(f"- **검사 총 수량:** {total_qty:,} 개")
-        
-        if st.button("💾 데이터 최종 저장 (구글 시트 전송)", type="primary", use_container_width=True):
-            if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
-            elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
-            else:
-                with st.spinner("저장 중..."):
-                    start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
-                    end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-                    raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-                    duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-
-                    uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
-                    upd_val = uph_val * 22
-                    good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
-                    
-                    if total_qty > 0:
-                        rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
-                        rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
-                        comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
-                        front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
-                        rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
-                        offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
-                    else:
-                        rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
-
-                    fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
-                    fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
-                    fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
-                    fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
-                    fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
-                    
-                    workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
-                    fmt_worker = ", ".join(workers) if workers else ""
-
-                    new_data = pd.DataFrame([{
-                        "날짜": fmt_date, "교대": st.session_state.shift_type,
-                        "시작시간": start_dt.strftime("%H:%M"), "종료시간": end_dt.strftime("%H:%M"),
-                        "휴동시간": f"{st.session_state.idle_time:,}", "소요시간": f"{duration_minutes:,}", "구분": st.session_state.category, "호기": st.session_state.unit, 
-                        "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
-                        "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
-                        "양품률": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
-                        "완전불량률": f"{comp_rate_num:.1f}%", "전면불량률": f"{front_rate_num:.1f}%", "배면불량률": f"{rear_rate_num:.1f}%",
-                        "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
-                        "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
-                        "비고": st.session_state.remarks, "도장라인": fmt_paint_line, "도장일": fmt_paint_date, 
-                        "도장순서": st.session_state.painting_order, "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
-                        "CLIP": "" if st.session_state.clip_val == "선택안함" else st.session_state.clip_val, 
-                        "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
-                        "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
-                        "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", 
-                        "작업자": fmt_worker
-                    }])
-                    if save_data_append(new_data):
-                        st.success("저장 완료!")
-                        st.session_state.lot_input_field = ""
-                        time.sleep(1)
-                        st.session_state.step = 7
-                        st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
-                        st.rerun()
-
-    elif step == 7:
-        if st.button("📊 종합 분석 데이터 페이지로 이동", use_container_width=True, type="primary"):
-            st.session_state.current_page = "analysis"
-            st.rerun()
-
         st.markdown("---")
         df_history = load_data().copy()
         if not df_history.empty:
