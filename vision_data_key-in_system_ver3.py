@@ -373,27 +373,6 @@ def open_web_qr_scanner():
         st.rerun()
 
 # ==========================================
-# 간편 바로가기 적용 함수
-# ==========================================
-def apply_shortcut(profile):
-    if profile == "Yield":
-        st.session_state.current_page = "analysis"
-        st.session_state.coating_shortcut = False
-        st.rerun()
-    elif profile == "LOT":
-        st.session_state.current_page = "input"
-        st.session_state.coating_shortcut = False
-        st.rerun()
-    elif profile == "Clip":
-        st.session_state.current_page = "input"
-        st.session_state.coating_shortcut = False
-        st.rerun()
-    elif profile == "Coating":
-        st.session_state.current_page = "analysis"
-        st.session_state.coating_shortcut = True
-        st.rerun()
-
-# ==========================================
 # 종합 분석 데이터 화면 
 # ==========================================
 def render_analysis_page():
@@ -407,7 +386,6 @@ def render_analysis_page():
     with col_btn1:
         if st.button("뒤로 가기 (데이터 입력 화면으로)", type="primary"):
             st.session_state.current_page = "input"
-            st.session_state.coating_shortcut = False
             st.rerun()
     with col_btn2:
         if st.button("🔄 최신 데이터 새로고침", use_container_width=True):
@@ -464,8 +442,7 @@ def render_analysis_page():
     with col_opt1: 
         date_filter_mode = st.radio("**분석 기간 설정**", ["전체 누적 데이터", "단일 일자 선택", "특정 기간 지정 검색"], horizontal=True)
     with col_opt2: 
-        default_x_idx = 2 if st.session_state.get("coating_shortcut", False) else 0
-        x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)", "도장일순 (도장일/순서 기준)"], index=default_x_idx, horizontal=True)
+        x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)", "도장일순 (도장일/순서 기준)"], index=0, horizontal=True)
     
     if date_filter_mode == "단일 일자 선택":
         selected_date = st.selectbox("**분석할 근무일자를 선택하세요**", available_dates)
@@ -607,19 +584,6 @@ if st.session_state.current_page == "input":
             <h2 style='color: #f8fafc; margin: 0; font-weight: 600;'>VISION DATA KEY-IN SYSTEM</h2>
         </div>
     """, unsafe_allow_html=True)
-
-    # Quick Shortcuts Bar
-    st.markdown("### ⚡ 간편 설정 (Quick Shortcuts)")
-    sc1, sc2, sc3, sc4 = st.columns(4)
-    with sc1:
-        if st.button("🚀 1. YIELD", use_container_width=True): apply_shortcut("Yield")
-    with sc2:
-        if st.button("📦 2. LOT", use_container_width=True): apply_shortcut("LOT")
-    with sc3:
-        if st.button("📎 3. JIG", use_container_width=True): apply_shortcut("Clip")
-    with sc4:
-        if st.button("🎨 4. COATING", use_container_width=True): apply_shortcut("Coating")
-    st.markdown("---")
 
     with st.sidebar:
         # 1. 작업 등록
