@@ -13,6 +13,15 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
+# QR/바코드 스캔 라이브러리 (파이썬 백엔드 분석용 복구)
+try:
+    from PIL import Image
+    import cv2
+    from pyzbar.pyzbar import decode
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+
 # [설정] 작업자 명단
 worker_list = ["박경섭", "무고사", "재르소", "김동헌"] 
 
@@ -23,34 +32,12 @@ st.set_page_config(
 )
 
 # ==========================================
-# 화면 전환 및 상태 관리 및 쿼리 파라미터 처리 (최상단 배치 필수)
+# 화면 전환 및 상태 관리
 # ==========================================
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
 if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
-
-# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (보안 우회 방식)
-if "scanned_data" in st.query_params:
-    raw_scan = st.query_params.get("scanned_data")
-    if raw_scan:
-        parts = [p for p in raw_scan.split('$') if p]
-        lot_val = parts[-1] if parts else raw_scan
-        parsed_date = None
-        
-        if len(parts) >= 2:
-            date_str_candidate = parts[-2]
-            date_str = date_str_candidate[-8:]
-            if date_str.isdigit():
-                try:
-                    parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
-                except ValueError:
-                    pass
-                    
-        st.session_state.lot_input_field = lot_val
-        if parsed_date:
-            st.session_state.in_date_field = parsed_date
-            
-    st.query_params.clear()
+if "coating_shortcut" not in st.session_state: st.session_state.coating_shortcut = False
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -167,7 +154,6 @@ if "google_credentials" not in st.secrets:
     st.error("구글 스프레드시트 보안 키(Secrets)가 설정되지 않았습니다!")
     st.stop()
 
-# 💡 구글 503 에러 방지: 캐시 초기화 옵션 및 3회 자동 재시도 로직 적용
 @st.cache_resource(ttl=600)
 def get_sheet():
     for attempt in range(3):
@@ -309,66 +295,80 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (오토포커스 + 후면카메라 + 자동 전송 적용)
+# 기존 파이썬 기반 카메라 촬영 및 자동 분석 기능 복구 (버튼 없이 자동 입력 추가)
 # ----------------------------------------------------
-@st.dialog("전문 QR/바코드 스캐너")
-def open_web_qr_scanner():
-    st.markdown("후면 카메라에 바코드를 비춰주세요. (인식 성공 시 자동으로 화면이 넘어갑니다)")
-    st.caption("※ 기기에 따라 오토포커스(자동초점) 속도에 차이가 있을 수 있습니다.")
-    
-    scanner_html = """
-    <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
-        <div id="reader" style="width: 100%;"></div>
-        <div style="margin-top: 15px;">
-            <input type="text" id="scannedValue" placeholder="스캔 대기 중..." readonly style="width: 100%; padding: 10px; font-size: 16px; text-align: center; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; color: #1e293b;">
-        </div>
-    </div>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-    let scanDone = false; // 중복 스캔 방지용 플래그
-    let html5QrCode = new Html5Qrcode("reader");
-    
-    function onScanSuccess(decodedText, decodedResult) {
-        if (scanDone) return;
-        scanDone = true; // 최초 1회 인식 후 즉시 잠금
+@st.dialog("카메라 촬영 및 자동 분석")
+def open_camera_qr_scanner():
+    if not QR_AVAILABLE:
+        st.error("QR 라이브러리(opencv-python-headless, pyzbar)가 설치되지 않았습니다.")
+        return
         
-        document.getElementById('scannedValue').value = "인식 성공! 데이터 적용 중...";
-        
-        // 스캔 성공 시 배터리 및 자원 절약을 위해 카메라 일시정지
-        if (html5QrCode.isScanning) {
-            html5QrCode.pause();
-        }
-
-        // 버튼 클릭 없이 0.3초 대기 후 즉시 상위 페이지로 파라미터 전달 및 새로고침 진행
-        setTimeout(function() {
-            try {
-                let parentUrl = document.referrer; 
-                let baseUrl = parentUrl.split('?')[0];
-                let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(decodedText);
-                window.top.location.href = targetUrl;
-            } catch (e) {
-                document.getElementById('scannedValue').value = "자동 적용 실패. 화면을 새로고침 해주세요.";
-            }
-        }, 300);
-    }
-
-    // 오토포커스(advanced: focusMode) 강제 적용 및 fps 상향, 후면카메라(environment) 적용
-    html5QrCode.start(
-        { 
-            facingMode: "environment", 
-            advanced: [{ focusMode: "continuous" }] 
-        },
-        { fps: 15, qrbox: { width: 250, height: 150 } },
-        onScanSuccess
-    ).catch(err => {
-        console.error("Camera start failed", err);
-        document.getElementById('scannedValue').value = "카메라 권한을 허용해주세요.";
-    });
-    </script>
-    """
-    components.html(scanner_html, height=350)
+    st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
     
-    if st.button("스캔창 강제 닫기 (취소)", use_container_width=True):
+    target_img = st.camera_input("카메라 촬영")
+        
+    if target_img:
+        with st.spinner("이미지 분석 중..."):
+            try:
+                image = Image.open(target_img)
+                cv2_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                
+                gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                enhanced_gray = clahe.apply(gray)
+                
+                objs = decode(cv2_img)
+                if not objs:
+                    objs = decode(enhanced_gray)
+                    
+                if objs:
+                    raw_data = objs[0].data.decode('utf-8')
+                    
+                    parts = [p for p in raw_data.split('$') if p]
+                    lot_val = parts[-1] if parts else raw_data
+                    parsed_date = None
+                    
+                    if len(parts) >= 2:
+                        date_str_candidate = parts[-2]
+                        date_str = date_str_candidate[-8:]
+                        if date_str.isdigit():
+                            try:
+                                parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
+                            except ValueError:
+                                pass
+                    
+                    # 💡 분석 성공 시 수동 버튼 입력 대기 없이 세션 스테이트에 즉시 저장하고 창을 닫음
+                    st.session_state.lot_input_field = lot_val
+                    if parsed_date:
+                        st.session_state.in_date_field = parsed_date
+                        
+                    st.success("인식 성공! 데이터를 자동으로 입력합니다.")
+                    time.sleep(0.8) # 성공 메시지를 잠시 보여주기 위한 대기
+                    st.rerun()
+                else:
+                    st.error("QR 코드를 찾을 수 없습니다. 초점을 맞춰서 다시 촬영해주세요.")
+            except Exception as e:
+                st.error(f"분석 중 오류 발생: {e}")
+
+# ==========================================
+# 간편 바로가기 적용 함수
+# ==========================================
+def apply_shortcut(profile):
+    if profile == "Yield":
+        st.session_state.current_page = "analysis"
+        st.session_state.coating_shortcut = False
+        st.rerun()
+    elif profile == "LOT":
+        st.session_state.current_page = "input"
+        st.session_state.coating_shortcut = False
+        st.rerun()
+    elif profile == "Clip":
+        st.session_state.current_page = "input"
+        st.session_state.coating_shortcut = False
+        st.rerun()
+    elif profile == "Coating":
+        st.session_state.current_page = "analysis"
+        st.session_state.coating_shortcut = True
         st.rerun()
 
 # ==========================================
@@ -385,6 +385,7 @@ def render_analysis_page():
     with col_btn1:
         if st.button("뒤로 가기 (데이터 입력 화면으로)", type="primary"):
             st.session_state.current_page = "input"
+            st.session_state.coating_shortcut = False
             st.rerun()
     with col_btn2:
         if st.button("🔄 최신 데이터 새로고침", use_container_width=True):
@@ -438,8 +439,11 @@ def render_analysis_page():
     available_dates = df.dropna(subset=['분석용_날짜']).sort_values('분석용_날짜', ascending=False)['날짜'].unique()
     
     col_opt1, col_opt2 = st.columns(2)
-    with col_opt1: date_filter_mode = st.radio("**분석 기간 설정**", ["전체 누적 데이터", "단일 일자 선택", "특정 기간 지정 검색"], horizontal=True)
-    with col_opt2: x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)"], horizontal=True)
+    with col_opt1: 
+        date_filter_mode = st.radio("**분석 기간 설정**", ["전체 누적 데이터", "단일 일자 선택", "특정 기간 지정 검색"], horizontal=True)
+    with col_opt2: 
+        default_x_idx = 2 if st.session_state.get("coating_shortcut", False) else 0
+        x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)", "도장일순 (도장일/순서 기준)"], index=default_x_idx, horizontal=True)
     
     if date_filter_mode == "단일 일자 선택":
         selected_date = st.selectbox("**분석할 근무일자를 선택하세요**", available_dates)
@@ -459,11 +463,12 @@ def render_analysis_page():
         end_dt = pd.to_datetime(end_date_filter)
         df = df[(df['분석용_날짜'] >= start_dt) & (df['분석용_날짜'] <= end_dt)]
 
-    f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+    f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
     with f_col1: selected_model = st.selectbox("**모델명**", ["전체"] + sorted(df['모델명(MI)'].dropna().astype(str).unique()))
     with f_col2: selected_unit = st.selectbox("**호기**", ["전체"] + sorted(df['호기'].dropna().astype(str).unique()))
     with f_col3: selected_category = st.selectbox("**검사구분**", ["전체"] + sorted(df['구분'].dropna().astype(str).unique()))
     with f_col4: selected_shift = st.selectbox("**교대**", ["전체"] + sorted(df['교대'].dropna().astype(str).unique()))
+    with f_col5: group_by_option = st.selectbox("**범례 (그룹 기준)**", ["모델명(MI)", "호기", "조립기", "도장라인", "구분", "교대"], index=0)
 
     if selected_model != "전체": df = df[df['모델명(MI)'] == selected_model]
     if selected_unit != "전체": df = df[df['호기'] == selected_unit]
@@ -474,9 +479,17 @@ def render_analysis_page():
         st.info("조건에 맞는 데이터가 없습니다.")
         return
 
-    base_col = '시간대' if "시간별" in x_axis_mode else '날짜'
+    if "도장일순" in x_axis_mode:
+        df['도장일순'] = df['도장일'].astype(str) + " (" + df['도장순서'].astype(str) + "차)"
+        base_col = '도장일순'
+    elif "시간별" in x_axis_mode:
+        base_col = '시간대'
+    else:
+        base_col = '날짜'
+
     group_cols = [base_col]
-    if selected_model == "전체": group_cols.append('모델명(MI)')
+    if group_by_option != "전체":
+        group_cols.append(group_by_option)
 
     df_grouped = df.groupby(group_cols)[num_cols].sum().reset_index().sort_values(base_col)
     df_grouped['양품률'] = (df_grouped['양품수량'] / df_grouped['검사 수량'] * 100).fillna(0).round(1)
@@ -505,15 +518,17 @@ def render_analysis_page():
             if abs(val) < 0.05: return ""
             return f"<b><span style='{ts}'>{val:.1f}%</span></b>"
 
-        if selected_model == "전체":
-            colors = px.colors.qualitative.Plotly 
-            for i, model in enumerate(df_grouped['모델명(MI)'].unique()):
-                m_data = df_grouped[df_grouped['모델명(MI)'] == model]
+        if len(group_cols) > 1:
+            colors = px.colors.qualitative.Bold + px.colors.qualitative.Pastel + px.colors.qualitative.Vivid + px.colors.qualitative.Plotly
+            sub_groups = df_grouped[group_by_option].unique()
+            for i, grp in enumerate(sub_groups):
+                m_data = df_grouped[df_grouped[group_by_option] == grp]
                 tv = m_data[metric].apply(get_tv)
+                curr_color = colors[i % len(colors)]
                 if is_single_x: 
-                    fig.add_trace(go.Bar(name=str(model), x=m_data[base_col], y=m_data[metric], marker_color=colors[i%len(colors)], text=tv, textposition='inside', insidetextanchor='middle'))
+                    fig.add_trace(go.Bar(name=str(grp), x=m_data[base_col], y=m_data[metric], marker_color=curr_color, text=tv, textposition='inside', insidetextanchor='middle'))
                 else: 
-                    fig.add_trace(go.Scatter(name=str(model), x=m_data[base_col], y=m_data[metric], mode='lines+markers+text', marker=dict(size=8, color=colors[i%len(colors)]), line=dict(width=3, color=colors[i%len(colors)]), text=tv, textposition='top center'))
+                    fig.add_trace(go.Scatter(name=str(grp), x=m_data[base_col], y=m_data[metric], mode='lines+markers+text', marker=dict(size=8, color=curr_color), line=dict(width=3, color=curr_color), text=tv, textposition='top center'))
         else:
             tv = df_grouped[metric].apply(get_tv)
             if is_single_x: 
@@ -571,6 +586,19 @@ if st.session_state.current_page == "input":
         </div>
     """, unsafe_allow_html=True)
 
+    # Quick Shortcuts Bar
+    st.markdown("### ⚡ 간편 설정 (Quick Shortcuts)")
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    with sc1:
+        if st.button("🚀 1. YIELD", use_container_width=True): apply_shortcut("Yield")
+    with sc2:
+        if st.button("📦 2. LOT", use_container_width=True): apply_shortcut("LOT")
+    with sc3:
+        if st.button("📎 3. JIG", use_container_width=True): apply_shortcut("Clip")
+    with sc4:
+        if st.button("🎨 4. COATING", use_container_width=True): apply_shortcut("Coating")
+    st.markdown("---")
+
     with st.sidebar:
         # 1. 작업 등록
         st.markdown("""
@@ -596,10 +624,10 @@ if st.session_state.current_page == "input":
             </div>
         """, unsafe_allow_html=True)
         
-        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔")
+        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_dynamic")
         
-        if st.button("📷 전문 QR/바코드 스캐너 실행", use_container_width=True, type="primary"):
-            open_web_qr_scanner()
+        if st.button("📷 카메라 촬영 및 자동 분석", use_container_width=True, type="primary"):
+            open_camera_qr_scanner()
             
         st.markdown("<br>", unsafe_allow_html=True)
         in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
