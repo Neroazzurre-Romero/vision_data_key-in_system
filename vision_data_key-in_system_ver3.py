@@ -30,7 +30,7 @@ model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Sea
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
-# 영구 세션 상태 초기화 (입력 데이터 증발 방지)
+# 영구 세션 상태 초기화
 # ==========================================
 if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
@@ -149,7 +149,7 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
             
-    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>vision data key-in system --- Romero.K</div>", unsafe_allow_html=True)
+    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
 # ----------------------------------------------------
@@ -157,7 +157,7 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;} body { overscroll-behavior-y: none !important; } ::-webkit-scrollbar { display: none; }
+#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {background: transparent;} body { overscroll-behavior-y: none !important; } ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
@@ -198,6 +198,9 @@ components.html(
                     btn.style.height = '58px'; 
                     btn.style.fontSize = '16px'; 
                     btn.style.marginTop = '0px'; 
+                    btn.style.backgroundColor = '#D4AF37'; /* 💡 겨자색 적용 */
+                    btn.style.color = '#000000';
+                    btn.style.border = 'none';
                 }
             });
         };
@@ -348,12 +351,12 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    # 💡 비율 8.5:1.5 및 연한 회색 배경 스타일, 버튼 높이 동기화
+    # 💡 비율 8.5:1.5 및 어두운 배경(원복), 흰색 텍스트 테마 반영
     top_c1, top_c2 = st.columns([0.85, 0.15])
     with top_c1:
         st.markdown("""
-            <div style='background: #e2e8f0; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); border: 1px solid #cbd5e1; height: 58px; display: flex; align-items: center;'>
-                <h3 style='color: #1e293b; margin: 0; font-weight: 800;'>VISION DATA KEY-IN SYSTEM</h3>
+            <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 58px; display: flex; align-items: center;'>
+                <h3 style='color: #f8fafc; margin: 0; font-weight: 800;'>VISION DATA KEY-IN SYSTEM</h3>
             </div>
         """, unsafe_allow_html=True)
     with top_c2:
@@ -385,9 +388,9 @@ elif st.session_state.current_page == "input":
                     st.session_state.step += 1
                     st.rerun()
 
-        # 💡 로고 대체: create by 텍스트
+        # 💡 로고 대체: Create by 텍스트 적용
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 13px; font-weight: bold;'>create by --- Romero.K</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 13px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
 
