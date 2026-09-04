@@ -398,11 +398,9 @@ elif st.session_state.current_page == "input":
         with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
         with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
-        # 💡 스캐너 1x3 배열 카드 영역 (QR 버튼 / 입력창 / 적용 버튼)
         st.markdown("<hr>", unsafe_allow_html=True)
         with st.container():
             st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
-            st.markdown("<div style='color:#1e293b; font-weight:bold; font-size:18px; margin-bottom: 10px;'>QR code를 Scan 하세요. 자동으로 LOT, 입고일, 도금 구분 값이 입력됩니다.</div>", unsafe_allow_html=True)
             
             sc1, sc2, sc3 = st.columns([1, 1.5, 1])
             with sc1:
@@ -468,32 +466,35 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
 
     elif step == 5:
-        st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
+        # 💡 1x3 수량 상단 배치
+        q1, q2, q3 = st.columns(3)
+        with q2: 
+            st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
         
         st.markdown("**🚨 불량 세부**")
+        # 💡 불량 1x3, 1x4 압축 배치
         c1, c2, c3 = st.columns(3)
         with c1: st.session_state.comp_def = st.number_input("**완전불량**", min_value=0, value=st.session_state.comp_def)
         with c2: st.session_state.front_def = st.number_input("**전면불량**", min_value=0, value=st.session_state.front_def)
         with c3: st.session_state.rear_def = st.number_input("**배면불량**", min_value=0, value=st.session_state.rear_def)
         
-        c4, c5, c6 = st.columns(3)
+        c4, c5, c6, c7 = st.columns(4)
         with c4: st.session_state.offset_def = st.number_input("**옵셋불량**", min_value=0, value=st.session_state.offset_def)
         with c5: st.session_state.shortage_qty = st.number_input("**수량부족**", min_value=0, value=st.session_state.shortage_qty)
         with c6: st.session_state.etc_def = st.number_input("**기타**", min_value=0, value=st.session_state.etc_def)
+        with c7: st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         
+        # 💡 하단에 자동 계산된 수량 값을 위로 띄워줌
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
         
-        st.markdown("**합계**")
-        h1, h2 = st.columns(2)
-        with h1: st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
-        with h2: st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
+        with q1: 
+            st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
+        with q3: 
+            st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
 
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
 
-        # 💡 SBL 경고창 호출 로직
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
             front_rate = (st.session_state.front_def / total_qty) * 100
@@ -513,7 +514,6 @@ elif st.session_state.current_page == "input":
                 show_sbl_warning("옵셋불량", offset_rate)
                 st.session_state.offset_warned = True
 
-        # 💡 VISION Data 페이지 내 그래프 삽입 (기존 7단계 차트 복구)
         st.markdown("<hr><b>📈 수율 현황</b>", unsafe_allow_html=True)
         rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
         
