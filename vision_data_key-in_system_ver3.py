@@ -45,7 +45,7 @@ for key, value in default_state.items():
         st.session_state[key] = value
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
+# 마법 코드 1: UI 디자인 커스텀 및 태블릿 앱 최적화
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -58,11 +58,36 @@ body { overscroll-behavior-y: none !important; }
     padding-top: 1rem !important; padding-bottom: 1rem !important;
     padding-left: 1.5rem !important; padding-right: 1.5rem !important;
 }
+
+/* 네비게이션(이전/다음)을 제외한 일반 Primary 버튼 설정 */
 button[kind="primary"] {
     background-color: #4b6584 !important; color: white !important; border: none !important;
     font-size: 16px !important; font-weight: bold !important; padding: 10px !important;
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
+
+/* 💡 사이드바 목차(WIZARD) 커스텀 스타일 (왼쪽 정렬, 들여쓰기, 높이 확장, 굵게) */
+[data-testid="stSidebar"] .stButton > button {
+    height: 85px !important; /* 버튼 높이를 오른쪽 화면만큼 길게 확장 */
+    justify-content: flex-start !important; /* 왼쪽 정렬 */
+    padding-left: 15px !important; 
+    margin-bottom: 8px !important;
+    border-radius: 10px !important;
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border: 1px solid #334155 !important;
+}
+[data-testid="stSidebar"] .stButton > button p {
+    font-weight: 800 !important; /* 굵게 */
+    font-size: 17px !important;
+    text-indent: 10px !important; /* 한칸 들여쓰기 */
+    text-align: left !important;
+}
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background-color: #3b82f6 !important; /* 현재 선택된 단계 하이라이트 */
+    color: white !important;
+    border: 1px solid #2563eb !important;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -72,6 +97,26 @@ components.html(
     <script>
     if (window.parent && !window.parent.appPluginLoaded) {
         window.parent.appPluginLoaded = true;
+        
+        // 이전/다음 단계 버튼 색상 변경 (FFC000 / 00B050)
+        const formatNavButtons = () => {
+            if (!window.parent.document) return;
+            const buttons = window.parent.document.querySelectorAll('.stButton button');
+            buttons.forEach(btn => {
+                const text = btn.innerText || "";
+                if (text.includes('이전 단계')) {
+                    btn.style.backgroundColor = '#FFC000';
+                    btn.style.color = '#000000';
+                    btn.style.border = 'none';
+                }
+                if (text.includes('다음 단계')) {
+                    btn.style.backgroundColor = '#00B050';
+                    btn.style.color = '#FFFFFF';
+                    btn.style.border = 'none';
+                }
+            });
+        };
+
         const disableKeyboard = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
@@ -81,11 +126,18 @@ components.html(
                 }
             });
         };
-        const observer = new MutationObserver(() => { disableKeyboard(); });
+
+        const observer = new MutationObserver(() => { 
+            disableKeyboard(); 
+            formatNavButtons();
+        });
+        
         if (window.parent.document.body) {
             observer.observe(window.parent.document.body, { childList: true, subtree: true });
         }
+        
         disableKeyboard();
+        formatNavButtons();
     }
     </script>
     """, height=0, width=0
@@ -184,23 +236,8 @@ def save_data_append(df):
         st.error(f"데이터 저장 오류: {e}")
         return False
 
-def save_data_overwrite(df):
-    sheet = get_sheet()
-    if sheet is None: return False
-    try:
-        sheet.clear()
-        records = [EXCEL_COLUMNS] 
-        for _, row in df.iterrows():
-            records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
-        sheet.update('A1', records, value_input_option='USER_ENTERED')
-        load_data.clear()
-        return True
-    except Exception as e:
-        st.error(f"데이터 덮어쓰기 오류: {e}")
-        return False
-
 # ==========================================
-# UI 렌더링 영역
+# UI 하단 네비게이션
 # ==========================================
 def navigation_buttons():
     st.markdown("<br><hr>", unsafe_allow_html=True)
@@ -212,12 +249,14 @@ def navigation_buttons():
                 st.rerun()
     with c2:
         if st.session_state.step < 7:
-            if st.button("다음 단계 ➡️", use_container_width=True, type="primary"):
+            if st.button("다음 단계 ➡️", use_container_width=True):
                 st.session_state.step += 1
                 st.rerun()
 
+# ==========================================
+# 메인 프로세스 화면 구성
+# ==========================================
 if st.session_state.current_page == "analysis":
-    # (종합 분석 페이지 코드는 동일하게 유지. 너무 길어 생략 없이 간소화 적용)
     st.markdown("## 종합 생산 데이터 분석")
     if st.button("뒤로 가기 (데이터 입력 화면으로)"):
         st.session_state.current_page = "input"
@@ -226,7 +265,7 @@ if st.session_state.current_page == "analysis":
     if df.empty:
         st.warning("데이터가 없습니다.")
     else:
-        st.dataframe(df.head(50)) # 요약 형태 표시 (실제 현장에서는 전체 분석 차트 코드 이식)
+        st.dataframe(df.head(50))
 
 elif st.session_state.current_page == "input":
     st.markdown("""
@@ -235,7 +274,6 @@ elif st.session_state.current_page == "input":
         </div>
     """, unsafe_allow_html=True)
 
-    # 사이드바 목차 (WIZARD 네비게이션)
     with st.sidebar:
         st.markdown("### 📋 목차")
         steps_titles = [
@@ -248,7 +286,6 @@ elif st.session_state.current_page == "input":
                 st.session_state.step = i
                 st.rerun()
 
-    # 메인 컨텐츠 영역 (현재 Step에 따라 변경)
     step = st.session_state.step
 
     if step == 1:
@@ -263,25 +300,37 @@ elif st.session_state.current_page == "input":
         
         st.session_state.worker_name = st.selectbox("**작업자**", ["선택안함"] + worker_list, index=(["선택안함"] + worker_list).index(st.session_state.worker_name) if st.session_state.worker_name in (["선택안함"] + worker_list) else 0)
         
+        # 💡 자동 파싱 로직 (P$PL01$S120$20260714$00061 구조 완벽 분해)
         def parse_scanned_data():
             raw_val = st.session_state._lot_input_temp
             if '$' in raw_val:
                 parts = [p for p in raw_val.split('$') if p]
-                st.session_state.lot_input_field = parts[-1] if parts else raw_val
-                if len(parts) >= 2:
-                    date_str = parts[-2][-8:]
-                    if date_str.isdigit():
+                
+                if len(parts) >= 5:
+                    # [도금 구분] 두번째 $ 우측 (index 2)
+                    plating_code = parts[2]
+                    if plating_code == 'S110': st.session_state.plating_type = 'A'
+                    elif plating_code == 'S112': st.session_state.plating_type = 'B'
+                    
+                    # [입고일] 세번째 $ 우측 (index 3)
+                    date_str = parts[3]
+                    if len(date_str) == 8 and date_str.isdigit():
                         try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
                         except ValueError: pass
+                    
+                    # [LOT NO] 네번째 $ 우측 (index 4) - 텍스트 원본 유지 (예: 00061)
+                    st.session_state.lot_input_field = parts[4]
+                else:
+                    st.session_state.lot_input_field = parts[-1]
             else:
                 st.session_state.lot_input_field = raw_val
 
-        st.info("💡 스캐너 키보드 앱으로 바코드를 쏘면 LOT 번호와 입고일이 자동 파싱됩니다.")
+        st.info("💡 스캐너 키보드 앱으로 바코드를 스캔하면 도금구분, 입고일, LOT 번호가 자동으로 분류됩니다.")
         st.text_input("**LOT 직접 입력 및 스캔**", value=st.session_state.lot_input_field, key="_lot_input_temp", on_change=parse_scanned_data, placeholder="입력창 터치 후 스캔")
         
-        st.session_state.in_date_field = st.date_input("**입고일**", value=st.session_state.in_date_field)
+        st.session_state.in_date_field = st.date_input("**입고일 (자동세팅됨)**", value=st.session_state.in_date_field)
         
-        st.markdown("**도금 구분**")
+        st.markdown("**도금 구분 (자동세팅됨)**")
         render_grid_buttons(["A", "B"], "plating_type", 2)
         
         navigation_buttons()
