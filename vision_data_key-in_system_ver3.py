@@ -64,9 +64,10 @@ for key, value in default_state.items():
 if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
-        [data-testid="stToolbar"] { display: none !important; }
         [data-testid="stSidebar"] { display: none !important; }
-        #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+        [data-testid="stToolbar"] { display: none !important; }
+        header { visibility: hidden !important; }
+        footer { visibility: hidden !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -158,19 +159,16 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 불필요한 즐겨찾기, Deploy, 코드보기 등 툴바 완벽 차단 */
+/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단 및 사이드바 토글 살리기 */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
-#MainMenu {visibility: hidden !important;} 
-footer {visibility: hidden !important;} 
+footer { visibility: hidden !important; } 
 
-/* 사이드바 토글(>)을 위해 헤더를 투명하게 적용 */
-header {background: transparent !important;} 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 💡 화면 비율 원상복구 (여백 최적화) */
-.block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+/* 화면 상단 여백 최적화 (토글 버튼과 비율 맞춤) */
+.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
@@ -178,6 +176,7 @@ div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.1
 div[data-baseweb="textarea"] textarea { font-size: 1.15rem !important; min-height: 100px !important; }
 button[kind="primary"] { background-color: #4b6584 !important; color: white !important; border: none !important; font-size: 16px !important; font-weight: bold !important; padding: 10px !important; }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
+
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 65px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 6px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
