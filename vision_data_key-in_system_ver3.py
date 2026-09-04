@@ -64,6 +64,7 @@ for key, value in default_state.items():
 if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
+        [data-testid="stToolbar"] { display: none !important; }
         [data-testid="stSidebar"] { display: none !important; }
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     </style>
@@ -157,8 +158,20 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {background: transparent;} body { overscroll-behavior-y: none !important; } ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+/* 💡 불필요한 즐겨찾기, Deploy, 코드보기 등 툴바 완벽 차단 */
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+#MainMenu {visibility: hidden !important;} 
+footer {visibility: hidden !important;} 
+
+/* 사이드바 토글(>)을 위해 헤더를 투명하게 적용 */
+header {background: transparent !important;} 
+body { overscroll-behavior-y: none !important; } 
+::-webkit-scrollbar { display: none; }
+
+/* 💡 화면 비율 원상복구 (여백 최적화) */
+.block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
 div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.15rem !important; }
@@ -198,7 +211,7 @@ components.html(
                     btn.style.height = '58px'; 
                     btn.style.fontSize = '16px'; 
                     btn.style.marginTop = '0px'; 
-                    btn.style.backgroundColor = '#D4AF37'; /* 💡 겨자색 적용 */
+                    btn.style.backgroundColor = '#D4AF37';
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
@@ -351,7 +364,6 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    # 💡 비율 8.5:1.5 및 어두운 배경(원복), 흰색 텍스트 테마 반영
     top_c1, top_c2 = st.columns([0.85, 0.15])
     with top_c1:
         st.markdown("""
@@ -388,7 +400,6 @@ elif st.session_state.current_page == "input":
                     st.session_state.step += 1
                     st.rerun()
 
-        # 💡 로고 대체: Create by 텍스트 적용
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 13px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
 
