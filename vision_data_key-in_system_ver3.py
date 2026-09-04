@@ -305,7 +305,8 @@ def open_camera_qr_scanner():
         return
         
     st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
-    target_img = st.camera_input("카메라 촬영", facing_mode="environment")
+    # TypeError 방지를 위해 기본 카메라 컴포넌트 호출
+    target_img = st.camera_input("카메라 촬영")
         
     if target_img:
         with st.spinner("이미지 분석 중..."):
@@ -400,7 +401,6 @@ elif st.session_state.current_page == "input":
         with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
         with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
-        # 💡 스캐너 1x3 배열 구조 적용
         st.markdown("<hr>", unsafe_allow_html=True)
         sc1, sc2, sc3 = st.columns([1, 1.5, 1])
         with sc1:
@@ -431,7 +431,6 @@ elif st.session_state.current_page == "input":
                 st.rerun()
                 
         st.markdown("<br>", unsafe_allow_html=True)
-        # 결과 출력창
         c_res1, c_res2 = st.columns(2)
         with c_res1:
             st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
@@ -509,7 +508,6 @@ elif st.session_state.current_page == "input":
         st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
 
-        # 💡 SBL 팝업 경고 로직
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
             front_rate = (st.session_state.front_def / total_qty) * 100
@@ -529,7 +527,6 @@ elif st.session_state.current_page == "input":
                 show_sbl_warning("옵셋불량", offset_rate)
                 st.session_state.offset_warned = True
 
-        # 💡 VISION Data 그래프 출력
         st.markdown("<hr><b>📈 수율 현황</b>", unsafe_allow_html=True)
         rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
         
