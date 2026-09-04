@@ -27,6 +27,7 @@ worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
 worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
+# 사이드바 초기 상태를 'expanded'로 고정
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
@@ -65,7 +66,6 @@ if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="stToolbar"] { display: none !important; }
         header { display: none !important; }
         footer { display: none !important; }
     </style>
@@ -155,25 +155,24 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 스타일링
+# 마법 코드 1: UI 디자인 커스텀 및 사이드바 고정 스타일링
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단 및 사이드바 토글 복구 */
+/* 💡 상단 헤더, 툴바, 사이드바 접기(<) 버튼을 완전히 삭제하여 사이드바 영구 고정 */
+header { display: none !important; }
+[data-testid="stSidebarCollapseButton"] { display: none !important; }
+[data-testid="collapsedControl"] { display: none !important; }
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
 #MainMenu { display: none !important; } 
 footer { display: none !important; } 
 
-/* 헤더를 다시 표시하되 배경을 투명하게 만들어 사이드바 토글(>)만 깔끔하게 남김 */
-header { visibility: visible !important; display: block !important; background: transparent !important; } 
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; }
-
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 화면 상단 여백 최적화 (토글 버튼과 비율 맞춤) */
-.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+/* 💡 화면 상단 여백 최적화 (헤더가 없으므로 여백 축소) */
+.block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
@@ -182,7 +181,7 @@ div[data-baseweb="textarea"] textarea { font-size: 1.15rem !important; min-heigh
 button[kind="primary"] { background-color: #4b6584 !important; color: white !important; border: none !important; font-size: 16px !important; font-weight: bold !important; padding: 10px !important; }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-[data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
+[data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; min-width: 320px !important; max-width: 320px !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 65px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 6px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 16px !important; text-indent: 10px !important; text-align: left !important; }
