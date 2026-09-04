@@ -54,7 +54,6 @@ default_state = {
     "rear_warned": False, "offset_warned": False
 }
 
-# 기본값이 없는 경우만 초기화하여 데이터 유지
 for key, value in default_state.items():
     if key not in st.session_state:
         st.session_state[key] = value
@@ -72,10 +71,9 @@ if not st.session_state.unlocked:
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
-    c1, c2, c3 = st.columns([1, 0.75, 1])
+    c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        else: st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900;'>VISION DATA KEY-IN SYSTEM</h1>", unsafe_allow_html=True)
         st.markdown("<br><br>", unsafe_allow_html=True)
         
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
@@ -182,7 +180,6 @@ components.html(
     if (window.parent && !window.parent.appPluginLoadedFull) {
         window.parent.appPluginLoadedFull = true;
         
-        // 버튼 색상 및 높이 맞춤(저장 버튼, 분석 이동 버튼) 자동 적용 JS
         const formatNavButtons = () => {
             if (!window.parent.document) return;
             const buttons = window.parent.document.querySelectorAll('button');
@@ -191,18 +188,16 @@ components.html(
                 if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; }
                 if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; }
                 
-                // 데이터 최종 저장 버튼 비고칸 높이 동기화
                 if (text.includes('데이터 최종 저장')) { 
                     btn.style.height = '100px'; 
                     btn.style.marginTop = '28px'; 
                     btn.style.fontSize = '18px'; 
                     btn.style.whiteSpace = 'pre-wrap'; 
                 }
-                // 종합 분석 데이터 상단 타이틀 높이 동기화
-                if (text.includes('종합 분석 데이터 페이지')) { 
+                if (text.trim() === 'Data Analysis') { 
                     btn.style.height = '58px'; 
                     btn.style.fontSize = '16px'; 
-                    btn.style.marginTop = '2px';
+                    btn.style.marginTop = '0px'; 
                 }
             });
         };
@@ -353,21 +348,20 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    # 💡 타이틀 및 종합 분석 이동 버튼 (7:3 배열 적용)
-    top_c1, top_c2 = st.columns([0.7, 0.3])
+    # 💡 비율 8.5:1.5 및 연한 회색 배경 스타일, 버튼 높이 동기화
+    top_c1, top_c2 = st.columns([0.85, 0.15])
     with top_c1:
         st.markdown("""
-            <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b;'>
-                <h2 style='color: #f8fafc; margin: 0; font-weight: 600;'>VISION DATA KEY-IN SYSTEM</h2>
+            <div style='background: #e2e8f0; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); border: 1px solid #cbd5e1; height: 58px; display: flex; align-items: center;'>
+                <h3 style='color: #1e293b; margin: 0; font-weight: 800;'>VISION DATA KEY-IN SYSTEM</h3>
             </div>
         """, unsafe_allow_html=True)
     with top_c2:
-        if st.button("📊 종합 분석 데이터 페이지로 이동", use_container_width=True, type="primary"):
+        if st.button("Data Analysis", use_container_width=True, type="primary"):
             st.session_state.current_page = "analysis"
             st.rerun()
 
     with st.sidebar:
-        # 💡 데이터 저장 대분류를 없애고 6단계로 압축
         steps_titles = [
             "생산 등록", "작업 정보", "Coating Data", "Assemble Data", 
             "VISION Data", "Report & History"
@@ -391,9 +385,9 @@ elif st.session_state.current_page == "input":
                     st.session_state.step += 1
                     st.rerun()
 
+        # 💡 로고 대체: create by 텍스트
         st.markdown("<br>", unsafe_allow_html=True)
-        if os.path.exists("at.png"):
-            st.image("at.png", use_container_width=True)
+        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 13px; font-weight: bold;'>create by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
 
@@ -500,13 +494,11 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
 
     elif step == 5:
-        # 1x3 수량 상단 배치
         q1, q2, q3 = st.columns(3)
         with q2: 
             st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
         
         st.markdown("**🚨 불량 세부**")
-        # 불량 1x3, 1x4 압축 배치
         c1, c2, c3 = st.columns(3)
         with c1: st.session_state.comp_def = st.number_input("**완전불량**", min_value=0, value=st.session_state.comp_def)
         with c2: st.session_state.front_def = st.number_input("**전면불량**", min_value=0, value=st.session_state.front_def)
@@ -589,7 +581,6 @@ elif st.session_state.current_page == "input":
 
         st.markdown("<hr>", unsafe_allow_html=True)
         
-        # 💡 비고 7 : 데이터 저장 3 비율 배열 & 높이 맞춤 적용
         rem_col, save_col = st.columns([0.7, 0.3])
         with rem_col:
             st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=100)
@@ -647,7 +638,6 @@ elif st.session_state.current_page == "input":
                             "작업자": fmt_worker
                         }])
                         
-                        # 💡 데이터 전송 완료 후 이전 데이터 모두 완벽 초기화(Reset) 로직
                         if save_data_append(new_data):
                             st.success("저장 완료!")
                             for k, v in default_state.items():
