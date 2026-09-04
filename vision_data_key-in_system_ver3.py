@@ -65,6 +65,7 @@ if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="stToolbar"] { display: none !important; }
         header { display: none !important; }
         footer { display: none !important; }
     </style>
@@ -154,23 +155,19 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 복구 스타일링
+# 마법 코드 1: UI 디자인 커스텀 (스트림릿 자연스러운 비율 복구)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단 */
+/* 💡 우측 툴바만 정확히 차단하고, 헤더는 그대로 두어 사이드바 토글(>)이 정상 작동하도록 복구 */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
-#MainMenu { display: none !important; } 
 footer { display: none !important; } 
-
-/* 💡 헤더 배경을 투명하게 하여 좌측 토글 버튼(>)만 보이게 살려둠 */
-header { background: transparent !important; } 
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 💡 화면 상단 여백 최적화 (비율 강제 깨짐 방지) */
+/* 💡 화면 상단 여백 최적화 */
 .block-container { padding-top: 3rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
@@ -180,7 +177,7 @@ div[data-baseweb="textarea"] textarea { font-size: 1.15rem !important; min-heigh
 button[kind="primary"] { background-color: #4b6584 !important; color: white !important; border: none !important; font-size: 16px !important; font-weight: bold !important; padding: 10px !important; }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 💡 사이드바 너비 강제 고정 코드 삭제 (자연스러운 비율 유지) */
+/* 사이드바 스타일 유지 및 너비 강제 고정 제거 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 65px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 6px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
@@ -367,8 +364,7 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    # 💡 비율 8:2 로 여유있게 조정
-    top_c1, top_c2 = st.columns([0.8, 0.2])
+    top_c1, top_c2 = st.columns([0.85, 0.15])
     with top_c1:
         st.markdown("""
             <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 58px; display: flex; align-items: center;'>
