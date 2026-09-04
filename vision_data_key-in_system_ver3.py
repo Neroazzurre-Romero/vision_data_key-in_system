@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 화면 전환 및 상태 관리
+# 화면 전환 및 상태 관리 (최상단 배치)
 # ==========================================
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
@@ -285,6 +285,23 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
+# 간편 바로가기 적용 함수
+# ==========================================
+def apply_shortcut(profile):
+    if profile == "Yield":
+        st.session_state.current_page = "analysis"
+        st.rerun()
+    elif profile == "LOT":
+        st.session_state.current_page = "input"
+        st.rerun()
+    elif profile == "Clip":
+        st.session_state.current_page = "input"
+        st.rerun()
+    elif profile == "Coating":
+        st.session_state.current_page = "analysis"
+        st.rerun()
+
+# ==========================================
 # 종합 분석 데이터 화면 
 # ==========================================
 def render_analysis_page():
@@ -514,23 +531,20 @@ if st.session_state.current_page == "input":
         
         model_name = st.selectbox("**모델명**", ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"])
         
-        # 2. LOT NO.
+        # 2. LOT NO. (자동 스캔 이벤트 연동 함수)
         st.markdown("""
             <br>
             <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.4); border: 1px solid #1f2937;'>
                 <h4 style='margin: 0; color: #f9fafb; font-weight: 500;'>LOT NO.</h4>
             </div>
         """, unsafe_allow_html=True)
-
-        # 💡 바코드 스캔 시 자동 파싱 함수
+        
+        # 💡 스캐너 키보드 앱 연동을 위한 함수
         def parse_scanned_data():
             raw_val = st.session_state.lot_input_field
             if '$' in raw_val:
                 parts = [p for p in raw_val.split('$') if p]
-                # LOT 번호 (마지막 항목) 적용
                 st.session_state.lot_input_field = parts[-1] if parts else raw_val
-                
-                # 입고일 (마지막에서 두 번째 항목의 끝 8자리) 추출
                 if len(parts) >= 2:
                     date_str = parts[-2][-8:]
                     if date_str.isdigit():
@@ -538,18 +552,12 @@ if st.session_state.current_page == "input":
                             st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
                         except ValueError:
                             pass
-        
+
         st.info("💡 입력칸을 터치한 후 태블릿의 '스캐너 앱'으로 스캔하세요.")
-        
-        lot_number = st.text_input(
-            "**LOT 직접 입력 및 스캔**", 
-            key="lot_input_field", 
-            on_change=parse_scanned_data, 
-            placeholder="입력창 터치 후 스캐너 키보드로 스캔하세요"
-        )
+        lot_number = st.text_input("**LOT 직접 입력 및 스캔**", key="lot_input_field", on_change=parse_scanned_data, placeholder="입력창 터치 후 스캔하세요")
             
         st.markdown("<br>", unsafe_allow_html=True)
-        in_date = st.date_input("**입고일**", key="in_date_field")
+        in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
 
         # 3. 작업 정보
         st.markdown("""
