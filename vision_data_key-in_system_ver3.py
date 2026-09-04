@@ -14,14 +14,7 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-try:
-    from PIL import Image
-    import cv2
-    from pyzbar.pyzbar import decode
-    QR_AVAILABLE = True
-except ImportError:
-    QR_AVAILABLE = False
-
+# [설정] 작업자 명단
 worker_a_list = ["A조", "작업자입력1", "작업자입력2"]
 worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
 worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
@@ -188,6 +181,22 @@ components.html(
                 if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; }
             });
         };
+        const styleScanner = () => {
+            if (!window.parent.document) return;
+            const targets = window.parent.document.querySelectorAll('div[id="scanner_target"]');
+            targets.forEach(t => {
+                let parent = t.parentElement;
+                while(parent && parent.getAttribute('data-testid') !== 'stVerticalBlock') { parent = parent.parentElement; }
+                if(parent && !parent.dataset.styled) {
+                    parent.style.backgroundColor = '#D9E1F2';
+                    parent.style.padding = '20px';
+                    parent.style.borderRadius = '12px';
+                    parent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                    parent.style.marginBottom = '20px';
+                    parent.dataset.styled = 'true';
+                }
+            });
+        };
         const disableKeyboard = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
@@ -197,9 +206,9 @@ components.html(
                 }
             });
         };
-        const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); });
+        const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
         if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
-        disableKeyboard(); formatNavButtons();
+        disableKeyboard(); formatNavButtons(); styleScanner();
     }
     </script>
     """, height=0, width=0
@@ -296,41 +305,8 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 팝업(모달) & SBL 함수
+# 팝업(모달) SBL 함수
 # ----------------------------------------------------
-@st.dialog("카메라 촬영 및 자동 분석")
-def open_camera_qr_scanner():
-    if not QR_AVAILABLE:
-        st.error("QR 라이브러리(opencv-python-headless, pyzbar)가 설치되지 않았습니다.")
-        return
-        
-    st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
-    # TypeError 방지를 위해 기본 카메라 컴포넌트 호출
-    target_img = st.camera_input("카메라 촬영")
-        
-    if target_img:
-        with st.spinner("이미지 분석 중..."):
-            try:
-                image = Image.open(target_img)
-                cv2_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-                gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-                enhanced_gray = clahe.apply(gray)
-                
-                objs = decode(cv2_img)
-                if not objs: objs = decode(enhanced_gray)
-                    
-                if objs:
-                    raw_data = objs[0].data.decode('utf-8')
-                    st.session_state.scanned_raw_data = raw_data
-                    st.success("인식 성공! 잠시 후 화면에 적용됩니다.")
-                    time.sleep(1) 
-                    st.rerun()
-                else:
-                    st.error("QR 코드를 찾을 수 없습니다. 다시 촬영해주세요.")
-            except Exception as e:
-                st.error(f"분석 중 오류 발생: {e}")
-
 @st.dialog("SBL Warning!")
 def show_sbl_warning(defect_type, rate):
     st.markdown(f"### [{defect_type}] 불량 제품 별도 보관 조치")
@@ -387,6 +363,27 @@ elif st.session_state.current_page == "input":
 
     step = st.session_state.step
 
+    def parse_scanned_data():
+        raw_val = st.session_state.scanned_raw_data
+        if not raw_val: return
+        if '$' in raw_val:
+            parts = [p for p in raw_val.split('$') if p]
+            if len(parts) >= 5:
+                plating_code = parts[2]
+                if plating_code == 'S110': st.session_state.plating_type = 'A'
+                elif plating_code == 'S112': st.session_state.plating_type = 'B'
+                
+                date_str = parts[3]
+                if len(date_str) == 8 and date_str.isdigit():
+                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                    except ValueError: pass
+                
+                st.session_state.lot_input_field = parts[4]
+            else:
+                st.session_state.lot_input_field = parts[-1]
+        else:
+            st.session_state.lot_input_field = raw_val
+
     if step == 1:
         c1, c2 = st.columns(2)
         with c1: st.session_state.work_date = st.date_input("**근무일자**", value=st.session_state.work_date)
@@ -401,34 +398,22 @@ elif st.session_state.current_page == "input":
         with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
         with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
+        # 💡 스캐너 1x3 배열 카드 영역 (QR 버튼 / 입력창 / 적용 버튼)
         st.markdown("<hr>", unsafe_allow_html=True)
-        sc1, sc2, sc3 = st.columns([1, 1.5, 1])
-        with sc1:
-            if st.button("📷 QR CODE SCANNER", use_container_width=True, type="primary"):
-                open_camera_qr_scanner()
-        with sc2:
-            st.session_state.scanned_raw_data = st.text_input("스캔 데이터", value=st.session_state.scanned_raw_data, label_visibility="collapsed", placeholder="터치하여 스캐너 앱 실행")
-        with sc3:
-            if st.button("적용", type="primary", use_container_width=True):
-                raw_val = st.session_state.scanned_raw_data
-                if '$' in raw_val:
-                    parts = [p for p in raw_val.split('$') if p]
-                    if len(parts) >= 5:
-                        plating_code = parts[2]
-                        if plating_code == 'S110': st.session_state.plating_type = 'A'
-                        elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                        
-                        date_str = parts[3]
-                        if len(date_str) == 8 and date_str.isdigit():
-                            try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                            except ValueError: pass
-                        
-                        st.session_state.lot_input_field = parts[4]
-                    else:
-                        st.session_state.lot_input_field = parts[-1]
-                else:
-                    st.session_state.lot_input_field = raw_val
-                st.rerun()
+        with st.container():
+            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='color:#1e293b; font-weight:bold; font-size:18px; margin-bottom: 10px;'>QR code를 Scan 하세요. 자동으로 LOT, 입고일, 도금 구분 값이 입력됩니다.</div>", unsafe_allow_html=True)
+            
+            sc1, sc2, sc3 = st.columns([1, 1.5, 1])
+            with sc1:
+                if st.button("📷 QR CODE SCANNER", use_container_width=True, type="primary"):
+                    st.info("👉 우측 입력창을 터치하여 태블릿에 설치된 '스캐너 키보드 앱'을 실행하세요.")
+            with sc2:
+                st.text_input("스캔 데이터", key="scanned_raw_data", on_change=parse_scanned_data, label_visibility="collapsed", placeholder="터치하여 스캐너 앱 실행")
+            with sc3:
+                if st.button("적용", type="primary", use_container_width=True):
+                    parse_scanned_data()
+                    st.rerun()
                 
         st.markdown("<br>", unsafe_allow_html=True)
         c_res1, c_res2 = st.columns(2)
@@ -508,6 +493,7 @@ elif st.session_state.current_page == "input":
         st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
         st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=68)
 
+        # 💡 SBL 경고창 호출 로직
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
             front_rate = (st.session_state.front_def / total_qty) * 100
@@ -527,6 +513,7 @@ elif st.session_state.current_page == "input":
                 show_sbl_warning("옵셋불량", offset_rate)
                 st.session_state.offset_warned = True
 
+        # 💡 VISION Data 페이지 내 그래프 삽입 (기존 7단계 차트 복구)
         st.markdown("<hr><b>📈 수율 현황</b>", unsafe_allow_html=True)
         rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
         
@@ -642,14 +629,6 @@ elif st.session_state.current_page == "input":
             st.rerun()
 
         st.markdown("---")
-        bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
-        total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
-        rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
-
-        m_col1, m_col2 = st.columns(2)
-        with m_col1: st.metric(label="최근 검사수량 총합", value=f"{total_qty:,} EA")
-        with m_col2: st.metric(label="최근 양품율", value=f"{rate_good:.1f}%")
-
         df_history = load_data().copy()
         if not df_history.empty:
             recent_10 = df_history.iloc[::-1].head(10).copy()
