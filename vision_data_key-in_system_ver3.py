@@ -4,6 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import json
+import os
 from datetime import datetime
 import time
 from io import BytesIO
@@ -29,11 +30,6 @@ st.set_page_config(
 if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "step" not in st.session_state: st.session_state.step = 1
-
-# 💡 슬라이드 잠금해제 파라미터 처리
-if "unlocked" in st.query_params:
-    st.session_state.unlocked = True
-    st.query_params.clear()
 
 default_state = {
     "work_date": datetime.now().date(), "shift_type": "주간", "worker_name": "선택안함", 
@@ -65,17 +61,22 @@ if not st.session_state.unlocked:
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
     
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1.5, 1])
+    
+    # 💡 로고 영역의 열 비율을 [1, 0.75, 1]로 조정하여 크기를 기존 대비 정확히 절반으로 축소
+    c1, c2, c3 = st.columns([1, 0.75, 1])
     with c2:
-        try:
-            # 💡 고해상도 로고 파일 적용 (logo.png)
+        if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
-        except:
+        else:
+            st.error("⚠️ 'logo.png' 파일이 파이썬 실행 폴더에 없습니다. 이미지를 같은 폴더에 추가해주세요.")
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # 💡 커스텀 Slide to Unlock 구현 (흰색 배경이 밀면서 파란색으로 채워지는 효과 적용)
+        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
+            st.session_state.unlocked = True
+            st.rerun()
+
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
             <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #3b82f6; border-radius: 40px 0 0 40px;"></div>
@@ -88,6 +89,23 @@ if not st.session_state.unlocked:
             const fill = document.getElementById('slider-fill');
             const text = document.getElementById('slider-text');
 
+            const unlockSystem = () => {
+                const btns = window.parent.document.querySelectorAll('button');
+                for(let b of btns) {
+                    if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) {
+                        b.click();
+                        break;
+                    }
+                }
+            };
+
+            const btns = window.parent.document.querySelectorAll('button');
+            for(let b of btns) {
+                if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) {
+                    b.style.display = 'none';
+                }
+            }
+
             let isDragging = false;
             let startX, currentX = 0;
 
@@ -99,14 +117,11 @@ if not st.session_state.unlocked:
 
             function drag(e) {
                 if (!isDragging) return;
-                
-                // 모바일에서 스크롤 방지
                 if(e.cancelable) e.preventDefault();
                 
                 let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
                 currentX = clientX - startX;
-                
-                const maxDrag = container.clientWidth - thumb.clientWidth - 8; // 좌우 여백 고려
+                const maxDrag = container.clientWidth - thumb.clientWidth - 8; 
                 
                 if (currentX < 0) currentX = 0;
                 if (currentX > maxDrag) currentX = maxDrag;
@@ -114,23 +129,17 @@ if not st.session_state.unlocked:
                 thumb.style.transform = `translateX(${currentX}px)`;
                 fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
                 
-                // 중간 이상 당기면 텍스트 색상을 흰색으로 변경
                 if (currentX > maxDrag * 0.4) {
                     text.style.color = '#ffffff';
                 } else {
                     text.style.color = '#94a3b8';
                 }
 
-                // 끝까지 도달했을 때 잠금 해제 처리
                 if (currentX >= maxDrag) {
                     isDragging = false;
                     text.innerText = "Unlocked!";
                     thumb.innerHTML = "✔";
-                    setTimeout(() => {
-                        let parentUrl = (window.location !== window.parent.location) ? document.referrer : window.location.href;
-                        if (!parentUrl) parentUrl = window.parent.location.href;
-                        window.top.location.href = parentUrl.split('?')[0] + '?unlocked=true';
-                    }, 300);
+                    setTimeout(() => { unlockSystem(); }, 200);
                 }
             }
 
@@ -139,7 +148,6 @@ if not st.session_state.unlocked:
                 isDragging = false;
                 const maxDrag = container.clientWidth - thumb.clientWidth - 8;
                 
-                // 끝까지 도달하지 못하고 놓았을 때 원래 자리로 복귀
                 if (currentX < maxDrag) {
                     thumb.style.transition = 'transform 0.3s ease';
                     fill.style.transition = 'width 0.3s ease';
@@ -165,7 +173,6 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
             
-    # 💡 워터마크 중앙 정렬, 하단에서 10% 위치로 이동, 텍스트 변경
     st.markdown(
         "<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>vision data key-in system --- Romero.K</div>", 
         unsafe_allow_html=True
@@ -187,14 +194,12 @@ body { overscroll-behavior-y: none !important; }
     padding-left: 1.5rem !important; padding-right: 1.5rem !important;
 }
 
-/* 일반 Primary 버튼 설정 */
 button[kind="primary"] {
     background-color: #4b6584 !important; color: white !important; border: none !important;
     font-size: 16px !important; font-weight: bold !important; padding: 10px !important;
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 사이드바 전체 배경색 및 텍스트 밝은색 변경 */
 [data-testid="stSidebar"] {
     background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
 }
@@ -202,7 +207,6 @@ button[kind="primary"]:hover { background-color: #3b5068 !important; }
     color: #f8fafc !important;
 }
 
-/* 사이드바 목차 버튼 스타일 */
 [data-testid="stSidebar"] .stButton > button {
     height: 65px !important; 
     justify-content: flex-start !important; 
@@ -372,12 +376,6 @@ def save_data_append(df):
         return False
 
 # ==========================================
-# UI 하단 네비게이션
-# ==========================================
-def navigation_buttons():
-    pass 
-
-# ==========================================
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
@@ -437,7 +435,6 @@ elif st.session_state.current_page == "input":
         
         st.session_state.worker_name = st.selectbox("**작업자**", ["선택안함"] + worker_list, index=(["선택안함"] + worker_list).index(st.session_state.worker_name) if st.session_state.worker_name in (["선택안함"] + worker_list) else 0)
         
-        # 💡 자동 파싱 로직 (P$PL01$S120$20260714$00061 구조 완벽 분해)
         def parse_scanned_data():
             raw_val = st.session_state._lot_input_temp
             if '$' in raw_val:
