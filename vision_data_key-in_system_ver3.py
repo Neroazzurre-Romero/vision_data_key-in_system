@@ -5,22 +5,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 from datetime import datetime
-from io import BytesIO
 import time
+from io import BytesIO
 from openpyxl.styles import Font
 import openpyxl
 import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
-
-# QR/바코드 스캔 라이브러리 (파이썬 백엔드 분석용)
-try:
-    from PIL import Image
-    import cv2
-    from pyzbar.pyzbar import decode
-    QR_AVAILABLE = True
-except ImportError:
-    QR_AVAILABLE = False
 
 # [설정] 작업자 명단
 worker_list = ["박경섭", "무고사", "재르소", "김동헌"] 
@@ -32,35 +23,11 @@ st.set_page_config(
 )
 
 # ==========================================
-# 화면 전환 및 상태 관리 및 쿼리 파라미터 처리 (최상단 배치)
+# 화면 전환 및 상태 관리 (최상단 배치)
 # ==========================================
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
 if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
-
-# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (보안 우회 방식)
-if "scanned_data" in st.query_params:
-    raw_scan = st.query_params.get("scanned_data")
-    if raw_scan:
-        parts = [p for p in raw_scan.split('$') if p]
-        lot_val = parts[-1] if parts else raw_scan
-        parsed_date = None
-        
-        if len(parts) >= 2:
-            date_str_candidate = parts[-2]
-            date_str = date_str_candidate[-8:]
-            if date_str.isdigit():
-                try:
-                    parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
-                except ValueError:
-                    pass
-                    
-        st.session_state.lot_input_field = lot_val
-        if parsed_date:
-            st.session_state.in_date_field = parsed_date
-            
-    st.query_params.clear()
-    st.rerun()
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -177,24 +144,28 @@ if "google_credentials" not in st.secrets:
     st.error("구글 스프레드시트 보안 키(Secrets)가 설정되지 않았습니다!")
     st.stop()
 
-@st.cache_resource
+@st.cache_resource(ttl=600)
 def get_sheet():
-    try:
-        creds_data = st.secrets["google_credentials"]
-        clean_data = creds_data.strip().strip("'").strip('"') if isinstance(creds_data, str) else dict(creds_data)
-        creds_dict = json.loads(clean_data, strict=False) if isinstance(creds_data, str) else clean_data
-        if "private_key" in creds_dict: creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
-        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
-        
-        doc = gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+    for attempt in range(3):
         try:
-            return doc.worksheet(TAB_NAME)
-        except gspread.exceptions.WorksheetNotFound:
-            return doc.sheet1
+            creds_data = st.secrets["google_credentials"]
+            clean_data = creds_data.strip().strip("'").strip('"') if isinstance(creds_data, str) else dict(creds_data)
+            creds_dict = json.loads(clean_data, strict=False) if isinstance(creds_data, str) else clean_data
+            if "private_key" in creds_dict: creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
             
-    except Exception as e:
-        st.error(f"구글 연결 초기화 에러 (권한이 없거나 키가 잘못되었습니다): {e}")
-        return None
+            doc = gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+            try:
+                return doc.worksheet(TAB_NAME)
+            except gspread.exceptions.WorksheetNotFound:
+                return doc.sheet1
+                
+        except Exception as e:
+            if "503" in str(e) and attempt < 2:
+                time.sleep(2)
+                continue
+            st.error(f"구글 연결 초기화 에러 (권한이 없거나 키가 잘못되었습니다): {e}")
+            return None
 
 @st.cache_data(ttl=60)
 def load_data():
@@ -313,113 +284,21 @@ def show_password_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
-# ----------------------------------------------------
-# 웹 카메라 기반 QR/바코드 스캐너 모달 (보안 우회 전송 방식 적용)
-# ----------------------------------------------------
-@st.dialog("전문 QR/바코드 스캐너")
-def open_web_qr_scanner():
-    st.markdown("후면 카메라에 바코드를 비춰주세요. (인식되면 아래의 전송 버튼을 눌러주세요)")
-    
-    scanner_html = """
-    <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
-        <div id="reader" style="width: 100%;"></div>
-        <div style="margin-top: 15px;">
-            <input type="text" id="scannedValue" placeholder="스캔 대기 중..." readonly style="width: 100%; padding: 10px; font-size: 16px; text-align: center; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; color: #1e293b;">
-        </div>
-        <div style="margin-top: 15px;">
-            <button id="applyBtn" onclick="applyScannedData()" style="width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; display: none;">스캔 Data 전송</button>
-        </div>
-    </div>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-    let currentScannedText = "";
-    let html5QrCode = new Html5Qrcode("reader");
-    let scanDone = false;
-    
-    function onScanSuccess(decodedText, decodedResult) {
-        if (scanDone) return;
-        scanDone = true; 
-        
-        currentScannedText = decodedText;
-        document.getElementById('scannedValue').value = "인식됨: " + decodedText;
-        document.getElementById('applyBtn').style.display = 'block';
-        
-        // 💡 QR 인식 성공 시 즉시 스캔 중단 (카메라 멈춤)
-        try {
-            html5QrCode.stop().catch(err => console.log(err));
-        } catch(err) {
-            console.log(err);
-        }
-    }
-
-    function applyScannedData() {
-        if (!currentScannedText) return;
-        document.getElementById('applyBtn').innerText = "데이터 전송 중...";
-        
-        try {
-            // CORS 에러를 막기 위해 상위 URL을 찾아 target="_parent" 링크 클릭 방식으로 데이터 전송
-            let parentUrl = (window.location !== window.parent.location) ? document.referrer : window.location.href;
-            if (!parentUrl) parentUrl = window.parent.location.href; // 백업
-            
-            let baseUrl = parentUrl.split('?')[0];
-            let newUrl = baseUrl + "?scanned_data=" + encodeURIComponent(currentScannedText);
-            
-            // 숨김 a 태그를 생성해서 강제로 부모 창(앱)을 이동시킵니다.
-            let link = document.createElement("a");
-            link.target = "_parent";
-            link.href = newUrl;
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.getElementById('applyBtn').innerText = "전송 완료! (앱 새로고침 대기 중...)";
-            }, 500);
-        } catch (e) {
-            document.getElementById('scannedValue').value = "에러: 브라우저 보안으로 인해 전송 실패";
-        }
-    }
-
-    // 후면카메라, 오토포커스 지원
-    html5QrCode.start(
-        { facingMode: "environment", advanced: [{ focusMode: "continuous" }] },
-        { fps: 15, qrbox: { width: 250, height: 150 } },
-        onScanSuccess
-    ).catch(err => {
-        // 고급 옵션 지원 안할 시 일반 후면카메라로 재시도
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 15, qrbox: { width: 250, height: 150 } },
-            onScanSuccess
-        ).catch(err2 => {
-            document.getElementById('scannedValue').value = "카메라 권한을 확인해주세요.";
-        });
-    });
-    </script>
-    """
-    components.html(scanner_html, height=450)
-    
-    if st.button("스캔창 강제 닫기 (취소)", use_container_width=True):
-        st.rerun()
-
 # ==========================================
 # 간편 바로가기 적용 함수
 # ==========================================
 def apply_shortcut(profile):
     if profile == "Yield":
         st.session_state.current_page = "analysis"
-        st.session_state.coating_shortcut = False
         st.rerun()
     elif profile == "LOT":
         st.session_state.current_page = "input"
-        st.session_state.coating_shortcut = False
         st.rerun()
     elif profile == "Clip":
         st.session_state.current_page = "input"
-        st.session_state.coating_shortcut = False
         st.rerun()
     elif profile == "Coating":
         st.session_state.current_page = "analysis"
-        st.session_state.coating_shortcut = True
         st.rerun()
 
 # ==========================================
@@ -436,7 +315,6 @@ def render_analysis_page():
     with col_btn1:
         if st.button("뒤로 가기 (데이터 입력 화면으로)", type="primary"):
             st.session_state.current_page = "input"
-            st.session_state.coating_shortcut = False
             st.rerun()
     with col_btn2:
         if st.button("🔄 최신 데이터 새로고침", use_container_width=True):
@@ -493,8 +371,7 @@ def render_analysis_page():
     with col_opt1: 
         date_filter_mode = st.radio("**분석 기간 설정**", ["전체 누적 데이터", "단일 일자 선택", "특정 기간 지정 검색"], horizontal=True)
     with col_opt2: 
-        default_x_idx = 2 if st.session_state.get("coating_shortcut", False) else 0
-        x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)", "도장일순 (도장일/순서 기준)"], index=default_x_idx, horizontal=True)
+        x_axis_mode = st.radio("**분석 기준 (X축)**", ["일별 (날짜 기준)", "시간별 (시작시간 기준)", "도장일순 (도장일/순서 기준)"], index=0, horizontal=True)
     
     if date_filter_mode == "단일 일자 선택":
         selected_date = st.selectbox("**분석할 근무일자를 선택하세요**", available_dates)
@@ -654,7 +531,7 @@ if st.session_state.current_page == "input":
         
         model_name = st.selectbox("**모델명**", ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"])
         
-        # 2. LOT NO.
+        # 2. LOT NO. (자동 스캔 이벤트 연동 함수)
         st.markdown("""
             <br>
             <div style='background: linear-gradient(135deg, #111827 0%, #030712 100%); padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.4); border: 1px solid #1f2937;'>
@@ -662,10 +539,22 @@ if st.session_state.current_page == "input":
             </div>
         """, unsafe_allow_html=True)
         
-        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔")
-        
-        if st.button("📷 전문 QR/바코드 스캐너 실행", use_container_width=True, type="primary"):
-            open_web_qr_scanner()
+        # 💡 스캐너 키보드 앱 연동을 위한 함수
+        def parse_scanned_data():
+            raw_val = st.session_state.lot_input_field
+            if '$' in raw_val:
+                parts = [p for p in raw_val.split('$') if p]
+                st.session_state.lot_input_field = parts[-1] if parts else raw_val
+                if len(parts) >= 2:
+                    date_str = parts[-2][-8:]
+                    if date_str.isdigit():
+                        try:
+                            st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                        except ValueError:
+                            pass
+
+        st.info("💡 입력칸을 터치한 후 태블릿의 '스캐너 앱'으로 스캔하세요.")
+        lot_number = st.text_input("**LOT 직접 입력 및 스캔**", key="lot_input_field", on_change=parse_scanned_data, placeholder="입력창 터치 후 스캔하세요")
             
         st.markdown("<br>", unsafe_allow_html=True)
         in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
