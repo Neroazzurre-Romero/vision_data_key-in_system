@@ -30,6 +30,11 @@ if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "step" not in st.session_state: st.session_state.step = 1
 
+# 💡 슬라이드 잠금해제 파라미터 처리
+if "unlocked" in st.query_params:
+    st.session_state.unlocked = True
+    st.query_params.clear()
+
 default_state = {
     "work_date": datetime.now().date(), "shift_type": "주간", "worker_name": "선택안함", 
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now().date(),
@@ -49,7 +54,6 @@ for key, value in default_state.items():
 # 메인 잠금 화면 (Splash Screen)
 # ==========================================
 if not st.session_state.unlocked:
-    # 잠금 화면에서는 사이드바를 숨깁니다.
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
@@ -64,21 +68,112 @@ if not st.session_state.unlocked:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         try:
-            st.image("at.png", use_container_width=True)
+            # 💡 고해상도 로고 파일 적용
+            st.image("image_9bb6ae.png", use_container_width=True)
         except:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
-        unlock_val = st.slider("👉 오른쪽으로 끝까지 밀어서 시스템 시작", 0, 100, 0, label_visibility="visible")
-        if unlock_val == 100:
-            st.session_state.unlocked = True
-            st.rerun()
+        
+        # 💡 이미지 기반 커스텀 Slide to Unlock 구현
+        slider_html = """
+        <style>
+        .slider-container {
+            width: 100%;
+            max-width: 450px;
+            height: 64px;
+            background: linear-gradient(90deg, rgba(200,160,150,0.6) 0%, rgba(150,130,140,0.6) 100%);
+            border-radius: 32px;
+            position: relative;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .slider-text {
+            color: white;
+            font-size: 22px;
+            font-family: -apple-system, sans-serif;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.9;
+        }
+        .slider-thumb {
+            width: 56px;
+            height: 56px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            left: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        </style>
+        <div class="slider-container" id="container">
+            <div class="slider-text">Slide to Unlock</div>
+            <div class="slider-thumb" id="thumb"></div>
+        </div>
+        <script>
+            const thumb = document.getElementById('thumb');
+            const container = document.getElementById('container');
+            let isDragging = false;
+            let startX = 0;
             
+            const handleStart = (clientX) => {
+                isDragging = true;
+                startX = clientX - thumb.offsetLeft;
+            };
+            const handleMove = (clientX) => {
+                if (!isDragging) return;
+                let x = clientX - startX;
+                let maxX = container.offsetWidth - thumb.offsetWidth - 4;
+                if (x < 4) x = 4;
+                if (x > maxX) x = maxX;
+                thumb.style.left = x + 'px';
+                
+                if (x >= maxX - 2) {
+                    isDragging = false;
+                    let parentUrl = (window.location !== window.parent.location) ? document.referrer : window.location.href;
+                    if (!parentUrl) parentUrl = window.parent.location.href;
+                    window.parent.location.href = parentUrl.split('?')[0] + '?unlocked=true';
+                }
+            };
+            const handleEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                let maxX = container.offsetWidth - thumb.offsetWidth - 4;
+                let currentX = parseInt(thumb.style.left || 4);
+                if (currentX < maxX - 2) {
+                    thumb.style.transition = 'left 0.3s ease';
+                    thumb.style.left = '4px';
+                    setTimeout(() => thumb.style.transition = '', 300);
+                }
+            };
+
+            // 모바일 터치 이벤트
+            thumb.addEventListener('touchstart', (e) => handleStart(e.touches[0].clientX));
+            document.addEventListener('touchmove', (e) => handleMove(e.touches[0].clientX));
+            document.addEventListener('touchend', handleEnd);
+
+            // PC 마우스 이벤트
+            thumb.addEventListener('mousedown', (e) => handleStart(e.clientX));
+            document.addEventListener('mousemove', (e) => handleMove(e.clientX));
+            document.addEventListener('mouseup', handleEnd);
+        </script>
+        """
+        components.html(slider_html, height=80)
+            
+    # 💡 워터마크 중앙 정렬, 20% 위치 상승, 크기 약 20% 확대(8pt -> 10pt)
     st.markdown(
-        "<div style='position: fixed; bottom: 15px; right: 15px; font-size: 8pt; color: #94a3b8; font-weight: bold;'>vision data key-in system --- Romero.K</div>", 
+        "<div style='position: fixed; bottom: 20%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>programing by ___ Romero.K</div>", 
         unsafe_allow_html=True
     )
-    st.stop() # 잠금이 풀리기 전까지 시스템 실행 대기
+    st.stop()
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 디자인 커스텀 및 사이드바 스타일링
@@ -102,7 +197,7 @@ button[kind="primary"] {
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 💡 사이드바 전체 배경색 및 텍스트 밝은색 변경 */
+/* 사이드바 전체 배경색 및 텍스트 밝은색 변경 */
 [data-testid="stSidebar"] {
     background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
 }
@@ -110,7 +205,7 @@ button[kind="primary"]:hover { background-color: #3b5068 !important; }
     color: #f8fafc !important;
 }
 
-/* 💡 사이드바 목차 버튼 스타일 (왼쪽 정렬, 들여쓰기, 굵게, 높이 확장) */
+/* 사이드바 목차 버튼 스타일 */
 [data-testid="stSidebar"] .stButton > button {
     height: 65px !important; 
     justify-content: flex-start !important; 
@@ -128,7 +223,7 @@ button[kind="primary"]:hover { background-color: #3b5068 !important; }
     text-align: left !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-    background-color: #3b82f6 !important; /* 현재 선택된 목차 하이라이트 */
+    background-color: #3b82f6 !important; 
     color: white !important;
     border: 1px solid #2563eb !important;
 }
@@ -142,7 +237,6 @@ components.html(
     if (window.parent && !window.parent.appPluginLoaded) {
         window.parent.appPluginLoaded = true;
         
-        // 💡 이전/다음 버튼 색상 고정 (FFC000 / 00B050)
         const formatNavButtons = () => {
             if (!window.parent.document) return;
             const buttons = window.parent.document.querySelectorAll('button');
@@ -281,6 +375,12 @@ def save_data_append(df):
         return False
 
 # ==========================================
+# UI 하단 네비게이션
+# ==========================================
+def navigation_buttons():
+    pass # 네비게이션 버튼을 사이드바로 통합했으므로 본문 하단 영역은 비웁니다.
+
+# ==========================================
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
@@ -313,7 +413,6 @@ elif st.session_state.current_page == "input":
                 st.session_state.step = i
                 st.rerun()
 
-        # 💡 이전, 다음 버튼을 목차 밑에 고정
         st.markdown("<br><hr style='border-color: #334155; margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
@@ -341,25 +440,21 @@ elif st.session_state.current_page == "input":
         
         st.session_state.worker_name = st.selectbox("**작업자**", ["선택안함"] + worker_list, index=(["선택안함"] + worker_list).index(st.session_state.worker_name) if st.session_state.worker_name in (["선택안함"] + worker_list) else 0)
         
-        # 💡 자동 파싱 로직 (P$PL01$S120$20260714$00061 구조 완벽 분해)
         def parse_scanned_data():
             raw_val = st.session_state._lot_input_temp
             if '$' in raw_val:
                 parts = [p for p in raw_val.split('$') if p]
                 
                 if len(parts) >= 5:
-                    # [도금 구분] 두번째 $ 우측 (index 2)
                     plating_code = parts[2]
                     if plating_code == 'S110': st.session_state.plating_type = 'A'
                     elif plating_code == 'S112': st.session_state.plating_type = 'B'
                     
-                    # [입고일] 세번째 $ 우측 (index 3)
                     date_str = parts[3]
                     if len(date_str) == 8 and date_str.isdigit():
                         try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
                         except ValueError: pass
                     
-                    # [LOT NO] 네번째 $ 우측 (index 4) - 텍스트 원본 유지 (예: 00061)
                     st.session_state.lot_input_field = parts[4]
                 else:
                     st.session_state.lot_input_field = parts[-1]
