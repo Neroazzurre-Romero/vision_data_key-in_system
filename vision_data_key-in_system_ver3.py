@@ -13,15 +13,6 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-# QR/바코드 스캔 라이브러리 (파이썬 백엔드 방식 원복)
-try:
-    from PIL import Image
-    import cv2
-    from pyzbar.pyzbar import decode
-    QR_AVAILABLE = True
-except ImportError:
-    QR_AVAILABLE = False
-
 # [설정] 작업자 명단
 worker_list = ["박경섭", "무고사", "재르소", "김동헌"] 
 
@@ -30,6 +21,36 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ==========================================
+# 화면 전환 및 상태 관리 및 쿼리 파라미터 처리 (최상단 배치 필수)
+# ==========================================
+if "current_page" not in st.session_state: st.session_state.current_page = "input"
+if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
+if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
+
+# 💡 스캐너로 전달된 원본 데이터 파싱 및 세션 상태 자동 반영 (보안 우회 방식)
+if "scanned_data" in st.query_params:
+    raw_scan = st.query_params.get("scanned_data")
+    if raw_scan:
+        parts = [p for p in raw_scan.split('$') if p]
+        lot_val = parts[-1] if parts else raw_scan
+        parsed_date = None
+        
+        if len(parts) >= 2:
+            date_str_candidate = parts[-2]
+            date_str = date_str_candidate[-8:]
+            if date_str.isdigit():
+                try:
+                    parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
+                except ValueError:
+                    pass
+                    
+        st.session_state.lot_input_field = lot_val
+        if parsed_date:
+            st.session_state.in_date_field = parsed_date
+            
+    st.query_params.clear()
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -287,83 +308,69 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 📷 기존 파이썬 방식 완벽 복구 (앨범 탭 포함 + 자동입력)
+# 웹 카메라 기반 QR/바코드 스캐너 모달 (버튼 누름 전송 방식 적용)
 # ----------------------------------------------------
-@st.dialog("카메라 촬영 및 자동 분석")
-def open_camera_qr_scanner():
-    if not QR_AVAILABLE:
-        st.error("QR 라이브러리(opencv-python-headless, pyzbar)가 설치되지 않았습니다.")
-        return
-        
-    st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
+@st.dialog("전문 QR/바코드 스캐너")
+def open_web_qr_scanner():
+    st.markdown("후면 카메라에 바코드를 비춰주세요. (인식되면 아래의 전송 버튼을 눌러주세요)")
     
-    # 예전에 잘 작동하던 탭 2개 방식으로 복구
-    tab1, tab2 = st.tabs(["카메라 촬영", "갤러리 앨범"])
+    scanner_html = """
+    <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
+        <div id="reader" style="width: 100%;"></div>
+        <div style="margin-top: 15px;">
+            <input type="text" id="scannedValue" placeholder="스캔 대기 중..." readonly style="width: 100%; padding: 10px; font-size: 16px; text-align: center; border: 2px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; color: #1e293b;">
+        </div>
+        <div style="margin-top: 15px;">
+            <button id="applyBtn" onclick="applyScannedData()" style="width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; display: none;">스캔 Data 전송</button>
+        </div>
+    </div>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+    let currentScannedText = "";
+    let html5QrCode = new Html5Qrcode("reader");
+    let scanDone = false;
     
-    target_img = None
-    with tab1:
-        # Streamlit 1.33 이상은 후면 카메라를 우선 호출하지만, 에러 방지를 위해 예외처리
-        try:
-            img_buffer = st.camera_input("카메라 촬영", facing_mode="environment")
-        except TypeError:
-            img_buffer = st.camera_input("카메라 촬영")
-            
-        if img_buffer: target_img = img_buffer
+    function onScanSuccess(decodedText, decodedResult) {
+        if (scanDone) return;
+        scanDone = true; 
         
-    with tab2:
-        uploaded_img = st.file_uploader("앨범에서 사진 선택", type=['png', 'jpg', 'jpeg'])
-        if uploaded_img: target_img = uploaded_img
+        currentScannedText = decodedText;
+        document.getElementById('scannedValue').value = "인식됨: " + decodedText;
+        document.getElementById('applyBtn').style.display = 'block';
         
-    if target_img:
-        with st.spinner("이미지 분석 중..."):
-            try:
-                image = Image.open(target_img)
-                cv2_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-                
-                gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-                enhanced_gray = clahe.apply(gray)
-                
-                objs = decode(cv2_img)
-                if not objs:
-                    objs = decode(enhanced_gray)
-                    
-                if objs:
-                    raw_data = objs[0].data.decode('utf-8')
-                    
-                    parts = [p for p in raw_data.split('$') if p]
-                    lot_val = parts[-1] if parts else raw_data
-                    parsed_date = None
-                    
-                    if len(parts) >= 2:
-                        date_str_candidate = parts[-2]
-                        date_str = date_str_candidate[-8:]
-                        if date_str.isdigit():
-                            try:
-                                parsed_date = datetime.strptime(date_str, "%Y%m%d").date()
-                            except ValueError:
-                                pass
-                    
-                    # 수동 '적용 버튼' 없이 즉시 세션에 값을 넣고 화면을 재시작함
-                    st.session_state.lot_input_field = lot_val
-                    if parsed_date:
-                        st.session_state.in_date_field = parsed_date
-                        
-                    st.success("인식 성공! 데이터를 자동으로 입력합니다.")
-                    time.sleep(1) # 확인 메시지를 잠시 띄운 뒤 즉시 자동 닫힘
-                    st.rerun()
-                else:
-                    st.error("QR 코드를 찾을 수 없습니다. 초점을 맞춰서 다시 촬영해주세요.")
-            except Exception as e:
-                st.error(f"분석 중 오류 발생: {e}")
+        // 💡 QR 인식 성공 시 즉시 스캔 중단 (카메라 멈춤)
+        if (html5QrCode.isScanning) {
+            html5QrCode.pause();
+        }
+    }
 
-# ==========================================
-# 화면 전환 및 상태 관리
-# ==========================================
-if "current_page" not in st.session_state: st.session_state.current_page = "input"
-if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
-if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
-if "coating_shortcut" not in st.session_state: st.session_state.coating_shortcut = False
+    function applyScannedData() {
+        if (!currentScannedText) return;
+        document.getElementById('applyBtn').innerText = "데이터 전송 중...";
+        try {
+            let parentUrl = document.referrer; 
+            let baseUrl = parentUrl.split('?')[0];
+            let targetUrl = baseUrl + "?scanned_data=" + encodeURIComponent(currentScannedText);
+            window.top.location.href = targetUrl;
+        } catch (e) {
+            document.getElementById('scannedValue').value = "자동 적용 실패. 화면을 새로고침 해주세요.";
+        }
+    }
+
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 15, qrbox: { width: 250, height: 150 } },
+        onScanSuccess
+    ).catch(err => {
+        console.error("Camera start failed", err);
+        document.getElementById('scannedValue').value = "카메라 실행 불가: 권한을 확인해주세요.";
+    });
+    </script>
+    """
+    components.html(scanner_html, height=450)
+    
+    if st.button("스캔창 강제 닫기 (취소)", use_container_width=True):
+        st.rerun()
 
 # ==========================================
 # 간편 바로가기 적용 함수
@@ -639,14 +646,13 @@ if st.session_state.current_page == "input":
             </div>
         """, unsafe_allow_html=True)
         
-        # 입력창과 session_state의 직접 양방향 바인딩 복구
-        lot_number = st.text_input("**LOT 입력**", placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_field")
+        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔")
         
-        if st.button("📷 카메라 촬영 및 자동 분석", use_container_width=True, type="primary"):
-            open_camera_qr_scanner()
+        if st.button("📷 전문 QR/바코드 스캐너 실행", use_container_width=True, type="primary"):
+            open_web_qr_scanner()
             
         st.markdown("<br>", unsafe_allow_html=True)
-        in_date = st.date_input("**입고일**", key="in_date_field")
+        in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
 
         # 3. 작업 정보
         st.markdown("""
