@@ -65,112 +65,109 @@ if not st.session_state.unlocked:
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
     
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
+    c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         try:
-            # 💡 고해상도 로고 파일 적용
-            st.image("image_9bb6ae.png", use_container_width=True)
+            # 💡 고해상도 로고 파일 적용 (logo.png)
+            st.image("logo.png", use_container_width=True)
         except:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # 💡 이미지 기반 커스텀 Slide to Unlock 구현
+        # 💡 커스텀 Slide to Unlock 구현 (흰색 배경이 밀면서 파란색으로 채워지는 효과 적용)
         slider_html = """
-        <style>
-        .slider-container {
-            width: 100%;
-            max-width: 450px;
-            height: 64px;
-            background: linear-gradient(90deg, rgba(200,160,150,0.6) 0%, rgba(150,130,140,0.6) 100%);
-            border-radius: 32px;
-            position: relative;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .slider-text {
-            color: white;
-            font-size: 22px;
-            font-family: -apple-system, sans-serif;
-            pointer-events: none;
-            user-select: none;
-            opacity: 0.9;
-        }
-        .slider-thumb {
-            width: 56px;
-            height: 56px;
-            background-color: white;
-            border-radius: 50%;
-            position: absolute;
-            left: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        </style>
-        <div class="slider-container" id="container">
-            <div class="slider-text">Slide to Unlock</div>
-            <div class="slider-thumb" id="thumb"></div>
+        <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #3b82f6; border-radius: 40px 0 0 40px;"></div>
+            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
+            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 24px;">▶</div>
         </div>
         <script>
-            const thumb = document.getElementById('thumb');
-            const container = document.getElementById('container');
+            const container = document.getElementById('slider-container');
+            const thumb = document.getElementById('slider-thumb');
+            const fill = document.getElementById('slider-fill');
+            const text = document.getElementById('slider-text');
+
             let isDragging = false;
-            let startX = 0;
-            
-            const handleStart = (clientX) => {
+            let startX, currentX = 0;
+
+            function startDrag(e) {
                 isDragging = true;
-                startX = clientX - thumb.offsetLeft;
-            };
-            const handleMove = (clientX) => {
+                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                startX = clientX - currentX;
+            }
+
+            function drag(e) {
                 if (!isDragging) return;
-                let x = clientX - startX;
-                let maxX = container.offsetWidth - thumb.offsetWidth - 4;
-                if (x < 4) x = 4;
-                if (x > maxX) x = maxX;
-                thumb.style.left = x + 'px';
                 
-                if (x >= maxX - 2) {
-                    isDragging = false;
-                    let parentUrl = (window.location !== window.parent.location) ? document.referrer : window.location.href;
-                    if (!parentUrl) parentUrl = window.parent.location.href;
-                    window.parent.location.href = parentUrl.split('?')[0] + '?unlocked=true';
+                // 모바일에서 스크롤 방지
+                if(e.cancelable) e.preventDefault();
+                
+                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                currentX = clientX - startX;
+                
+                const maxDrag = container.clientWidth - thumb.clientWidth - 8; // 좌우 여백 고려
+                
+                if (currentX < 0) currentX = 0;
+                if (currentX > maxDrag) currentX = maxDrag;
+                
+                thumb.style.transform = `translateX(${currentX}px)`;
+                fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
+                
+                // 중간 이상 당기면 텍스트 색상을 흰색으로 변경
+                if (currentX > maxDrag * 0.4) {
+                    text.style.color = '#ffffff';
+                } else {
+                    text.style.color = '#94a3b8';
                 }
-            };
-            const handleEnd = () => {
+
+                // 끝까지 도달했을 때 잠금 해제 처리
+                if (currentX >= maxDrag) {
+                    isDragging = false;
+                    text.innerText = "Unlocked!";
+                    thumb.innerHTML = "✔";
+                    setTimeout(() => {
+                        let parentUrl = (window.location !== window.parent.location) ? document.referrer : window.location.href;
+                        if (!parentUrl) parentUrl = window.parent.location.href;
+                        window.top.location.href = parentUrl.split('?')[0] + '?unlocked=true';
+                    }, 300);
+                }
+            }
+
+            function endDrag(e) {
                 if (!isDragging) return;
                 isDragging = false;
-                let maxX = container.offsetWidth - thumb.offsetWidth - 4;
-                let currentX = parseInt(thumb.style.left || 4);
-                if (currentX < maxX - 2) {
-                    thumb.style.transition = 'left 0.3s ease';
-                    thumb.style.left = '4px';
-                    setTimeout(() => thumb.style.transition = '', 300);
+                const maxDrag = container.clientWidth - thumb.clientWidth - 8;
+                
+                // 끝까지 도달하지 못하고 놓았을 때 원래 자리로 복귀
+                if (currentX < maxDrag) {
+                    thumb.style.transition = 'transform 0.3s ease';
+                    fill.style.transition = 'width 0.3s ease';
+                    currentX = 0;
+                    thumb.style.transform = `translateX(0px)`;
+                    fill.style.width = '0px';
+                    text.style.color = '#94a3b8';
+                    setTimeout(() => {
+                        thumb.style.transition = 'none';
+                        fill.style.transition = 'none';
+                    }, 300);
                 }
-            };
+            }
 
-            // 모바일 터치 이벤트
-            thumb.addEventListener('touchstart', (e) => handleStart(e.touches[0].clientX));
-            document.addEventListener('touchmove', (e) => handleMove(e.touches[0].clientX));
-            document.addEventListener('touchend', handleEnd);
+            thumb.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
 
-            // PC 마우스 이벤트
-            thumb.addEventListener('mousedown', (e) => handleStart(e.clientX));
-            document.addEventListener('mousemove', (e) => handleMove(e.clientX));
-            document.addEventListener('mouseup', handleEnd);
+            thumb.addEventListener('touchstart', startDrag, {passive: false});
+            document.addEventListener('touchmove', drag, {passive: false});
+            document.addEventListener('touchend', endDrag);
         </script>
         """
-        components.html(slider_html, height=80)
+        components.html(slider_html, height=90)
             
-    # 💡 워터마크 중앙 정렬, 20% 위치 상승, 크기 약 20% 확대(8pt -> 10pt)
+    # 💡 워터마크 중앙 정렬, 하단에서 10% 위치로 이동, 텍스트 변경
     st.markdown(
-        "<div style='position: fixed; bottom: 20%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>programing by ___ Romero.K</div>", 
+        "<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>vision data key-in system --- Romero.K</div>", 
         unsafe_allow_html=True
     )
     st.stop()
@@ -378,7 +375,7 @@ def save_data_append(df):
 # UI 하단 네비게이션
 # ==========================================
 def navigation_buttons():
-    pass # 네비게이션 버튼을 사이드바로 통합했으므로 본문 하단 영역은 비웁니다.
+    pass 
 
 # ==========================================
 # 메인 프로세스 화면 구성
@@ -440,6 +437,7 @@ elif st.session_state.current_page == "input":
         
         st.session_state.worker_name = st.selectbox("**작업자**", ["선택안함"] + worker_list, index=(["선택안함"] + worker_list).index(st.session_state.worker_name) if st.session_state.worker_name in (["선택안함"] + worker_list) else 0)
         
+        # 💡 자동 파싱 로직 (P$PL01$S120$20260714$00061 구조 완벽 분해)
         def parse_scanned_data():
             raw_val = st.session_state._lot_input_temp
             if '$' in raw_val:
