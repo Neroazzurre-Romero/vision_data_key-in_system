@@ -295,7 +295,7 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 기존 파이썬 기반 카메라 촬영 및 자동 분석 기능 복구 (버튼 없이 자동 입력 추가)
+# 기존 파이썬 기반 카메라 촬영 및 자동 분석 기능 복구 (후면 카메라 및 버튼 없이 자동 입력 적용)
 # ----------------------------------------------------
 @st.dialog("카메라 촬영 및 자동 분석")
 def open_camera_qr_scanner():
@@ -305,7 +305,8 @@ def open_camera_qr_scanner():
         
     st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
     
-    target_img = st.camera_input("카메라 촬영")
+    # facing_mode="environment" 옵션을 추가하여 후면 카메라로 강제 구동
+    target_img = st.camera_input("카메라 촬영", facing_mode="environment")
         
     if target_img:
         with st.spinner("이미지 분석 중..."):
@@ -337,13 +338,13 @@ def open_camera_qr_scanner():
                             except ValueError:
                                 pass
                     
-                    # 💡 분석 성공 시 수동 버튼 입력 대기 없이 세션 스테이트에 즉시 저장하고 창을 닫음
+                    # 분석 성공 시 수동 버튼 입력 대기 없이 세션 스테이트에 즉시 저장하고 창을 닫음
                     st.session_state.lot_input_field = lot_val
                     if parsed_date:
                         st.session_state.in_date_field = parsed_date
                         
                     st.success("인식 성공! 데이터를 자동으로 입력합니다.")
-                    time.sleep(0.8) # 성공 메시지를 잠시 보여주기 위한 대기
+                    time.sleep(0.8) 
                     st.rerun()
                 else:
                     st.error("QR 코드를 찾을 수 없습니다. 초점을 맞춰서 다시 촬영해주세요.")
