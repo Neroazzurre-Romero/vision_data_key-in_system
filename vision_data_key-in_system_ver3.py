@@ -14,8 +14,10 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-# [설정] 작업자 명단
-worker_list = ["박경섭", "무고사", "재르소", "김동헌"] 
+# [설정] 작업자 명단 초기화 (기존 리스트 삭제, A/B/C조 기본 세팅)
+worker_a_list = ["A조", "작업자입력1", "작업자입력2"]
+worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
+worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
 st.set_page_config(
@@ -25,14 +27,19 @@ st.set_page_config(
 )
 
 # ==========================================
-# 영구 세션 상태 초기화 (페이지 이동 시 데이터 증발 방지)
+# 영구 세션 상태 초기화
 # ==========================================
 if "unlocked" not in st.session_state: st.session_state.unlocked = False
 if "current_page" not in st.session_state: st.session_state.current_page = "input"
 if "step" not in st.session_state: st.session_state.step = 1
 
+if "unlocked" in st.query_params:
+    st.session_state.unlocked = True
+    st.query_params.clear()
+
 default_state = {
-    "work_date": datetime.now().date(), "shift_type": "주간", "worker_name": "선택안함", 
+    "work_date": datetime.now().date(), "shift_type": "주간", 
+    "worker_a": "A조", "worker_b": "B조", "worker_c": "C조",
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now().date(),
     "plating_type": "A", "start_date": datetime.now().date(), "start_time": datetime.now().time(),
     "end_date": datetime.now().date(), "end_time": datetime.now().time(), "unit": "1호기",
@@ -67,7 +74,7 @@ if not st.session_state.unlocked:
         if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
         else:
-            st.error("⚠️ 'logo.png' 파일이 파이썬 실행 폴더에 없습니다. 이미지를 같은 폴더에 추가해주세요.")
+            st.error("⚠️ 'logo.png' 파일이 파이썬 실행 폴더에 없습니다.")
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 60px; font-weight: 900;'>COMPANY LOGO</h1>", unsafe_allow_html=True)
         
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -193,7 +200,15 @@ body { overscroll-behavior-y: none !important; }
     padding-left: 1.5rem !important; padding-right: 1.5rem !important;
 }
 
-/* 입력칸 전체 크기 확대 */
+/* 💡 모든 입력칸(Input 타이틀) 폰트 크기 통일 */
+div[data-testid="stMarkdownContainer"] p strong,
+div[data-testid="stWidgetLabel"] p,
+div[data-testid="stWidgetLabel"] p strong {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+    color: #1e293b !important;
+}
+
 div[data-baseweb="input"] > div,
 div[data-baseweb="select"] > div {
     min-height: 3.5rem !important;
@@ -452,6 +467,11 @@ elif st.session_state.current_page == "input":
                     st.session_state.step += 1
                     st.rerun()
 
+        # 💡 이전, 다음 버튼 바로 밑에 로고 이미지 삽입
+        st.markdown("<br>", unsafe_allow_html=True)
+        if os.path.exists("at.png"):
+            st.image("at.png", use_container_width=True)
+
     step = st.session_state.step
 
     if step == 1:
@@ -462,7 +482,12 @@ elif st.session_state.current_page == "input":
         st.markdown("**교대**")
         render_grid_buttons(["주간", "야간"], "shift_type", 2)
         
-        st.session_state.worker_name = st.selectbox("**작업자**", ["선택안함"] + worker_list, index=(["선택안함"] + worker_list).index(st.session_state.worker_name) if st.session_state.worker_name in (["선택안함"] + worker_list) else 0)
+        # 💡 작업자 1x3 배열 드롭다운 분리 적용
+        st.markdown("**작업자**")
+        w_col1, w_col2, w_col3 = st.columns(3)
+        with w_col1: st.session_state.worker_a = st.selectbox("A조", worker_a_list, index=worker_a_list.index(st.session_state.worker_a) if st.session_state.worker_a in worker_a_list else 0, label_visibility="collapsed")
+        with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
+        with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
         
         def parse_scanned_data():
             raw_val = st.session_state._lot_input_temp
@@ -484,10 +509,11 @@ elif st.session_state.current_page == "input":
             else:
                 st.session_state.lot_input_field = raw_val
 
-        # 💡 스캐너 1x3 배열 카드 영역
+        # 💡 스캐너 1x3 배열 카드 영역 & 안내 텍스트 대체 버튼
         with st.container():
             st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
-            st.markdown("<div style='color:#1e293b; font-weight:bold; font-size:18px; margin-bottom: 10px;'>QR code를 Scan 하세요. 자동으로 LOT, 입고일, 도금 구분 값이 입력됩니다.</div>", unsafe_allow_html=True)
+            if st.button("📷 QR CODE SCANNER", use_container_width=True, type="primary"):
+                pass
             
             sc1, sc2, sc3 = st.columns(3)
             with sc1:
@@ -602,6 +628,10 @@ elif st.session_state.current_page == "input":
                     fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
                     fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
                     fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
+                    
+                    # 작업자 문자열 병합 저장 처리
+                    workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
+                    fmt_worker = ", ".join(workers) if workers else ""
 
                     new_data = pd.DataFrame([{
                         "날짜": fmt_date, "교대": st.session_state.shift_type,
@@ -619,7 +649,7 @@ elif st.session_state.current_page == "input":
                         "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
                         "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
                         "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", 
-                        "작업자": "" if st.session_state.worker_name == "선택안함" else st.session_state.worker_name
+                        "작업자": fmt_worker
                     }])
                     if save_data_append(new_data):
                         st.success("저장 완료!")
