@@ -66,8 +66,8 @@ if not st.session_state.unlocked:
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="stToolbar"] { display: none !important; }
-        header { visibility: hidden !important; }
-        footer { visibility: hidden !important; }
+        header { display: none !important; }
+        footer { display: none !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -159,10 +159,15 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단 및 사이드바 토글 살리기 */
+/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단 및 사이드바 토글 복구 */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
-footer { visibility: hidden !important; } 
+#MainMenu { display: none !important; } 
+footer { display: none !important; } 
+
+/* 헤더를 다시 표시하되 배경을 투명하게 만들어 사이드바 토글(>)만 깔끔하게 남김 */
+header { visibility: visible !important; display: block !important; background: transparent !important; } 
+[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
@@ -657,6 +662,7 @@ elif st.session_state.current_page == "input":
                                 st.session_state[k] = v
                             time.sleep(1)
                             st.session_state.step = 6
+                            st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
                             st.rerun()
 
     elif step == 6:
