@@ -13,7 +13,7 @@ import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
 
-# QR/바코드 스캔 라이브러리 (파이썬 백엔드 분석용 복구)
+# QR/바코드 스캔 라이브러리 (파이썬 백엔드 방식 원복)
 try:
     from PIL import Image
     import cv2
@@ -30,14 +30,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# ==========================================
-# 화면 전환 및 상태 관리
-# ==========================================
-if "current_page" not in st.session_state: st.session_state.current_page = "input"
-if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
-if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
-if "coating_shortcut" not in st.session_state: st.session_state.coating_shortcut = False
 
 # ----------------------------------------------------
 # 마법 코드 1: UI 숨김 및 태블릿 앱 최적화
@@ -295,7 +287,7 @@ def show_password_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ----------------------------------------------------
-# 기존 파이썬 기반 카메라 촬영 및 자동 분석 기능 복구 (후면 카메라 및 버튼 없이 자동 입력 적용)
+# 📷 기존 파이썬 방식 완벽 복구 (앨범 탭 포함 + 자동입력)
 # ----------------------------------------------------
 @st.dialog("카메라 촬영 및 자동 분석")
 def open_camera_qr_scanner():
@@ -305,8 +297,22 @@ def open_camera_qr_scanner():
         
     st.info("팁: QR 코드가 화면에 선명하게 보일 때 사진을 찍어주세요.")
     
-    # facing_mode="environment" 옵션을 추가하여 후면 카메라로 강제 구동
-    target_img = st.camera_input("카메라 촬영", facing_mode="environment")
+    # 예전에 잘 작동하던 탭 2개 방식으로 복구
+    tab1, tab2 = st.tabs(["카메라 촬영", "갤러리 앨범"])
+    
+    target_img = None
+    with tab1:
+        # Streamlit 1.33 이상은 후면 카메라를 우선 호출하지만, 에러 방지를 위해 예외처리
+        try:
+            img_buffer = st.camera_input("카메라 촬영", facing_mode="environment")
+        except TypeError:
+            img_buffer = st.camera_input("카메라 촬영")
+            
+        if img_buffer: target_img = img_buffer
+        
+    with tab2:
+        uploaded_img = st.file_uploader("앨범에서 사진 선택", type=['png', 'jpg', 'jpeg'])
+        if uploaded_img: target_img = uploaded_img
         
     if target_img:
         with st.spinner("이미지 분석 중..."):
@@ -338,18 +344,26 @@ def open_camera_qr_scanner():
                             except ValueError:
                                 pass
                     
-                    # 분석 성공 시 수동 버튼 입력 대기 없이 세션 스테이트에 즉시 저장하고 창을 닫음
+                    # 수동 '적용 버튼' 없이 즉시 세션에 값을 넣고 화면을 재시작함
                     st.session_state.lot_input_field = lot_val
                     if parsed_date:
                         st.session_state.in_date_field = parsed_date
                         
                     st.success("인식 성공! 데이터를 자동으로 입력합니다.")
-                    time.sleep(0.8) 
+                    time.sleep(1) # 확인 메시지를 잠시 띄운 뒤 즉시 자동 닫힘
                     st.rerun()
                 else:
                     st.error("QR 코드를 찾을 수 없습니다. 초점을 맞춰서 다시 촬영해주세요.")
             except Exception as e:
                 st.error(f"분석 중 오류 발생: {e}")
+
+# ==========================================
+# 화면 전환 및 상태 관리
+# ==========================================
+if "current_page" not in st.session_state: st.session_state.current_page = "input"
+if "lot_input_field" not in st.session_state: st.session_state.lot_input_field = ""
+if "in_date_field" not in st.session_state: st.session_state.in_date_field = datetime.now().date()
+if "coating_shortcut" not in st.session_state: st.session_state.coating_shortcut = False
 
 # ==========================================
 # 간편 바로가기 적용 함수
@@ -625,13 +639,14 @@ if st.session_state.current_page == "input":
             </div>
         """, unsafe_allow_html=True)
         
-        lot_number = st.text_input("**LOT 입력**", value=st.session_state.lot_input_field, placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_dynamic")
+        # 입력창과 session_state의 직접 양방향 바인딩 복구
+        lot_number = st.text_input("**LOT 입력**", placeholder="직접 입력 또는 아래 버튼 스캔", key="lot_input_field")
         
         if st.button("📷 카메라 촬영 및 자동 분석", use_container_width=True, type="primary"):
             open_camera_qr_scanner()
             
         st.markdown("<br>", unsafe_allow_html=True)
-        in_date = st.date_input("**입고일**", value=st.session_state.in_date_field)
+        in_date = st.date_input("**입고일**", key="in_date_field")
 
         # 3. 작업 정보
         st.markdown("""
