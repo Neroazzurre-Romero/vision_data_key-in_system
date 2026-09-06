@@ -65,6 +65,7 @@ if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
+        footer { visibility: hidden !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -152,17 +153,18 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 복구 (충돌 코드 완전 제거)
+# 마법 코드 1: UI 디자인 커스텀 (불필요한 헤더 CSS 완전 제거)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 문제가 발생했던 상단 헤더 강제 조작 코드를 모두 지웠습니다. 사이드바가 정상적으로 펴지고 접힙니다. */
+/* 시스템 기본 푸터(Made with Streamlit)만 제거하고, 사이드바를 건드리는 코드는 모두 삭제했습니다. */
+footer { display: none !important; } 
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 화면 상단 여백 최적화 */
-.block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+/* 💡 화면 상단 여백 최적화 */
+.block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
@@ -357,7 +359,7 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    top_c1, top_c2 = st.columns([0.85, 0.15])
+    top_c1, top_c2 = st.columns([0.8, 0.2])
     with top_c1:
         st.markdown("""
             <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 58px; display: flex; align-items: center;'>
