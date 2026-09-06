@@ -27,6 +27,7 @@ worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
 worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
+# 💡 앱 초기 사이드바 상태를 'expanded'로 강제 설정
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
@@ -65,7 +66,9 @@ if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
-        footer { visibility: hidden !important; }
+        [data-testid="collapsedControl"] { display: none !important; }
+        [data-testid="stToolbar"] { display: none !important; }
+        footer { display: none !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -153,18 +156,23 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (불필요한 헤더 CSS 완전 제거)
+# 마법 코드 1: UI 디자인 커스텀 및 사이드바 제어
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 시스템 기본 푸터(Made with Streamlit)만 제거하고, 사이드바를 건드리는 코드는 모두 삭제했습니다. */
+/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단. 헤더는 유지. */
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+#MainMenu { display: none !important; } 
 footer { display: none !important; } 
+
+/* 헤더 배경을 투명하게 해서 사이드바 토글(>)이 화면 배경에 자연스럽게 녹아들도록 설정 */
+header[data-testid="stHeader"] { background: transparent !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 💡 화면 상단 여백 최적화 */
-.block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
@@ -188,6 +196,14 @@ components.html(
     if (window.parent && !window.parent.appPluginLoadedFull) {
         window.parent.appPluginLoadedFull = true;
         
+        // 💡 진입 시 사이드바가 닫혀있다면 강제로 열어주는(Click) 로직 추가
+        setTimeout(() => {
+            const toggleBtn = window.parent.document.querySelector('[data-testid="collapsedControl"]');
+            if (toggleBtn && window.parent.innerWidth <= 1024) { // 태블릿 등에서 기본적으로 접힐 경우 대비
+                toggleBtn.click();
+            }
+        }, 500);
+
         const formatNavButtons = () => {
             if (!window.parent.document) return;
             const buttons = window.parent.document.querySelectorAll('button');
