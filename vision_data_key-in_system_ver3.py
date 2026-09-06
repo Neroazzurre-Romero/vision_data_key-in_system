@@ -65,9 +65,6 @@ if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
         [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="collapsedControl"] { display: none !important; }
-        [data-testid="stToolbar"] { display: none !important; }
-        footer { display: none !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -155,24 +152,17 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 완벽 복구
+# 마법 코드 1: UI 디자인 커스텀 및 사이드바 복구 (충돌 코드 완전 제거)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 우측 상단 툴바 완벽 차단. 헤더(Header)는 절대 건드리지 않아 사이드바 토글을 복구함 */
-[data-testid="stToolbar"] { display: none !important; }
-[data-testid="stDecoration"] { display: none !important; }
-#MainMenu { display: none !important; } 
-footer { display: none !important; } 
-
-/* 💡 만약의 상황을 대비해 사이드바 토글 버튼을 명시적으로 활성화 */
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 9999 !important; }
+/* 💡 문제가 발생했던 상단 헤더 강제 조작 코드를 모두 지웠습니다. 사이드바가 정상적으로 펴지고 접힙니다. */
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 
-/* 💡 화면 상단 여백 최적화 */
-.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+/* 화면 상단 여백 최적화 */
+.block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
