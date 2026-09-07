@@ -27,7 +27,6 @@ worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
 worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-# 💡 앱 초기 사이드바 상태를 'expanded'로 강제 설정
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
@@ -52,7 +51,8 @@ default_state = {
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
-    "rear_warned": False, "offset_warned": False
+    "rear_warned": False, "offset_warned": False,
+    "numpad_buffer": ""
 }
 
 for key, value in default_state.items():
@@ -156,35 +156,42 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 제어
+# 마법 코드 1: UI 디자인 커스텀
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 💡 우측 상단 툴바(Deploy, Github 등) 완벽 차단. 헤더는 유지. */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
 #MainMenu { display: none !important; } 
 footer { display: none !important; } 
-
-/* 헤더 배경을 투명하게 해서 사이드바 토글(>)이 화면 배경에 자연스럽게 녹아들도록 설정 */
 header[data-testid="stHeader"] { background: transparent !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.15rem !important; font-weight: 800 !important; color: #1e293b !important; }
-div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 3.5rem !important; }
-div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.15rem !important; }
-div[data-baseweb="textarea"] textarea { font-size: 1.15rem !important; min-height: 100px !important; }
-button[kind="primary"] { background-color: #4b6584 !important; color: white !important; border: none !important; font-size: 16px !important; font-weight: bold !important; padding: 10px !important; }
+/* 타이틀 및 입력창 폰트 크기 확대 */
+div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
+
+/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
+div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
+div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
+div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
+
+button[kind="primary"], button[kind="secondary"] { 
+    min-height: 4.0rem !important; 
+    font-size: 1.3rem !important; 
+    font-weight: bold !important; 
+    padding: 10px !important; 
+    border-radius: 8px !important;
+}
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
+/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
-[data-testid="stSidebar"] .stButton > button { height: 65px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 6px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
-[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 16px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
+[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: white !important; border: 1px solid #2563eb !important; }
 </style>
 """
@@ -196,63 +203,70 @@ components.html(
     if (window.parent && !window.parent.appPluginLoadedFull) {
         window.parent.appPluginLoadedFull = true;
         
-        // 💡 진입 시 사이드바가 닫혀있다면 강제로 열어주는(Click) 로직 추가
-        setTimeout(() => {
-            const toggleBtn = window.parent.document.querySelector('[data-testid="collapsedControl"]');
-            if (toggleBtn && window.parent.innerWidth <= 1024) { // 태블릿 등에서 기본적으로 접힐 경우 대비
-                toggleBtn.click();
-            }
-        }, 500);
-
         const formatNavButtons = () => {
             if (!window.parent.document) return;
             const buttons = window.parent.document.querySelectorAll('button');
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
-                if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; }
-                if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; }
+                if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; btn.style.height = '65px'; }
+                if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; btn.style.height = '65px'; }
                 
                 if (text.includes('데이터 최종 저장')) { 
-                    btn.style.height = '100px'; 
-                    btn.style.marginTop = '28px'; 
-                    btn.style.fontSize = '18px'; 
+                    btn.style.height = '150px'; 
+                    btn.style.marginTop = '42px'; 
+                    btn.style.fontSize = '22px'; 
                     btn.style.whiteSpace = 'pre-wrap'; 
                 }
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.height = '58px'; 
-                    btn.style.fontSize = '16px'; 
+                    btn.style.height = '65px'; 
+                    btn.style.fontSize = '18px'; 
                     btn.style.marginTop = '0px'; 
                     btn.style.backgroundColor = '#D4AF37';
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
-            });
-        };
-        const styleScanner = () => {
-            if (!window.parent.document) return;
-            const targets = window.parent.document.querySelectorAll('div[id="scanner_target"]');
-            targets.forEach(t => {
-                let parent = t.parentElement;
-                while(parent && parent.getAttribute('data-testid') !== 'stVerticalBlock') { parent = parent.parentElement; }
-                if(parent && !parent.dataset.styled) {
-                    parent.style.backgroundColor = '#D9E1F2';
-                    parent.style.padding = '20px';
-                    parent.style.borderRadius = '12px';
-                    parent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                    parent.style.marginBottom = '20px';
-                    parent.dataset.styled = 'true';
+                
+                // 💡 스캐너 실행 버튼 (초록색 디자인)
+                if (text.includes('📷 스캐너 실행')) {
+                    btn.style.backgroundColor = '#d4edda';
+                    btn.style.color = '#155724';
+                    btn.style.border = '2px solid #28a745';
                 }
             });
         };
+        
+        const styleScanner = () => {
+            if (!window.parent.document) return;
+            // 💡 팝업 내 스캐너 전용 입력창(Placeholder 기준) 초록색 배경 처리
+            window.parent.document.querySelectorAll('input').forEach(el => {
+                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('여기를 터치하여 스캔하세요')) {
+                    el.style.backgroundColor = '#d4edda';
+                    el.style.color = '#155724';
+                    let parentDiv = el.parentElement;
+                    if (parentDiv) {
+                        parentDiv.style.backgroundColor = '#d4edda';
+                        parentDiv.style.border = '2px solid #28a745';
+                    }
+                }
+            });
+        };
+        
         const disableKeyboard = () => {
             if (!window.parent.document) return;
+            // 💡 드롭다운 및 날짜/시간 선택 시 태블릿 가상 키보드 팝업 완벽 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 if (placeholder.includes('YYYY') || placeholder.includes('HH:MM')) {
-                    if (el.getAttribute('inputmode') !== 'none') el.setAttribute('inputmode', 'none');
+                    el.setAttribute('inputmode', 'none');
+                    el.setAttribute('readonly', 'true');
                 }
             });
+            window.parent.document.querySelectorAll('div[data-baseweb="select"] input').forEach(el => {
+                el.setAttribute('inputmode', 'none');
+                el.setAttribute('readonly', 'true');
+            });
         };
+        
         const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
         if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
         disableKeyboard(); formatNavButtons(); styleScanner();
@@ -262,7 +276,7 @@ components.html(
 )
 
 # ----------------------------------------------------
-# 터치형 박스(Grid) 렌더링 함수
+# 구글 스프레드시트 및 유틸 함수
 # ----------------------------------------------------
 def render_grid_buttons(options, state_key, columns):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
@@ -277,9 +291,6 @@ def render_grid_buttons(options, state_key, columns):
                         st.session_state[state_key] = opt
                         st.rerun()
 
-# ----------------------------------------------------
-# 구글 스프레드시트 연동
-# ----------------------------------------------------
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 EXCEL_COLUMNS = [
     "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", 
@@ -352,75 +363,20 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 팝업(모달) SBL 함수
+# 💡 팝업 모달 함수 (스캐너, 숫자 패드, SBL)
 # ----------------------------------------------------
-@st.dialog("SBL Warning!")
-def show_sbl_warning(defect_type, rate):
-    st.markdown(f"### [{defect_type}] 불량 제품 별도 보관 조치")
-    st.error(f"현재 1차검사 공정의 {defect_type}율이 **{rate:.1f}%** 로 기준치(5.0%)를 초과하였습니다.")
-    if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
-        st.rerun()
-
-# ==========================================
-# 메인 프로세스 화면 구성
-# ==========================================
-if st.session_state.current_page == "analysis":
-    st.markdown("## 종합 생산 데이터 분석")
-    if st.button("뒤로 가기 (데이터 입력 화면으로)"):
-        st.session_state.current_page = "input"
-        st.rerun()
-    df = load_data().copy()
-    if df.empty: st.warning("데이터가 없습니다.")
-    else: st.dataframe(df.head(50))
-
-elif st.session_state.current_page == "input":
+@st.dialog("📷 바코드/QR 스캐너")
+def scanner_dialog():
+    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#d4edda; border-radius:10px; margin-bottom:15px; border:2px solid #28a745;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
     
-    top_c1, top_c2 = st.columns([0.8, 0.2])
-    with top_c1:
-        st.markdown("""
-            <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 58px; display: flex; align-items: center;'>
-                <h3 style='color: #f8fafc; margin: 0; font-weight: 800;'>VISION DATA KEY-IN SYSTEM</h3>
-            </div>
-        """, unsafe_allow_html=True)
-    with top_c2:
-        if st.button("Data Analysis", use_container_width=True, type="primary"):
-            st.session_state.current_page = "analysis"
-            st.rerun()
-
-    with st.sidebar:
-        steps_titles = [
-            "생산 등록", "작업 정보", "Coating Data", "Assemble Data", 
-            "VISION Data", "Report & History"
-        ]
-        for i, title in enumerate(steps_titles, 1):
-            btn_type = "primary" if st.session_state.step == i else "secondary"
-            if st.button(title, key=f"nav_btn_{i}", type=btn_type, use_container_width=True):
-                st.session_state.step = i
-                st.rerun()
-
-        st.markdown("<br><hr style='border-color: #334155; margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.session_state.step > 1:
-                if st.button("⬅️ 이전", use_container_width=True):
-                    st.session_state.step -= 1
-                    st.rerun()
-        with c2:
-            if st.session_state.step < 6:
-                if st.button("다음 ➡️", use_container_width=True):
-                    st.session_state.step += 1
-                    st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 13px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
-
-    step = st.session_state.step
-
-    def parse_scanned_data():
-        raw_val = st.session_state.scanned_raw_data
-        if not raw_val: return
-        if '$' in raw_val:
-            parts = [p for p in raw_val.split('$') if p]
+    # 이 입력창은 스캐너 앱(키보드)이 올라와야 하므로 키보드 차단 로직에서 제외(placeholder 조건)
+    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("적용 (Enter)", type="primary", use_container_width=True):
+        if raw_scan:
+            st.session_state.scanned_raw_data = raw_scan
+            parts = [p for p in raw_scan.split('$') if p]
             if len(parts) >= 5:
                 plating_code = parts[2]
                 if plating_code == 'S110': st.session_state.plating_type = 'A'
@@ -433,18 +389,117 @@ elif st.session_state.current_page == "input":
                 
                 st.session_state.lot_input_field = parts[4]
             else:
-                st.session_state.lot_input_field = parts[-1]
-        else:
-            st.session_state.lot_input_field = raw_val
+                st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
+        st.rerun()
+
+def pad_callback(digit):
+    c_val = st.session_state.numpad_buffer
+    if digit == "C": 
+        st.session_state.numpad_buffer = ""
+    elif digit == "⬅": 
+        st.session_state.numpad_buffer = c_val[:-1]
+    else:
+        if len(c_val) < 8: 
+            st.session_state.numpad_buffer = c_val + digit
+
+@st.dialog("🔢 수량 입력 패드")
+def numpad_dialog(field_key, display_name):
+    c_val = st.session_state.numpad_buffer
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f1f5f9; border-radius:10px; margin-bottom:15px; border:2px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    
+    pad_rows = [
+        ["7", "8", "9"],
+        ["4", "5", "6"],
+        ["1", "2", "3"],
+        ["C", "0", "⬅"]
+    ]
+    
+    for r in pad_rows:
+        cols = st.columns(3)
+        for i, val in enumerate(r):
+            with cols[i]:
+                st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True, on_click=pad_callback, args=(val,))
+                    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("적용 (Enter)", type="primary", use_container_width=True):
+        st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
+        st.session_state.numpad_buffer = "" 
+        st.rerun()
+
+@st.dialog("SBL Warning!")
+def show_sbl_warning(defect_type, rate):
+    st.markdown(f"### [{defect_type}] 불량 제품 별도 보관 조치")
+    st.error(f"현재 1차검사 공정의 {defect_type}율이 **{rate:.1f}%** 로 기준치(5.0%)를 초과하였습니다.")
+    if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
+        st.rerun()
+
+# ==========================================
+# 메인 프로세스 화면 구성
+# ==========================================
+if st.session_state.current_page == "analysis":
+    st.markdown("## 종합 생산 데이터 분석")
+    if st.button("뒤로 가기 (데이터 입력 화면으로)", type="primary"):
+        st.session_state.current_page = "input"
+        st.rerun()
+    df = load_data().copy()
+    if df.empty: st.warning("데이터가 없습니다.")
+    else: st.dataframe(df.head(50))
+
+elif st.session_state.current_page == "input":
+    
+    top_c1, top_c2 = st.columns([0.8, 0.2])
+    with top_c1:
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 65px; display: flex; align-items: center;'>
+                <h3 style='color: #f8fafc; margin: 0; font-weight: 800; font-size: 1.6rem;'>VISION DATA KEY-IN SYSTEM</h3>
+            </div>
+        """, unsafe_allow_html=True)
+    with top_c2:
+        if st.button("Data Analysis", use_container_width=True, type="primary"):
+            st.session_state.current_page = "analysis"
+            st.rerun()
+
+    with st.sidebar:
+        steps_titles = [
+            "생산 등록", "작업 정보", "Assemble & Coating", 
+            "VISION Data", "Report & History"
+        ]
+        for i, title in enumerate(steps_titles, 1):
+            btn_type = "primary" if st.session_state.step == i else "secondary"
+            if st.button(title, key=f"nav_btn_{i}", type=btn_type, use_container_width=True):
+                st.session_state.step = i
+                st.rerun()
+
+        st.markdown("<hr style='border-color: #334155; margin-top: -5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.session_state.step > 1:
+                if st.button("⬅️ 이전", use_container_width=True):
+                    st.session_state.step -= 1
+                    st.rerun()
+        with c2:
+            if st.session_state.step < 5:
+                if st.button("다음 ➡️", use_container_width=True):
+                    st.session_state.step += 1
+                    st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 16px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
+
+    step = st.session_state.step
 
     if step == 1:
-        c1, c2 = st.columns(2)
-        with c1: st.session_state.work_date = st.date_input("**근무일자**", value=st.session_state.work_date)
-        with c2: st.session_state.model_name = st.selectbox("**모델명**", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0)
+        c1, c2, c3 = st.columns(3)
+        with c1: 
+            st.session_state.work_date = st.date_input("**근무일자**", value=st.session_state.work_date)
+        with c2: 
+            st.session_state.model_name = st.selectbox("**모델명**", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0)
+        with c3:
+            st.markdown("**교대**")
+            render_grid_buttons(["주간", "야간"], "shift_type", 2)
         
-        st.markdown("**교대**")
-        render_grid_buttons(["주간", "야간"], "shift_type", 2)
-        
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("**작업자**")
         w_col1, w_col2, w_col3 = st.columns(3)
         with w_col1: st.session_state.worker_a = st.selectbox("A조", worker_a_list, index=worker_a_list.index(st.session_state.worker_a) if st.session_state.worker_a in worker_a_list else 0, label_visibility="collapsed")
@@ -452,96 +507,135 @@ elif st.session_state.current_page == "input":
         with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
         st.markdown("<hr>", unsafe_allow_html=True)
+        
         with st.container():
-            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
+            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
-            sc1, sc2, sc3 = st.columns([1, 1.5, 1])
             with sc1:
-                if st.button("📷 QR CODE SCANNER", use_container_width=True, type="primary"):
-                    st.info("👉 우측 입력창을 터치하여 태블릿에 설치된 '스캐너 키보드 앱'을 실행하세요.")
+                st.markdown("**스캔 데이터**")
+                # 💡 메인 화면의 스캐너 실행 버튼 (터치 시 팝업 열림)
+                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
+                    scanner_dialog()
             with sc2:
-                st.text_input("스캔 데이터", key="scanned_raw_data", on_change=parse_scanned_data, label_visibility="collapsed", placeholder="터치하여 스캐너 앱 실행")
+                st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
-                if st.button("적용", type="primary", use_container_width=True):
-                    parse_scanned_data()
+                st.date_input("**입고일 (적용됨)**", value=st.session_state.in_date_field, disabled=True)
+            with sc4:
+                st.markdown("**도금(A)**")
+                btn_a = "primary" if st.session_state.plating_type == "A" else "secondary"
+                if st.button("A", type=btn_a, key="plat_a", use_container_width=True):
+                    st.session_state.plating_type = "A"
                     st.rerun()
-                
-        st.markdown("<br>", unsafe_allow_html=True)
-        c_res1, c_res2 = st.columns(2)
-        with c_res1:
-            st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
-        with c_res2:
-            st.date_input("**입고일 (적용됨)**", value=st.session_state.in_date_field, disabled=True)
-            
-        st.markdown("**도금 구분 (적용됨)**")
-        render_grid_buttons(["A", "B"], "plating_type", 2)
+            with sc5:
+                st.markdown("**도금(B)**")
+                btn_b = "primary" if st.session_state.plating_type == "B" else "secondary"
+                if st.button("B", type=btn_b, key="plat_b", use_container_width=True):
+                    st.session_state.plating_type = "B"
+                    st.rerun()
 
     elif step == 2:
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1: st.session_state.start_date = st.date_input("**시작일**", value=st.session_state.start_date)
         with c2: st.session_state.start_time = st.time_input("**시작시간**", value=st.session_state.start_time)
+        with c3: st.session_state.idle_time = st.number_input("**휴동시간 (분)**", min_value=0, value=st.session_state.idle_time)
         
-        c3, c4 = st.columns(2)
-        with c3: st.session_state.end_date = st.date_input("**종료일**", value=st.session_state.end_date)
-        with c4: st.session_state.end_time = st.time_input("**종료시간**", value=st.session_state.end_time)
+        st.markdown("<br>", unsafe_allow_html=True)
+        c4, c5, c6 = st.columns(3)
+        with c4: st.session_state.end_date = st.date_input("**종료일**", value=st.session_state.end_date)
+        with c5: st.session_state.end_time = st.time_input("**종료시간**", value=st.session_state.end_time)
+        with c6: 
+            start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
+            end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+            raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+            duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+            st.text_input("**소요시간 (휴동시간 차감됨)**", value=f"{duration_minutes:,} 분", disabled=True)
         
-        st.markdown("**호기**")
-        render_grid_buttons(["1호기", "2호기", "3호기", " "], "unit", 2)
+        st.markdown("<br>**호기**", unsafe_allow_html=True)
+        render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
         
-        st.markdown("**검사 구분**")
-        render_grid_buttons(["1차 검사", "2차 검사"], "category", 2)
-        
-        st.session_state.idle_time = st.number_input("**휴동시간 (분)**", min_value=0, value=st.session_state.idle_time)
-        
-        start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
-        end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-        raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-        duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-        st.text_input("**소요시간 (휴동시간 차감됨)**", value=f"{duration_minutes:,} 분", disabled=True)
+        st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
+        render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
     elif step == 3:
-        c1, c2 = st.columns(2)
-        with c1: st.session_state.painting_date = st.date_input("**도장일**", value=st.session_state.painting_date)
-        with c2: st.session_state.painting_order = st.number_input("**도장순서**", min_value=1, value=st.session_state.painting_order)
+        c1, c2, c3 = st.columns(3)
+        with c1: 
+            st.session_state.painting_date = st.date_input("**도장일**", value=st.session_state.painting_date)
+        with c2: 
+            st.markdown("**도장라인**")
+            render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
+        with c3: 
+            st.session_state.painting_order = st.number_input("**도장순서**", min_value=1, value=st.session_state.painting_order)
         
-        st.markdown("**도장라인**")
-        render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
+        st.markdown("<hr style='margin: 30px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+        
+        num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
+        c4, c5, c6 = st.columns(3)
+        with c4: st.session_state.clip_val = st.selectbox("**CLIP**", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0)
+        with c5: st.session_state.base_val = st.selectbox("**BASE**", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0)
+        with c6: st.session_state.cover_val = st.selectbox("**COVER**", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0)
+
+        st.markdown("<br>**조립기**", unsafe_allow_html=True)
+        render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
     elif step == 4:
-        num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
-        
-        c1, c2, c3 = st.columns(3)
-        with c1: st.session_state.clip_val = st.selectbox("**CLIP**", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0)
-        with c2: st.session_state.base_val = st.selectbox("**BASE**", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0)
-        with c3: st.session_state.cover_val = st.selectbox("**COVER**", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0)
-
-        st.markdown("**조립기**")
-        render_grid_buttons(["1호기", "2호기", "3호기", "4호기"], "assembler_val", 2)
-
-    elif step == 5:
-        q1, q2, q3 = st.columns(3)
-        with q2: 
-            st.session_state.good_qty = st.number_input("**양품수량**", min_value=0, value=st.session_state.good_qty)
-        
-        st.markdown("**🚨 불량 세부**")
-        c1, c2, c3 = st.columns(3)
-        with c1: st.session_state.comp_def = st.number_input("**완전불량**", min_value=0, value=st.session_state.comp_def)
-        with c2: st.session_state.front_def = st.number_input("**전면불량**", min_value=0, value=st.session_state.front_def)
-        with c3: st.session_state.rear_def = st.number_input("**배면불량**", min_value=0, value=st.session_state.rear_def)
-        
-        c4, c5, c6, c7 = st.columns(4)
-        with c4: st.session_state.offset_def = st.number_input("**옵셋불량**", min_value=0, value=st.session_state.offset_def)
-        with c5: st.session_state.shortage_qty = st.number_input("**수량부족**", min_value=0, value=st.session_state.shortage_qty)
-        with c6: st.session_state.etc_def = st.number_input("**기타**", min_value=0, value=st.session_state.etc_def)
-        with c7: st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
-        
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
-        
+
+        st.markdown("**🚨 수량 입력 (터치 시 전용 숫자 패드가 나타납니다)**")
+        q1, q2, q3 = st.columns(3)
         with q1: 
             st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
+        with q2: 
+            st.markdown("**양품수량**")
+            if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
+                val = str(st.session_state.good_qty)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("good_qty", "양품수량")
         with q3: 
             st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
+        
+        st.markdown("<br>**🚨 불량 세부**", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1: 
+            st.markdown("**완전불량**")
+            if st.button(f"{st.session_state.comp_def:,}", key="f_comp", use_container_width=True): 
+                val = str(st.session_state.comp_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("comp_def", "완전불량")
+        with c2: 
+            st.markdown("**전면불량**")
+            if st.button(f"{st.session_state.front_def:,}", key="f_front", use_container_width=True): 
+                val = str(st.session_state.front_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("front_def", "전면불량")
+        with c3: 
+            st.markdown("**배면불량**")
+            if st.button(f"{st.session_state.rear_def:,}", key="f_rear", use_container_width=True): 
+                val = str(st.session_state.rear_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("rear_def", "배면불량")
+        
+        c4, c5, c6, c7 = st.columns(4)
+        with c4: 
+            st.markdown("**옵셋불량**")
+            if st.button(f"{st.session_state.offset_def:,}", key="f_off", use_container_width=True): 
+                val = str(st.session_state.offset_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("offset_def", "옵셋불량")
+        with c5: 
+            st.markdown("**수량부족**")
+            if st.button(f"{st.session_state.shortage_qty:,}", key="f_short", use_container_width=True): 
+                val = str(st.session_state.shortage_qty)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("shortage_qty", "수량부족")
+        with c6: 
+            st.markdown("**기타**")
+            if st.button(f"{st.session_state.etc_def:,}", key="f_etc", use_container_width=True): 
+                val = str(st.session_state.etc_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
+                numpad_dialog("etc_def", "기타")
+        with c7: 
+            st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
 
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
@@ -608,7 +702,7 @@ elif st.session_state.current_page == "input":
         
         rem_col, save_col = st.columns([0.7, 0.3])
         with rem_col:
-            st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=100)
+            st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=150)
             
         with save_col:
             if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
@@ -668,11 +762,11 @@ elif st.session_state.current_page == "input":
                             for k, v in default_state.items():
                                 st.session_state[k] = v
                             time.sleep(1)
-                            st.session_state.step = 6
+                            st.session_state.step = 5
                             st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
                             st.rerun()
 
-    elif step == 6:
+    elif step == 5:
         st.markdown("---")
         df_history = load_data().copy()
         if not df_history.empty:
