@@ -157,11 +157,10 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (드롭다운/입력창 버튼화)
+# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 정렬 완벽화)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 푸터 숨김 */
 footer { display: none !important; } 
 
 /* 사이드바 토글 강제 노출 */
@@ -171,52 +170,47 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
+div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 핵심: 모든 입력창을 버튼과 똑같은 크기(3.8rem)의 컨테이너로 강제 고정 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 3.8rem !important;
+/* 💡 모든 입력창(Select, Date, Text)을 일반 버튼과 완벽하게 동일한 스타일(3.8rem, 흰색 배경, 테두리)로 강제 고정 */
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
+    height: 3.8rem !important;
     border-radius: 8px !important;
-    box-sizing: border-box !important;
+    background-color: white !important;
+    border: 1px solid #cbd5e1 !important;
     display: flex !important;
     align-items: center !important;
-    padding: 0 !important;
+    padding: 0 10px !important;
+    box-shadow: none !important;
 }
 
-/* 💡 드롭다운 내부의 배경과 테두리를 완벽하게 날려서 버튼 껍데기만 남기는 효과 (작업자님 아이디어 적용) */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
-    height: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    background: transparent !important;
+/* 셀렉트박스 내부 투명화 및 텍스트 중앙 정렬 */
+div[data-baseweb="select"] > div > div {
+    background-color: transparent !important;
     border: none !important;
-    margin: 0 !important;
+    height: 100% !important;
 }
 
-/* 텍스트 크기 및 중앙 정렬 통일 */
-div[data-baseweb="input"] input,
-div[data-baseweb="select"] span {
+[data-baseweb="input"] input,
+[data-baseweb="select"] span {
     font-size: 1.2rem !important;
     font-weight: bold !important;
-    margin: 0 !important;
-}
-div[data-baseweb="input"] input {
     text-align: center !important;
+    color: #1e293b !important;
 }
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-/* 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
+/* 커서 숨김 */
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 💡 메인 남색 테마 원복 및 버튼 높이 3.8rem 정렬 */
+/* 버튼 남색 테마 및 높이 정렬 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -237,9 +231,10 @@ div[data-testid="stButton"] button {
     font-weight: bold !important; 
     border-radius: 8px !important;
     width: 100% !important;
+    margin: 0 !important;
 }
 
-/* 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
+/* 사이드바 디자인 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -250,14 +245,11 @@ div[data-testid="stButton"] button {
     border-radius: 8px !important; 
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
-
-/* 활성화된 사이드바 버튼 (파란색) */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #3b82f6 !important; 
     color: white !important; 
     border: 1px solid #2563eb !important; 
 }
-/* 비활성화된 사이드바 버튼 (옅은 회색) */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: #475569 !important; 
     color: #f8fafc !important; 
@@ -318,7 +310,6 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 강력 차단 (blur 추가)
             const inputs = window.parent.document.querySelectorAll('input');
             inputs.forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
@@ -332,7 +323,6 @@ components.html(
                     
                     el.setAttribute('inputmode', 'none');
                     el.setAttribute('readonly', 'readonly');
-                    // 포커스 시 즉각 블러 처리하여 키보드 호출 원천 방지
                     el.addEventListener('focus', function(e) {
                         e.target.blur();
                     });
@@ -436,7 +426,7 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (스캐너, 숫자 패드, 시간 패드, SBL)
+# 💡 팝업 모달 함수
 # ----------------------------------------------------
 @st.dialog("📷 바코드/QR 스캐너")
 def scanner_dialog():
@@ -659,12 +649,15 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
+    # 💡 모든 입력창의 label_visibility를 "collapsed"로 숨기고, st.markdown으로 통일시켜 여백 찌그러짐을 완벽히 해결함
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
-            st.session_state.work_date = st.date_input("**근무일자**", value=st.session_state.work_date)
+            st.markdown("**근무일자**")
+            st.session_state.work_date = st.date_input("근무일자", value=st.session_state.work_date, label_visibility="collapsed")
         with c2: 
-            st.session_state.model_name = st.selectbox("**모델명**", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0)
+            st.markdown("**모델명**")
+            st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
         with c3:
             st.markdown("**교대**")
             render_grid_buttons(["주간", "야간"], "shift_type", 2)
@@ -684,17 +677,14 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                scan_in, scan_btn = st.columns([0.7, 0.3])
-                with scan_in:
-                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
-                with scan_btn:
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        st.rerun()
+                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
+                    scanner_dialog()
             with sc2:
-                st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
+                st.markdown("**LOT (적용됨)**")
+                st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
             with sc3:
-                st.date_input("**입고일 (적용됨)**", value=st.session_state.in_date_field, disabled=True)
+                st.markdown("**입고일 (적용됨)**")
+                st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
             with sc4:
                 st.markdown("**도금(A)**")
                 btn_a = "primary" if st.session_state.plating_type == "A" else "secondary"
@@ -711,7 +701,8 @@ elif st.session_state.current_page == "input":
     elif step == 2:
         c1, c2, c3 = st.columns(3)
         with c1: 
-            st.session_state.start_date = st.date_input("**시작일**", value=st.session_state.start_date)
+            st.markdown("**시작일**")
+            st.session_state.start_date = st.date_input("시작일", value=st.session_state.start_date, label_visibility="collapsed")
         with c2: 
             st.markdown("**시작시간**")
             time_str = st.session_state.start_time.strftime("%H:%M")
@@ -727,7 +718,8 @@ elif st.session_state.current_page == "input":
         st.markdown("<br>", unsafe_allow_html=True)
         c4, c5, c6 = st.columns(3)
         with c4: 
-            st.session_state.end_date = st.date_input("**종료일**", value=st.session_state.end_date)
+            st.markdown("**종료일**")
+            st.session_state.end_date = st.date_input("종료일", value=st.session_state.end_date, label_visibility="collapsed")
         with c5: 
             st.markdown("**종료시간**")
             time_str = st.session_state.end_time.strftime("%H:%M")
@@ -735,11 +727,12 @@ elif st.session_state.current_page == "input":
                 st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
                 timepad_dialog("end_time", "종료시간")
         with c6: 
+            st.markdown("**소요시간 (차감됨)**")
             start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
             end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
             raw_duration = int((end_dt - start_dt).total_seconds() / 60)
             duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-            st.text_input("**소요시간 (휴동시간 차감됨)**", value=f"{duration_minutes:,} 분", disabled=True)
+            st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
         
         st.markdown("<br>**호기**", unsafe_allow_html=True)
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
@@ -750,7 +743,8 @@ elif st.session_state.current_page == "input":
     elif step == 3:
         c1, c2, c3 = st.columns(3)
         with c1: 
-            st.session_state.painting_date = st.date_input("**도장일**", value=st.session_state.painting_date)
+            st.markdown("**도장일**")
+            st.session_state.painting_date = st.date_input("도장일", value=st.session_state.painting_date, label_visibility="collapsed")
         with c2: 
             st.markdown("**도장라인**")
             render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
@@ -764,9 +758,15 @@ elif st.session_state.current_page == "input":
         
         num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
         c4, c5, c6 = st.columns(3)
-        with c4: st.session_state.clip_val = st.selectbox("**CLIP**", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0)
-        with c5: st.session_state.base_val = st.selectbox("**BASE**", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0)
-        with c6: st.session_state.cover_val = st.selectbox("**COVER**", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0)
+        with c4: 
+            st.markdown("**CLIP**")
+            st.session_state.clip_val = st.selectbox("CLIP", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0, label_visibility="collapsed")
+        with c5: 
+            st.markdown("**BASE**")
+            st.session_state.base_val = st.selectbox("BASE", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0, label_visibility="collapsed")
+        with c6: 
+            st.markdown("**COVER**")
+            st.session_state.cover_val = st.selectbox("COVER", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0, label_visibility="collapsed")
 
         st.markdown("<br>**조립기**", unsafe_allow_html=True)
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
@@ -778,7 +778,8 @@ elif st.session_state.current_page == "input":
         st.markdown("**🚨 수량 입력 (터치 시 전용 숫자 패드가 나타납니다)**")
         q1, q2, q3 = st.columns(3)
         with q1: 
-            st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
+            st.markdown("**검사 수량 (자동)**")
+            st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
         with q2: 
             st.markdown("**양품수량**")
             if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
@@ -786,7 +787,8 @@ elif st.session_state.current_page == "input":
                 st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("good_qty", "양품수량")
         with q3: 
-            st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
+            st.markdown("**불량수량 (자동)**")
+            st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
         
         st.markdown("<br>**🚨 불량 세부**", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
@@ -829,7 +831,8 @@ elif st.session_state.current_page == "input":
                 st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("etc_def", "기타")
         with c7: 
-            st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
+            st.markdown("**OQC**")
+            st.session_state.oqc_status = st.selectbox("OQC", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status), label_visibility="collapsed")
 
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
@@ -896,7 +899,8 @@ elif st.session_state.current_page == "input":
         
         rem_col, save_col = st.columns([0.7, 0.3])
         with rem_col:
-            st.session_state.remarks = st.text_area("**비고**", value=st.session_state.remarks, height=150)
+            st.markdown("**비고**")
+            st.session_state.remarks = st.text_area("비고", value=st.session_state.remarks, height=150, label_visibility="collapsed")
             
         with save_col:
             if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
