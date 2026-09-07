@@ -170,10 +170,8 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 타이틀 및 입력창 폰트 크기 확대 */
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
 div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -187,7 +185,6 @@ button[kind="primary"], button[kind="secondary"] {
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
@@ -230,7 +227,6 @@ components.html(
         
         const styleScanner = () => {
             if (!window.parent.document) return;
-            // 💡 메인 화면의 스캐너 입력창 초록색 배경 처리 (터치 시 키보드 활성화를 위해 inputmode 유지)
             window.parent.document.querySelectorAll('input').forEach(el => {
                 if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
                     el.style.backgroundColor = '#d4edda';
@@ -246,7 +242,6 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 드롭다운 및 날짜/시간 선택 시 태블릿 가상 키보드 팝업 완벽 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 if (placeholder.includes('YYYY') || placeholder.includes('HH:MM')) {
@@ -497,13 +492,17 @@ elif st.session_state.current_page == "input":
         st.markdown("<hr>", unsafe_allow_html=True)
         
         with st.container():
-            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                # 💡 스캐너 팝업을 지우고, 키보드 스캐너 앱을 바로 띄울 수 있도록 일반 텍스트 인풋으로 원상 복구
-                st.text_input("스캔 데이터", key="scanned_raw_data", on_change=parse_scanned_data, label_visibility="collapsed", placeholder="스캐너 앱 실행")
+                scan_in, scan_btn = st.columns([0.7, 0.3])
+                with scan_in:
+                    st.text_input("스캔", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
+                with scan_btn:
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        st.rerun()
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
