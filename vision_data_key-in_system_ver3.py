@@ -157,7 +157,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (높이 정렬 및 색상 원복)
+# 마법 코드 1: UI 디자인 커스텀
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -176,7 +176,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 입력창과 버튼 높이 완벽 일치 (3.8rem 고정) */
+/* 입력창과 버튼 높이 완벽 일치 (3.8rem 고정) */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -189,7 +189,13 @@ div[data-baseweb="input"] input, div[data-baseweb="select"] div {
 }
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-/* 💡 메인 남색 테마 원복 및 높이 정렬 */
+/* 💡 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
+div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
+    caret-color: transparent !important;
+    cursor: pointer !important;
+}
+
+/* 메인 남색 테마 원복 및 높이 정렬 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -212,12 +218,33 @@ div[data-testid="stButton"] button {
     width: 100% !important;
 }
 
-/* 사이드바 크기 조정 */
+/* 💡 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
-[data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
+[data-testid="stSidebar"] .stButton > button { 
+    height: 120px !important; 
+    justify-content: flex-start !important; 
+    padding-left: 15px !important; 
+    margin-bottom: 10px !important; 
+    border-radius: 8px !important; 
+}
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
-[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: white !important; border: 1px solid #2563eb !important; }
+
+/* 활성화된 사이드바 버튼 (파란색) */
+[data-testid="stSidebar"] .stButton > button[kind="primary"] { 
+    background-color: #3b82f6 !important; 
+    color: white !important; 
+    border: 1px solid #2563eb !important; 
+}
+/* 💡 비활성화된 사이드바 버튼 (옅은 회색으로 변경) */
+[data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
+    background-color: #475569 !important; 
+    color: #f8fafc !important; 
+    border: 1px solid #64748b !important; 
+}
+[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+    background-color: #334155 !important;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -270,18 +297,25 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            window.parent.document.querySelectorAll('input').forEach(el => {
+            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 강력 차단 (blur 추가)
+            const inputs = window.parent.document.querySelectorAll('input');
+            inputs.forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 const ariaLabel = el.getAttribute('aria-label') || '';
+                const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
+                const isDatepicker = el.closest('div[data-baseweb="datepicker"]') !== null;
+                
                 if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
-                    ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select')) {
+                    ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
+                    isDropdown || isDatepicker) {
+                    
                     el.setAttribute('inputmode', 'none');
-                    el.setAttribute('readonly', 'true');
+                    el.setAttribute('readonly', 'readonly');
+                    // 포커스 시 즉각 블러 처리하여 키보드 호출 방지
+                    el.addEventListener('focus', function(e) {
+                        e.target.blur();
+                    });
                 }
-            });
-            window.parent.document.querySelectorAll('div[data-baseweb="select"] input').forEach(el => {
-                el.setAttribute('inputmode', 'none');
-                el.setAttribute('readonly', 'true');
             });
         };
         
@@ -305,7 +339,6 @@ def render_grid_buttons(options, state_key, columns):
                 if opt.strip() == "": st.write("") 
                 else:
                     btn_type = "primary" if st.session_state[state_key] == opt else "secondary"
-                    # 버튼 생성 시 label 공백 추가로 높이 균형 유지
                     if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
@@ -515,12 +548,10 @@ if st.session_state.current_page == "analysis":
     if df.empty: 
         st.warning("저장된 데이터가 없습니다.")
     else:
-        # 데이터 시각화를 위한 숫자형 데이터 전처리
         numeric_cols = ["검사 수량", "양품수량", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        # 💡 분석 대시보드 렌더링
         st.markdown("<hr>", unsafe_allow_html=True)
         g_col1, g_col2 = st.columns(2)
         
@@ -632,13 +663,8 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                scan_in, scan_btn = st.columns([0.7, 0.3])
-                with scan_in:
-                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
-                with scan_btn:
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        st.rerun()
+                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
+                    scanner_dialog()
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
