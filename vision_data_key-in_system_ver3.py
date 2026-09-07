@@ -170,10 +170,8 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 타이틀 및 입력창 폰트 크기 확대 */
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
 div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -187,7 +185,6 @@ button[kind="primary"], button[kind="secondary"] {
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
@@ -226,7 +223,6 @@ components.html(
                     btn.style.border = 'none';
                 }
                 
-                // 💡 메인 화면의 스캐너 실행 버튼 (초록색 디자인)
                 if (text.includes('📷 스캐너 실행')) {
                     btn.style.backgroundColor = '#d4edda';
                     btn.style.color = '#155724';
@@ -235,25 +231,8 @@ components.html(
             });
         };
         
-        const styleScanner = () => {
-            if (!window.parent.document) return;
-            // 💡 팝업 내 스캐너 전용 입력창(Placeholder 기준) 초록색 처리
-            window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('여기를 터치하여 스캔하세요')) {
-                    el.style.backgroundColor = '#d4edda';
-                    el.style.color = '#155724';
-                    let parentDiv = el.parentElement;
-                    if (parentDiv) {
-                        parentDiv.style.backgroundColor = '#d4edda';
-                        parentDiv.style.border = '2px solid #28a745';
-                    }
-                }
-            });
-        };
-
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 1. 날짜 및 시간 입력창 키보드 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 if (placeholder.includes('YYYY') || placeholder.includes('HH:MM')) {
@@ -261,16 +240,15 @@ components.html(
                     el.setAttribute('readonly', 'true');
                 }
             });
-            // 💡 2. 드롭다운(Selectbox) 검색 숨김 입력창 키보드 완벽 차단 (터치 시 키보드 팝업 금지)
             window.parent.document.querySelectorAll('div[data-baseweb="select"] input').forEach(el => {
                 el.setAttribute('inputmode', 'none');
                 el.setAttribute('readonly', 'true');
             });
         };
         
-        const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
+        const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); });
         if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
-        disableKeyboard(); formatNavButtons(); styleScanner();
+        disableKeyboard(); formatNavButtons(); 
     }
     </script>
     """, height=0, width=0
@@ -364,34 +342,78 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (스캐너, 숫자 패드, SBL)
+# 💡 팝업 모달 함수 (라이브 스캐너, 숫자 패드, SBL)
 # ----------------------------------------------------
-@st.dialog("📷 바코드/QR 스캐너")
+@st.dialog("📷 라이브 카메라 스캐너", width="large")
 def scanner_dialog():
-    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#d4edda; border-radius:10px; margin-bottom:15px; border:2px solid #28a745;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:10px; background:#d4edda; border-radius:8px; margin-bottom:15px; border:2px solid #28a745;'>카메라 렌즈를 바코드에 맞추면 자동으로 인식 및 적용됩니다.</div>", unsafe_allow_html=True)
     
-    # 이 입력창은 스캐너 앱(키보드)이 올라와야 하므로 키보드 차단 로직에서 제외(placeholder 조건)
-    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
+    # 이 입력창에 JS가 인식한 값을 자동으로 넣습니다. CSS로 숨깁니다.
+    raw_scan = st.text_input("스캔", key="hidden_scan_target", label_visibility="collapsed", placeholder="hidden_scan_target")
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("적용 (Enter)", type="primary", use_container_width=True):
-        if raw_scan:
-            st.session_state.scanned_raw_data = raw_scan
-            parts = [p for p in raw_scan.split('$') if p]
-            if len(parts) >= 5:
-                plating_code = parts[2]
-                if plating_code == 'S110': st.session_state.plating_type = 'A'
-                elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                
-                date_str = parts[3]
-                if len(date_str) == 8 and date_str.isdigit():
-                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                    except ValueError: pass
-                
-                st.session_state.lot_input_field = parts[4]
-            else:
-                st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
+    if raw_scan:
+        st.session_state.scanned_raw_data = raw_scan
+        parts = [p for p in raw_scan.split('$') if p]
+        if len(parts) >= 5:
+            plating_code = parts[2]
+            if plating_code == 'S110': st.session_state.plating_type = 'A'
+            elif plating_code == 'S112': st.session_state.plating_type = 'B'
+            date_str = parts[3]
+            if len(date_str) == 8 and date_str.isdigit():
+                try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                except ValueError: pass
+            st.session_state.lot_input_field = parts[4]
+        else:
+            st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
         st.rerun()
+
+    # JS 라이브러리를 사용해 카메라 스캐너 구동
+    components.html(
+        """
+        <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+        <style>
+            #reader { border: none !important; }
+            #reader button { padding: 10px 20px; font-size: 16px; font-weight: bold; background-color: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 10px 0; }
+            #reader select { padding: 10px; font-size: 16px; width: 100%; border-radius: 8px; margin-bottom: 10px; }
+            #reader__dashboard_section_csr span { font-size: 16px; font-weight: bold; }
+        </style>
+        <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; border: 2px solid #28a745;"></div>
+        <script>
+            function onScanSuccess(decodedText, decodedResult) {
+                const inputs = window.parent.document.querySelectorAll('input');
+                let targetInput = null;
+                for (let i = 0; i < inputs.length; i++) {
+                    if (inputs[i].getAttribute('placeholder') === "hidden_scan_target") {
+                        targetInput = inputs[i];
+                        break;
+                    }
+                }
+                if (targetInput) {
+                    let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                    nativeInputValueSetter.call(targetInput, decodedText);
+                    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    html5QrcodeScanner.clear(); // 인식 성공 시 카메라 정지
+                }
+            }
+            
+            let html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+            html5QrcodeScanner.render(onScanSuccess);
+
+            // Hide the ugly text input area natively in JS
+            setTimeout(() => {
+                const inputs = window.parent.document.querySelectorAll('input');
+                for (let i = 0; i < inputs.length; i++) {
+                    if (inputs[i].getAttribute('placeholder') === "hidden_scan_target") {
+                        let parentDiv = inputs[i].parentElement.parentElement;
+                        if(parentDiv) { parentDiv.style.display = 'none'; }
+                        break;
+                    }
+                }
+            }, 100);
+        </script>
+        """, height=500
+    )
 
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
@@ -509,9 +531,7 @@ elif st.session_state.current_page == "input":
 
         st.markdown("<hr>", unsafe_allow_html=True)
         
-        # 💡 스캔 팝업 버튼 (1x5)
         with st.container():
-            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
             with sc1:
