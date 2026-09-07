@@ -51,7 +51,8 @@ default_state = {
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
-    "rear_warned": False, "offset_warned": False
+    "rear_warned": False, "offset_warned": False,
+    "numpad_buffer": "" # 💡 자체 숫자패드 누적 입력용 버퍼
 }
 
 for key, value in default_state.items():
@@ -159,7 +160,7 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 우측 툴바 제거 */
+/* 우측 툴바 완전 제거 */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
 #MainMenu { display: none !important; } 
@@ -170,7 +171,7 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 💡 타이틀 및 입력창 폰트 크기 확대 */
+/* 타이틀 및 입력창 폰트 크기 확대 */
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
 /* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
@@ -360,12 +361,25 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (자체 숫자 패드 및 SBL)
+# 💡 팝업 모달 함수 (자체 숫자 패드 누적 입력 적용)
 # ----------------------------------------------------
-@st.dialog("🔢 숫자 패드 입력")
+def pad_callback(digit):
+    """숫자 버튼 클릭 시 세션 버퍼에 누적하는 콜백 함수"""
+    c_val = st.session_state.numpad_buffer
+    if digit == "C": 
+        st.session_state.numpad_buffer = ""
+    elif digit == "⬅": 
+        st.session_state.numpad_buffer = c_val[:-1]
+    else:
+        if len(c_val) < 8: 
+            st.session_state.numpad_buffer = c_val + digit
+
+@st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
-    current_val = str(st.session_state[field_key])
-    st.markdown(f"<div style='text-align:center; font-size:2rem; font-weight:bold; color:#1e293b; padding:15px; background:#e2e8f0; border-radius:10px; margin-bottom:15px;'>{display_name}<br><span style='color:#3b82f6;'>{int(current_val if current_val else 0):,}</span></div>", unsafe_allow_html=True)
+    c_val = st.session_state.numpad_buffer
+    
+    # 누적된 숫자 표시창
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f1f5f9; border-radius:10px; margin-bottom:15px; border:2px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -374,24 +388,20 @@ def numpad_dialog(field_key, display_name):
         ["C", "0", "⬅"]
     ]
     
+    # 한 자리씩 누적 (팝업 닫히지 않음)
     for r in pad_rows:
         cols = st.columns(3)
         for i, val in enumerate(r):
             with cols[i]:
-                if st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True):
-                    c_val = str(st.session_state[field_key])
-                    if c_val == "0": c_val = ""
+                st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True, on_click=pad_callback, args=(val,))
                     
-                    if val == "C": 
-                        st.session_state[field_key] = 0
-                    elif val == "⬅": 
-                        st.session_state[field_key] = int(c_val[:-1]) if len(c_val) > 1 else 0
-                    else:
-                        n_val = c_val + val
-                        if len(n_val) < 8: st.session_state[field_key] = int(n_val)
-                    st.rerun()
-                    
-    st.info("💡 입력을 마치면 창 바깥을 터치하거나 우측 상단의 ✖ 를 누르세요.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 💡 엔터를 눌러야만 메인 화면 변수에 저장되고 팝업이 닫힘
+    if st.button("적용 (Enter)", type="primary", use_container_width=True):
+        st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
+        st.session_state.numpad_buffer = "" # 다음 입력을 위해 초기화
+        st.rerun()
 
 @st.dialog("SBL Warning!")
 def show_sbl_warning(defect_type, rate):
@@ -564,18 +574,20 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
     elif step == 4:
-        # 💡 계산 로직 
+        # 💡 자동 계산 로직
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
-        # 💡 숫자 패드 호출용 커스텀 버튼 (텍스트 박스 대신 사용)
-        st.markdown("**🚨 수량 입력 (입력 버튼을 터치하면 자체 숫자 패드 팝업이 나타납니다)**")
+        st.markdown("**🚨 수량 입력 (터치 시 전용 숫자 패드가 나타납니다)**")
         q1, q2, q3 = st.columns(3)
         with q1: 
             st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
         with q2: 
             st.markdown("**양품수량**")
+            # 양품수량 입력 버튼
             if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
+                val = str(st.session_state.good_qty)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("good_qty", "양품수량")
         with q3: 
             st.text_input("**불량수량 (자동)**", value=f"{bad_qty:,}", disabled=True)
@@ -585,28 +597,40 @@ elif st.session_state.current_page == "input":
         with c1: 
             st.markdown("**완전불량**")
             if st.button(f"{st.session_state.comp_def:,}", key="f_comp", use_container_width=True): 
+                val = str(st.session_state.comp_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("comp_def", "완전불량")
         with c2: 
             st.markdown("**전면불량**")
             if st.button(f"{st.session_state.front_def:,}", key="f_front", use_container_width=True): 
+                val = str(st.session_state.front_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("front_def", "전면불량")
         with c3: 
             st.markdown("**배면불량**")
             if st.button(f"{st.session_state.rear_def:,}", key="f_rear", use_container_width=True): 
+                val = str(st.session_state.rear_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("rear_def", "배면불량")
         
         c4, c5, c6, c7 = st.columns(4)
         with c4: 
             st.markdown("**옵셋불량**")
             if st.button(f"{st.session_state.offset_def:,}", key="f_off", use_container_width=True): 
+                val = str(st.session_state.offset_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("offset_def", "옵셋불량")
         with c5: 
             st.markdown("**수량부족**")
             if st.button(f"{st.session_state.shortage_qty:,}", key="f_short", use_container_width=True): 
+                val = str(st.session_state.shortage_qty)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("shortage_qty", "수량부족")
         with c6: 
             st.markdown("**기타**")
             if st.button(f"{st.session_state.etc_def:,}", key="f_etc", use_container_width=True): 
+                val = str(st.session_state.etc_def)
+                st.session_state.numpad_buffer = val if val != "0" else ""
                 numpad_dialog("etc_def", "기타")
         with c7: 
             st.session_state.oqc_status = st.selectbox("**OQC**", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status))
