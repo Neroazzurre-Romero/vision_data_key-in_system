@@ -157,7 +157,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (높이 정렬 완벽 적용)
+# 마법 코드 1: UI 디자인 커스텀 (드롭다운/입력창 버튼화)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -173,38 +173,44 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 핵심 해결: 모든 종류의 입력창 래퍼 컨테이너 높이를 3.8rem으로 강제 확장 */
-[data-testid="stTextInput"] div[data-baseweb="input"] > div,
-[data-testid="stDateInput"] div[data-baseweb="input"] > div,
-[data-testid="stTimeInput"] div[data-baseweb="input"] > div,
-[data-testid="stNumberInput"] div[data-baseweb="input"] > div,
-[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-    min-height: 3.8rem !important;
+/* 💡 핵심: 모든 입력창을 버튼과 똑같은 크기(3.8rem)의 컨테이너로 강제 고정 */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     height: 3.8rem !important;
+    min-height: 3.8rem !important;
+    max-height: 3.8rem !important;
     border-radius: 8px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 !important;
 }
 
-/* 텍스트 크기 및 중앙 정렬 */
-[data-baseweb="input"] input,
-[data-baseweb="select"] span {
-    font-size: 1.2rem !important;
-    font-weight: bold !important;
-}
-
-[data-baseweb="input"] input {
-    text-align: center !important;
-}
-
-/* 드롭다운(Select) 내부 텍스트 세로 중앙 정렬 보정 */
-[data-baseweb="select"] > div > div {
+/* 💡 드롭다운 내부의 배경과 테두리를 완벽하게 날려서 버튼 껍데기만 남기는 효과 (작업자님 아이디어 적용) */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
     height: 100% !important;
     display: flex !important;
     align-items: center !important;
+    background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+}
+
+/* 텍스트 크기 및 중앙 정렬 통일 */
+div[data-baseweb="input"] input,
+div[data-baseweb="select"] span {
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+}
+div[data-baseweb="input"] input {
+    text-align: center !important;
 }
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-/* 💡 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
+/* 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
@@ -233,7 +239,7 @@ div[data-testid="stButton"] button {
     width: 100% !important;
 }
 
-/* 💡 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
+/* 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -251,7 +257,7 @@ div[data-testid="stButton"] button {
     color: white !important; 
     border: 1px solid #2563eb !important; 
 }
-/* 💡 비활성화된 사이드바 버튼 (옅은 회색으로 변경) */
+/* 비활성화된 사이드바 버튼 (옅은 회색) */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: #475569 !important; 
     color: #f8fafc !important; 
@@ -354,7 +360,6 @@ def render_grid_buttons(options, state_key, columns):
                 if opt.strip() == "": st.write("") 
                 else:
                     btn_type = "primary" if st.session_state[state_key] == opt else "secondary"
-                    # 버튼 생성 시 label 공백 추가로 높이 균형 유지
                     if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
