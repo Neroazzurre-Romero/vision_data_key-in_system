@@ -52,7 +52,8 @@ default_state = {
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
     "rear_warned": False, "offset_warned": False,
-    "numpad_buffer": ""
+    "numpad_buffer": "",
+    "timepad_buffer": ""
 }
 
 for key, value in default_state.items():
@@ -156,7 +157,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀
+# 마법 코드 1: UI 디자인 커스텀 및 사이드바 토글 복구
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -166,14 +167,15 @@ hide_streamlit_style = """
 footer { display: none !important; } 
 header[data-testid="stHeader"] { background: transparent !important; }
 
+/* 💡 사이드바 닫혔을 때 다시 펴는 토글 버튼 강제 노출 */
+[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
+
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 타이틀 및 입력창 폰트 크기 확대 */
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
 div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -187,7 +189,6 @@ button[kind="primary"], button[kind="secondary"] {
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
-/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
@@ -225,21 +226,13 @@ components.html(
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
-                
-                // 💡 스캐너 실행 버튼 (초록색 디자인)
-                if (text.includes('📷 스캐너 실행')) {
-                    btn.style.backgroundColor = '#d4edda';
-                    btn.style.color = '#155724';
-                    btn.style.border = '2px solid #28a745';
-                }
             });
         };
         
         const styleScanner = () => {
             if (!window.parent.document) return;
-            // 💡 팝업 내 스캐너 전용 입력창(Placeholder 기준) 초록색 배경 처리
             window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('여기를 터치하여 스캔하세요')) {
+                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
                     el.style.backgroundColor = '#d4edda';
                     el.style.color = '#155724';
                     let parentDiv = el.parentElement;
@@ -253,10 +246,12 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 드롭다운 및 날짜/시간 선택 시 태블릿 가상 키보드 팝업 완벽 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
-                if (placeholder.includes('YYYY') || placeholder.includes('HH:MM')) {
+                const ariaLabel = el.getAttribute('aria-label') || '';
+                
+                if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
+                    ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select')) {
                     el.setAttribute('inputmode', 'none');
                     el.setAttribute('readonly', 'true');
                 }
@@ -363,13 +358,12 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (스캐너, 숫자 패드, SBL)
+# 💡 팝업 모달 함수 (스캐너, 숫자 패드, 시간 패드, SBL)
 # ----------------------------------------------------
 @st.dialog("📷 바코드/QR 스캐너")
 def scanner_dialog():
     st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#d4edda; border-radius:10px; margin-bottom:15px; border:2px solid #28a745;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
     
-    # 이 입력창은 스캐너 앱(키보드)이 올라와야 하므로 키보드 차단 로직에서 제외(placeholder 조건)
     raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -425,6 +419,54 @@ def numpad_dialog(field_key, display_name):
         st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
         st.session_state.numpad_buffer = "" 
         st.rerun()
+
+def timepad_callback(digit):
+    c_val = st.session_state.timepad_buffer
+    if digit == "C": 
+        st.session_state.timepad_buffer = ""
+    elif digit == "⬅": 
+        st.session_state.timepad_buffer = c_val[:-1]
+    else:
+        if len(c_val) < 4: 
+            st.session_state.timepad_buffer = c_val + digit
+
+@st.dialog("⏰ 시간 입력 패드 (HH:MM)")
+def timepad_dialog(field_key, display_name):
+    c_val = st.session_state.timepad_buffer
+    display_str = c_val.ljust(4, "_")
+    display_str = f"{display_str[:2]}:{display_str[2:]}"
+    
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f1f5f9; border-radius:10px; margin-bottom:15px; border:2px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
+    
+    pad_rows = [
+        ["7", "8", "9"],
+        ["4", "5", "6"],
+        ["1", "2", "3"],
+        ["C", "0", "⬅"]
+    ]
+    
+    for r in pad_rows:
+        cols = st.columns(3)
+        for i, val in enumerate(r):
+            with cols[i]:
+                st.button(val, key=f"tpad_{field_key}_{val}", use_container_width=True, on_click=timepad_callback, args=(val,))
+                    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("적용 (Enter)", type="primary", use_container_width=True):
+        if len(st.session_state.timepad_buffer) == 4:
+            try:
+                h = int(st.session_state.timepad_buffer[:2])
+                m = int(st.session_state.timepad_buffer[2:])
+                if 0 <= h <= 23 and 0 <= m <= 59:
+                    st.session_state[field_key] = dt_time(h, m)
+                    st.session_state.timepad_buffer = "" 
+                    st.rerun()
+                else:
+                    st.error("유효한 시간(00~23)과 분(00~59)을 입력하세요.")
+            except ValueError:
+                pass
+        else:
+            st.error("4자리 숫자를 모두 입력하세요 (예: 0830)")
 
 @st.dialog("SBL Warning!")
 def show_sbl_warning(defect_type, rate):
@@ -489,6 +531,28 @@ elif st.session_state.current_page == "input":
 
     step = st.session_state.step
 
+    def parse_scanned_data():
+        raw_val = st.session_state.scanned_raw_data
+        if not raw_val: return
+        if '$' in raw_val:
+            parts = [p for p in raw_val.split('$') if p]
+            if len(parts) >= 5:
+                plating_code = parts[2]
+                if plating_code == 'S110': st.session_state.plating_type = 'A'
+                elif plating_code == 'S112': st.session_state.plating_type = 'B'
+                
+                date_str = parts[3]
+                if len(date_str) == 8 and date_str.isdigit():
+                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                    except ValueError: pass
+                
+                st.session_state.lot_input_field = parts[4]
+            else:
+                st.session_state.lot_input_field = parts[-1]
+        else:
+            st.session_state.lot_input_field = raw_val
+        st.session_state.scanned_raw_data = "" 
+
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -509,11 +573,11 @@ elif st.session_state.current_page == "input":
         st.markdown("<hr>", unsafe_allow_html=True)
         
         with st.container():
+            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                # 💡 메인 화면의 스캐너 실행 버튼 (터치 시 팝업 열림)
                 if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
                     scanner_dialog()
             with sc2:
@@ -535,14 +599,30 @@ elif st.session_state.current_page == "input":
 
     elif step == 2:
         c1, c2, c3 = st.columns(3)
-        with c1: st.session_state.start_date = st.date_input("**시작일**", value=st.session_state.start_date)
-        with c2: st.session_state.start_time = st.time_input("**시작시간**", value=st.session_state.start_time)
-        with c3: st.session_state.idle_time = st.number_input("**휴동시간 (분)**", min_value=0, value=st.session_state.idle_time)
+        with c1: 
+            st.session_state.start_date = st.date_input("**시작일**", value=st.session_state.start_date)
+        with c2: 
+            st.markdown("**시작시간**")
+            time_str = st.session_state.start_time.strftime("%H:%M")
+            if st.button(time_str, key="btn_start_time", use_container_width=True):
+                st.session_state.timepad_buffer = st.session_state.start_time.strftime("%H%M")
+                timepad_dialog("start_time", "시작시간")
+        with c3: 
+            st.markdown("**휴동시간 (분)**")
+            if st.button(f"{st.session_state.idle_time:,}", key="btn_idle_time", use_container_width=True):
+                st.session_state.numpad_buffer = str(st.session_state.idle_time) if st.session_state.idle_time != 0 else ""
+                numpad_dialog("idle_time", "휴동시간 (분)")
         
         st.markdown("<br>", unsafe_allow_html=True)
         c4, c5, c6 = st.columns(3)
-        with c4: st.session_state.end_date = st.date_input("**종료일**", value=st.session_state.end_date)
-        with c5: st.session_state.end_time = st.time_input("**종료시간**", value=st.session_state.end_time)
+        with c4: 
+            st.session_state.end_date = st.date_input("**종료일**", value=st.session_state.end_date)
+        with c5: 
+            st.markdown("**종료시간**")
+            time_str = st.session_state.end_time.strftime("%H:%M")
+            if st.button(time_str, key="btn_end_time", use_container_width=True):
+                st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
+                timepad_dialog("end_time", "종료시간")
         with c6: 
             start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
             end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
@@ -564,7 +644,10 @@ elif st.session_state.current_page == "input":
             st.markdown("**도장라인**")
             render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
         with c3: 
-            st.session_state.painting_order = st.number_input("**도장순서**", min_value=1, value=st.session_state.painting_order)
+            st.markdown("**도장순서**")
+            if st.button(f"{st.session_state.painting_order:,}", key="btn_paint_order", use_container_width=True):
+                st.session_state.numpad_buffer = str(st.session_state.painting_order) if st.session_state.painting_order != 0 else ""
+                numpad_dialog("painting_order", "도장순서")
         
         st.markdown("<hr style='margin: 30px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
         
