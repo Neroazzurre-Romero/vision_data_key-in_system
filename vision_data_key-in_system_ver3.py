@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import os
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import time
 from io import BytesIO
 from openpyxl.styles import Font
@@ -157,25 +157,21 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 및 사이드바 토글 복구
+# 마법 코드 1: UI 디자인 커스텀 (불필요한 헤더 조작 제거)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-[data-testid="stToolbar"] { display: none !important; }
-[data-testid="stDecoration"] { display: none !important; }
-#MainMenu { display: none !important; } 
+/* 푸터만 제거하고 헤더 및 툴바 숨김 처리는 모두 롤백 (로그아웃 시 자동 해결) */
 footer { display: none !important; } 
-header[data-testid="stHeader"] { background: transparent !important; }
-
-/* 💡 사이드바 닫혔을 때 다시 펴는 토글 버튼 강제 노출 */
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+.block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
+/* 타이틀 및 입력창 폰트 크기 확대 */
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
+/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
 div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -189,6 +185,7 @@ button[kind="primary"], button[kind="secondary"] {
 }
 button[kind="primary"]:hover { background-color: #3b5068 !important; }
 
+/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { height: 120px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; background-color: transparent !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
@@ -246,6 +243,7 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
+            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 완벽 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 const ariaLabel = el.getAttribute('aria-label') || '';
