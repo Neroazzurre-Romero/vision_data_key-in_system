@@ -157,7 +157,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (드롭다운 높이 완벽 정렬)
+# 마법 코드 1: UI 디자인 커스텀 (높이 정렬 완벽 적용)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -173,32 +173,33 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 모든 입력창(텍스트, 드롭다운, 날짜)과 버튼 높이를 3.8rem으로 완벽하게 일치화 */
-div[data-baseweb="input"] > div, 
-div[data-baseweb="select"] > div,
-div[data-baseweb="datepicker"] > div { 
-    height: 3.8rem !important; 
-    min-height: 3.8rem !important; 
-    border-radius: 8px !important; 
-    display: flex !important;
-    align-items: center !important;
+/* 💡 핵심 해결: 모든 종류의 입력창 래퍼 컨테이너 높이를 3.8rem으로 강제 확장 */
+[data-testid="stTextInput"] div[data-baseweb="input"] > div,
+[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+[data-testid="stTimeInput"] div[data-baseweb="input"] > div,
+[data-testid="stNumberInput"] div[data-baseweb="input"] > div,
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    min-height: 3.8rem !important;
+    height: 3.8rem !important;
+    border-radius: 8px !important;
 }
 
-/* 셀렉트박스 내부 텍스트 세로 중앙 정렬 보정 */
-div[data-baseweb="select"] > div > div {
+/* 텍스트 크기 및 중앙 정렬 */
+[data-baseweb="input"] input,
+[data-baseweb="select"] span {
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+}
+
+[data-baseweb="input"] input {
+    text-align: center !important;
+}
+
+/* 드롭다운(Select) 내부 텍스트 세로 중앙 정렬 보정 */
+[data-baseweb="select"] > div > div {
     height: 100% !important;
     display: flex !important;
     align-items: center !important;
-}
-
-div[data-baseweb="input"] input, 
-div[data-baseweb="select"] div,
-div[data-baseweb="select"] span { 
-    font-size: 1.2rem !important; 
-    font-weight: bold !important; 
-}
-div[data-baseweb="input"] input {
-    text-align: center !important; 
 }
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -209,7 +210,7 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 메인 남색 테마 원복 및 높이 정렬 */
+/* 💡 메인 남색 테마 원복 및 버튼 높이 3.8rem 정렬 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -232,7 +233,7 @@ div[data-testid="stButton"] button {
     width: 100% !important;
 }
 
-/* 사이드바 크기 조정 */
+/* 💡 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -250,7 +251,7 @@ div[data-testid="stButton"] button {
     color: white !important; 
     border: 1px solid #2563eb !important; 
 }
-/* 비활성화된 사이드바 버튼 (옅은 회색) */
+/* 💡 비활성화된 사이드바 버튼 (옅은 회색으로 변경) */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: #475569 !important; 
     color: #f8fafc !important; 
@@ -311,6 +312,7 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
+            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 강력 차단 (blur 추가)
             const inputs = window.parent.document.querySelectorAll('input');
             inputs.forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
@@ -352,6 +354,7 @@ def render_grid_buttons(options, state_key, columns):
                 if opt.strip() == "": st.write("") 
                 else:
                     btn_type = "primary" if st.session_state[state_key] == opt else "secondary"
+                    # 버튼 생성 시 label 공백 추가로 높이 균형 유지
                     if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
