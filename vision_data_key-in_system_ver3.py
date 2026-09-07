@@ -157,15 +157,12 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀
+# 마법 코드 1: UI 디자인 커스텀 (드롭다운 높이 완벽 정렬)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-[data-testid="stToolbar"] { display: none !important; }
-[data-testid="stDecoration"] { display: none !important; }
-#MainMenu { display: none !important; } 
+/* 푸터 숨김 */
 footer { display: none !important; } 
-header[data-testid="stHeader"] { background: transparent !important; }
 
 /* 사이드바 토글 강제 노출 */
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
@@ -176,17 +173,34 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 입력창과 버튼 높이 완벽 일치 (3.8rem 고정) */
-div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { 
+/* 💡 모든 입력창(텍스트, 드롭다운, 날짜)과 버튼 높이를 3.8rem으로 완벽하게 일치화 */
+div[data-baseweb="input"] > div, 
+div[data-baseweb="select"] > div,
+div[data-baseweb="datepicker"] > div { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
     border-radius: 8px !important; 
+    display: flex !important;
+    align-items: center !important;
 }
-div[data-baseweb="input"] input, div[data-baseweb="select"] div { 
+
+/* 셀렉트박스 내부 텍스트 세로 중앙 정렬 보정 */
+div[data-baseweb="select"] > div > div {
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+div[data-baseweb="input"] input, 
+div[data-baseweb="select"] div,
+div[data-baseweb="select"] span { 
     font-size: 1.2rem !important; 
     font-weight: bold !important; 
+}
+div[data-baseweb="input"] input {
     text-align: center !important; 
 }
+
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
 /* 💡 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
@@ -218,7 +232,7 @@ div[data-testid="stButton"] button {
     width: 100% !important;
 }
 
-/* 💡 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
+/* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -236,7 +250,7 @@ div[data-testid="stButton"] button {
     color: white !important; 
     border: 1px solid #2563eb !important; 
 }
-/* 💡 비활성화된 사이드바 버튼 (옅은 회색으로 변경) */
+/* 비활성화된 사이드바 버튼 (옅은 회색) */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: #475569 !important; 
     color: #f8fafc !important; 
@@ -297,7 +311,6 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 강력 차단 (blur 추가)
             const inputs = window.parent.document.querySelectorAll('input');
             inputs.forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
@@ -311,7 +324,7 @@ components.html(
                     
                     el.setAttribute('inputmode', 'none');
                     el.setAttribute('readonly', 'readonly');
-                    // 포커스 시 즉각 블러 처리하여 키보드 호출 방지
+                    // 포커스 시 즉각 블러 처리하여 키보드 호출 원천 방지
                     el.addEventListener('focus', function(e) {
                         e.target.blur();
                     });
@@ -663,8 +676,13 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
-                    scanner_dialog()
+                scan_in, scan_btn = st.columns([0.7, 0.3])
+                with scan_in:
+                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
+                with scan_btn:
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        st.rerun()
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
