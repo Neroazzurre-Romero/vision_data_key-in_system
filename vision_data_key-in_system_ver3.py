@@ -157,33 +157,60 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (불필요한 헤더 조작 제거)
+# 마법 코드 1: UI 디자인 커스텀 (높이 정렬 및 색상 원복)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 푸터만 제거하고 헤더 및 툴바 숨김 처리는 모두 롤백 (로그아웃 시 자동 해결) */
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+#MainMenu { display: none !important; } 
 footer { display: none !important; } 
+header[data-testid="stHeader"] { background: transparent !important; }
+
+/* 사이드바 토글 강제 노출 */
+[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 타이틀 및 입력창 폰트 크기 확대 */
-div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.3rem !important; font-weight: 800 !important; color: #1e293b !important; }
+div[data-testid="stMarkdownContainer"] p strong, div[data-testid="stWidgetLabel"] p, div[data-testid="stWidgetLabel"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 입력창 및 일반 버튼 4.0rem 높이 일치화 */
-div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 4.0rem !important; border-radius: 8px !important; }
-div[data-baseweb="input"] input, div[data-baseweb="select"] div { font-size: 1.3rem !important; font-weight: bold !important; text-align: center !important; }
+/* 💡 입력창과 버튼 높이 완벽 일치 (3.8rem 고정) */
+div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { 
+    height: 3.8rem !important; 
+    min-height: 3.8rem !important; 
+    border-radius: 8px !important; 
+}
+div[data-baseweb="input"] input, div[data-baseweb="select"] div { 
+    font-size: 1.2rem !important; 
+    font-weight: bold !important; 
+    text-align: center !important; 
+}
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-button[kind="primary"], button[kind="secondary"] { 
-    min-height: 4.0rem !important; 
-    font-size: 1.3rem !important; 
-    font-weight: bold !important; 
-    padding: 10px !important; 
-    border-radius: 8px !important;
+/* 💡 메인 남색 테마 원복 및 높이 정렬 */
+div[data-testid="stButton"] button[kind="primary"] {
+    background-color: #1e293b !important;
+    color: white !important;
+    border: 1px solid #1e293b !important;
 }
-button[kind="primary"]:hover { background-color: #3b5068 !important; }
+div[data-testid="stButton"] button[kind="primary"]:hover {
+    background-color: #0f172a !important;
+}
+div[data-testid="stButton"] button[kind="secondary"] {
+    background-color: white !important;
+    color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+}
+div[data-testid="stButton"] button { 
+    height: 3.8rem !important; 
+    min-height: 3.8rem !important; 
+    font-size: 1.2rem !important; 
+    font-weight: bold !important; 
+    border-radius: 8px !important;
+    width: 100% !important;
+}
 
 /* 사이드바 크기 조정 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
@@ -243,11 +270,9 @@ components.html(
         
         const disableKeyboard = () => {
             if (!window.parent.document) return;
-            // 💡 날짜 및 드롭다운 선택 시 태블릿 가상 키보드 팝업 완벽 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 const ariaLabel = el.getAttribute('aria-label') || '';
-                
                 if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
                     ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select')) {
                     el.setAttribute('inputmode', 'none');
@@ -280,6 +305,7 @@ def render_grid_buttons(options, state_key, columns):
                 if opt.strip() == "": st.write("") 
                 else:
                     btn_type = "primary" if st.session_state[state_key] == opt else "secondary"
+                    # 버튼 생성 시 label 공백 추가로 높이 균형 유지
                     if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
@@ -477,13 +503,43 @@ def show_sbl_warning(defect_type, rate):
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
-    st.markdown("## 종합 생산 데이터 분석")
-    if st.button("뒤로 가기 (데이터 입력 화면으로)", type="primary"):
-        st.session_state.current_page = "input"
-        st.rerun()
+    st.markdown("## 종합 생산 데이터 분석 📊")
+    
+    col1, col2 = st.columns([0.8, 0.2])
+    with col2:
+        if st.button("돌아가기 (데이터 입력)", type="primary", use_container_width=True):
+            st.session_state.current_page = "input"
+            st.rerun()
+            
     df = load_data().copy()
-    if df.empty: st.warning("데이터가 없습니다.")
-    else: st.dataframe(df.head(50))
+    if df.empty: 
+        st.warning("저장된 데이터가 없습니다.")
+    else:
+        # 데이터 시각화를 위한 숫자형 데이터 전처리
+        numeric_cols = ["검사 수량", "양품수량", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+
+        # 💡 분석 대시보드 렌더링
+        st.markdown("<hr>", unsafe_allow_html=True)
+        g_col1, g_col2 = st.columns(2)
+        
+        with g_col1:
+            st.markdown("### 일자별 양/불량 생산 현황")
+            df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
+            fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
+                          color_discrete_sequence=['#00b050', '#b22222'])
+            st.plotly_chart(fig1, use_container_width=True)
+            
+        with g_col2:
+            st.markdown("### 주요 불량 유형 비율")
+            defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
+            fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.4, 
+                          color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.plotly_chart(fig2, use_container_width=True)
+            
+        st.markdown("### 📋 저장된 전체 데이터")
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
 elif st.session_state.current_page == "input":
     
@@ -576,8 +632,13 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
-                    scanner_dialog()
+                scan_in, scan_btn = st.columns([0.7, 0.3])
+                with scan_in:
+                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
+                with scan_btn:
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        st.rerun()
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
