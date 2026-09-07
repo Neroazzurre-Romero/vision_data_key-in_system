@@ -157,11 +157,10 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 높이 3.8rem 완벽 동기화)
+# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 정렬 완벽화)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 푸터 숨김 */
 footer { display: none !important; } 
 
 /* 사이드바 토글 강제 노출 */
@@ -173,74 +172,45 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* ==========================================================
-   💡 핵심: 버튼 및 모든 입력창 높이를 정확히 3.8rem으로 강제 고정
-========================================================== */
-/* 1. 일반 버튼 높이 고정 */
-div[data-testid="stButton"] button { 
-    height: 3.8rem !important; 
-    min-height: 3.8rem !important; 
-    max-height: 3.8rem !important;
-    font-size: 1.2rem !important; 
-    font-weight: bold !important; 
-    border-radius: 8px !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-}
-
-/* 2. Selectbox, DateInput, TextInput 의 겉 껍데기(컨테이너) 높이 고정 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 3.8rem !important;
+/* 💡 모든 입력창(Select, Date, Text)을 일반 버튼과 완벽하게 동일한 스타일(3.8rem, 흰색 배경, 테두리)로 강제 고정 */
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
+    height: 3.8rem !important;
     border-radius: 8px !important;
     background-color: white !important;
     border: 1px solid #cbd5e1 !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
     box-shadow: none !important;
-    box-sizing: border-box !important;
 }
 
-/* 3. 실제 글자가 들어가는 내부 input 영역의 높이와 줄간격을 부모에 100% 맞춤 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
-div[data-testid="stDateInput"] input,
-div[data-testid="stTextInput"] input {
-    height: 3.8rem !important;
-    min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
-    line-height: 3.8rem !important;
+/* 셀렉트박스 내부 투명화 및 텍스트 중앙 정렬 */
+div[data-baseweb="select"] > div > div {
+    background-color: transparent !important;
+    border: none !important;
+    height: 100% !important;
+}
+
+[data-baseweb="input"] input,
+[data-baseweb="select"] span {
     font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
     color: #1e293b !important;
-    padding: 0 10px !important;
-    margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-sizing: border-box !important;
-}
-
-/* 드롭다운 우측 화살표 정렬 보정 */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
-    display: flex !important;
-    align-items: center !important;
-    height: 3.8rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-/* 날짜 및 셀렉트박스 커서 숨김 (추가 키보드 차단용) */
+/* 커서 숨김 */
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 💡 메인 남색 테마 원복 */
+/* 버튼 남색 테마 및 높이 정렬 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -254,27 +224,32 @@ div[data-testid="stButton"] button[kind="secondary"] {
     color: #1e293b !important;
     border: 1px solid #cbd5e1 !important;
 }
+div[data-testid="stButton"] button { 
+    height: 3.8rem !important; 
+    min-height: 3.8rem !important; 
+    font-size: 1.2rem !important; 
+    font-weight: bold !important; 
+    border-radius: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
 
-/* 💡 사이드바 크기 및 메뉴 버튼 색상(회색) 조정 */
+/* 사이드바 디자인 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
     height: 120px !important; 
-    max-height: 120px !important;
     justify-content: flex-start !important; 
     padding-left: 15px !important; 
     margin-bottom: 10px !important; 
     border-radius: 8px !important; 
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
-
-/* 활성화된 사이드바 버튼 (파란색) */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #3b82f6 !important; 
     color: white !important; 
     border: 1px solid #2563eb !important; 
 }
-/* 비활성화된 사이드바 버튼 (옅은 회색) */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: #475569 !important; 
     color: #f8fafc !important; 
@@ -674,6 +649,7 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
+    # 💡 모든 입력창의 label_visibility를 "collapsed"로 숨기고, st.markdown으로 통일시켜 여백 찌그러짐을 완벽히 해결함
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -701,13 +677,8 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                scan_in, scan_btn = st.columns([0.7, 0.3])
-                with scan_in:
-                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
-                with scan_btn:
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        st.rerun()
+                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
+                    scanner_dialog()
             with sc2:
                 st.markdown("**LOT (적용됨)**")
                 st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
