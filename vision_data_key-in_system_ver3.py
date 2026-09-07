@@ -225,21 +225,14 @@ components.html(
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
-                
-                // 💡 스캐너 실행 버튼 (초록색 디자인)
-                if (text.includes('📷 스캐너 실행')) {
-                    btn.style.backgroundColor = '#d4edda';
-                    btn.style.color = '#155724';
-                    btn.style.border = '2px solid #28a745';
-                }
             });
         };
         
         const styleScanner = () => {
             if (!window.parent.document) return;
-            // 💡 팝업 내 스캐너 전용 입력창(Placeholder 기준) 초록색 배경 처리
+            // 💡 메인 화면의 스캐너 입력창 초록색 배경 처리 (터치 시 키보드 활성화를 위해 inputmode 유지)
             window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('여기를 터치하여 스캔하세요')) {
+                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
                     el.style.backgroundColor = '#d4edda';
                     el.style.color = '#155724';
                     let parentDiv = el.parentElement;
@@ -363,35 +356,8 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (스캐너, 숫자 패드, SBL)
+# 💡 팝업 모달 함수 (숫자 패드, SBL)
 # ----------------------------------------------------
-@st.dialog("📷 바코드/QR 스캐너")
-def scanner_dialog():
-    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#d4edda; border-radius:10px; margin-bottom:15px; border:2px solid #28a745;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
-    
-    # 이 입력창은 스캐너 앱(키보드)이 올라와야 하므로 키보드 차단 로직에서 제외(placeholder 조건)
-    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("적용 (Enter)", type="primary", use_container_width=True):
-        if raw_scan:
-            st.session_state.scanned_raw_data = raw_scan
-            parts = [p for p in raw_scan.split('$') if p]
-            if len(parts) >= 5:
-                plating_code = parts[2]
-                if plating_code == 'S110': st.session_state.plating_type = 'A'
-                elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                
-                date_str = parts[3]
-                if len(date_str) == 8 and date_str.isdigit():
-                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                    except ValueError: pass
-                
-                st.session_state.lot_input_field = parts[4]
-            else:
-                st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
-        st.rerun()
-
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
     if digit == "C": 
@@ -489,6 +455,28 @@ elif st.session_state.current_page == "input":
 
     step = st.session_state.step
 
+    def parse_scanned_data():
+        raw_val = st.session_state.scanned_raw_data
+        if not raw_val: return
+        if '$' in raw_val:
+            parts = [p for p in raw_val.split('$') if p]
+            if len(parts) >= 5:
+                plating_code = parts[2]
+                if plating_code == 'S110': st.session_state.plating_type = 'A'
+                elif plating_code == 'S112': st.session_state.plating_type = 'B'
+                
+                date_str = parts[3]
+                if len(date_str) == 8 and date_str.isdigit():
+                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                    except ValueError: pass
+                
+                st.session_state.lot_input_field = parts[4]
+            else:
+                st.session_state.lot_input_field = parts[-1]
+        else:
+            st.session_state.lot_input_field = raw_val
+        st.session_state.scanned_raw_data = "" 
+
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -509,13 +497,13 @@ elif st.session_state.current_page == "input":
         st.markdown("<hr>", unsafe_allow_html=True)
         
         with st.container():
+            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                # 💡 메인 화면의 스캐너 실행 버튼 (터치 시 팝업 열림)
-                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
-                    scanner_dialog()
+                # 💡 스캐너 팝업을 지우고, 키보드 스캐너 앱을 바로 띄울 수 있도록 일반 텍스트 인풋으로 원상 복구
+                st.text_input("스캔 데이터", key="scanned_raw_data", on_change=parse_scanned_data, label_visibility="collapsed", placeholder="스캐너 앱 실행")
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
