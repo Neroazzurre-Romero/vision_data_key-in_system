@@ -157,10 +157,11 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 정렬 완벽화)
+# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 정렬 완벽화 및 150px 버튼 제어)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
+/* 푸터 숨김 */
 footer { display: none !important; } 
 
 /* 사이드바 토글 강제 노출 */
@@ -172,34 +173,57 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 모든 입력창(Select, Date, Text)을 일반 버튼과 완벽하게 동일한 스타일(3.8rem, 흰색 배경, 테두리)로 강제 고정 */
-[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-[data-testid="stDateInput"] div[data-baseweb="input"] > div,
-[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    min-height: 3.8rem !important;
+/* 💡 핵심: 버튼 및 모든 입력창 높이를 정확히 3.8rem으로 강제 고정 */
+div[data-testid="stButton"] button { 
+    height: 3.8rem !important; 
+    min-height: 3.8rem !important; 
+    max-height: 3.8rem !important;
+    font-size: 1.2rem !important; 
+    font-weight: bold !important; 
+    border-radius: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
+div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     height: 3.8rem !important;
+    min-height: 3.8rem !important;
+    max-height: 3.8rem !important;
     border-radius: 8px !important;
     background-color: white !important;
     border: 1px solid #cbd5e1 !important;
-    display: flex !important;
-    align-items: center !important;
-    padding: 0 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     box-shadow: none !important;
+    box-sizing: border-box !important;
 }
 
-/* 셀렉트박스 내부 투명화 및 텍스트 중앙 정렬 */
-div[data-baseweb="select"] > div > div {
-    background-color: transparent !important;
-    border: none !important;
-    height: 100% !important;
-}
-
-[data-baseweb="input"] input,
-[data-baseweb="select"] span {
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
+div[data-testid="stDateInput"] input,
+div[data-testid="stTextInput"] input {
+    height: 3.8rem !important;
+    min-height: 3.8rem !important;
+    max-height: 3.8rem !important;
+    line-height: 3.8rem !important;
     font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
     color: #1e293b !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-sizing: border-box !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    height: 3.8rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
@@ -210,7 +234,7 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 버튼 남색 테마 및 높이 정렬 */
+/* 💡 메인 남색 테마 원복 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -224,27 +248,20 @@ div[data-testid="stButton"] button[kind="secondary"] {
     color: #1e293b !important;
     border: 1px solid #cbd5e1 !important;
 }
-div[data-testid="stButton"] button { 
-    height: 3.8rem !important; 
-    min-height: 3.8rem !important; 
-    font-size: 1.2rem !important; 
-    font-weight: bold !important; 
-    border-radius: 8px !important;
-    width: 100% !important;
-    margin: 0 !important;
-}
 
-/* 사이드바 디자인 */
+/* 사이드바 크기 및 색상 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
     height: 120px !important; 
+    max-height: 120px !important;
     justify-content: flex-start !important; 
     padding-left: 15px !important; 
     margin-bottom: 10px !important; 
     border-radius: 8px !important; 
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
+
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #3b82f6 !important; 
     color: white !important; 
@@ -273,19 +290,21 @@ components.html(
             const buttons = window.parent.document.querySelectorAll('button');
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
-                if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; btn.style.height = '65px'; }
-                if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; btn.style.height = '65px'; }
+                if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; btn.style.setProperty('height', '65px', 'important'); }
+                if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; btn.style.setProperty('height', '65px', 'important'); }
                 
                 if (text.includes('데이터 최종 저장')) { 
-                    btn.style.height = '150px'; 
-                    btn.style.marginTop = '42px'; 
-                    btn.style.fontSize = '22px'; 
-                    btn.style.whiteSpace = 'pre-wrap'; 
+                    // 💡 저장버튼 크기와 마진을 CSS !important를 무시하고 150px로 덮어쓰기
+                    btn.style.setProperty('height', '150px', 'important');
+                    btn.style.setProperty('max-height', '150px', 'important');
+                    btn.style.setProperty('margin-top', '0px', 'important'); 
+                    btn.style.setProperty('font-size', '22px', 'important');
+                    btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.height = '65px'; 
-                    btn.style.fontSize = '18px'; 
-                    btn.style.marginTop = '0px'; 
+                    btn.style.setProperty('height', '65px', 'important');
+                    btn.style.setProperty('font-size', '18px', 'important');
+                    btn.style.setProperty('margin-top', '0px', 'important');
                     btn.style.backgroundColor = '#D4AF37';
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
@@ -649,7 +668,7 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
-    # 💡 모든 입력창의 label_visibility를 "collapsed"로 숨기고, st.markdown으로 통일시켜 여백 찌그러짐을 완벽히 해결함
+    # 💡 label_visibility 적용
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -677,8 +696,13 @@ elif st.session_state.current_page == "input":
             
             with sc1:
                 st.markdown("**스캔 데이터**")
-                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
-                    scanner_dialog()
+                scan_in, scan_btn = st.columns([0.7, 0.3])
+                with scan_in:
+                    st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
+                with scan_btn:
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        st.rerun()
             with sc2:
                 st.markdown("**LOT (적용됨)**")
                 st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -775,7 +799,7 @@ elif st.session_state.current_page == "input":
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
-        st.markdown("**🚨 수량 입력 (터치 시 전용 숫자 패드가 나타납니다)**")
+        st.markdown("**🚨 수량 입력**")
         q1, q2, q3 = st.columns(3)
         with q1: 
             st.markdown("**검사 수량 (자동)**")
@@ -897,12 +921,14 @@ elif st.session_state.current_page == "input":
 
         st.markdown("<hr>", unsafe_allow_html=True)
         
+        # 💡 비고란과 저장 버튼의 완벽한 높이 정렬
         rem_col, save_col = st.columns([0.7, 0.3])
         with rem_col:
             st.markdown("**비고**")
             st.session_state.remarks = st.text_area("비고", value=st.session_state.remarks, height=150, label_visibility="collapsed")
             
         with save_col:
+            st.markdown("**&nbsp;**") # 비고 텍스트와 높이를 맞추기 위한 투명 텍스트
             if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
                 if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
                 elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
