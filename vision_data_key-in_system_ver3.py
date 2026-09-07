@@ -52,7 +52,7 @@ default_state = {
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
     "rear_warned": False, "offset_warned": False,
-    "numpad_buffer": "" # 💡 자체 숫자패드 누적 입력용 버퍼
+    "numpad_buffer": ""
 }
 
 for key, value in default_state.items():
@@ -160,7 +160,6 @@ if not st.session_state.unlocked:
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 우측 툴바 완전 제거 */
 [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stDecoration"] { display: none !important; }
 #MainMenu { display: none !important; } 
@@ -226,26 +225,21 @@ components.html(
                     btn.style.color = '#000000';
                     btn.style.border = 'none';
                 }
-            });
-        };
-        const styleScanner = () => {
-            if (!window.parent.document) return;
-            const targets = window.parent.document.querySelectorAll('div[id="scanner_target"]');
-            targets.forEach(t => {
-                let parent = t.parentElement;
-                while(parent && parent.getAttribute('data-testid') !== 'stVerticalBlock') { parent = parent.parentElement; }
-                if(parent && !parent.dataset.styled) {
-                    parent.style.backgroundColor = '#D9E1F2';
-                    parent.style.padding = '25px';
-                    parent.style.borderRadius = '12px';
-                    parent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                    parent.style.marginBottom = '20px';
-                    parent.dataset.styled = 'true';
+                
+                // 💡 메인 화면의 스캐너 실행 버튼 (초록색 디자인)
+                if (text.includes('📷 스캐너 실행')) {
+                    btn.style.backgroundColor = '#d4edda';
+                    btn.style.color = '#155724';
+                    btn.style.border = '2px solid #28a745';
                 }
             });
-
+        };
+        
+        const styleScanner = () => {
+            if (!window.parent.document) return;
+            // 💡 팝업 내 스캐너 전용 입력창(Placeholder 기준) 초록색 처리
             window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
+                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('여기를 터치하여 스캔하세요')) {
                     el.style.backgroundColor = '#d4edda';
                     el.style.color = '#155724';
                     let parentDiv = el.parentElement;
@@ -256,15 +250,24 @@ components.html(
                 }
             });
         };
+
         const disableKeyboard = () => {
             if (!window.parent.document) return;
+            // 💡 1. 날짜 및 시간 입력창 키보드 차단
             window.parent.document.querySelectorAll('input').forEach(el => {
                 const placeholder = el.getAttribute('placeholder') || '';
                 if (placeholder.includes('YYYY') || placeholder.includes('HH:MM')) {
-                    if (el.getAttribute('inputmode') !== 'none') el.setAttribute('inputmode', 'none');
+                    el.setAttribute('inputmode', 'none');
+                    el.setAttribute('readonly', 'true');
                 }
             });
+            // 💡 2. 드롭다운(Selectbox) 검색 숨김 입력창 키보드 완벽 차단 (터치 시 키보드 팝업 금지)
+            window.parent.document.querySelectorAll('div[data-baseweb="select"] input').forEach(el => {
+                el.setAttribute('inputmode', 'none');
+                el.setAttribute('readonly', 'true');
+            });
         };
+        
         const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
         if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
         disableKeyboard(); formatNavButtons(); styleScanner();
@@ -361,10 +364,36 @@ def save_data_append(df):
         return False
 
 # ----------------------------------------------------
-# 💡 팝업 모달 함수 (자체 숫자 패드 누적 입력 적용)
+# 💡 팝업 모달 함수 (스캐너, 숫자 패드, SBL)
 # ----------------------------------------------------
+@st.dialog("📷 바코드/QR 스캐너")
+def scanner_dialog():
+    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#d4edda; border-radius:10px; margin-bottom:15px; border:2px solid #28a745;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
+    
+    # 이 입력창은 스캐너 앱(키보드)이 올라와야 하므로 키보드 차단 로직에서 제외(placeholder 조건)
+    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("적용 (Enter)", type="primary", use_container_width=True):
+        if raw_scan:
+            st.session_state.scanned_raw_data = raw_scan
+            parts = [p for p in raw_scan.split('$') if p]
+            if len(parts) >= 5:
+                plating_code = parts[2]
+                if plating_code == 'S110': st.session_state.plating_type = 'A'
+                elif plating_code == 'S112': st.session_state.plating_type = 'B'
+                
+                date_str = parts[3]
+                if len(date_str) == 8 and date_str.isdigit():
+                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                    except ValueError: pass
+                
+                st.session_state.lot_input_field = parts[4]
+            else:
+                st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
+        st.rerun()
+
 def pad_callback(digit):
-    """숫자 버튼 클릭 시 세션 버퍼에 누적하는 콜백 함수"""
     c_val = st.session_state.numpad_buffer
     if digit == "C": 
         st.session_state.numpad_buffer = ""
@@ -377,8 +406,6 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    
-    # 누적된 숫자 표시창
     st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f1f5f9; border-radius:10px; margin-bottom:15px; border:2px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
@@ -388,7 +415,6 @@ def numpad_dialog(field_key, display_name):
         ["C", "0", "⬅"]
     ]
     
-    # 한 자리씩 누적 (팝업 닫히지 않음)
     for r in pad_rows:
         cols = st.columns(3)
         for i, val in enumerate(r):
@@ -396,11 +422,9 @@ def numpad_dialog(field_key, display_name):
                 st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True, on_click=pad_callback, args=(val,))
                     
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # 💡 엔터를 눌러야만 메인 화면 변수에 저장되고 팝업이 닫힘
     if st.button("적용 (Enter)", type="primary", use_container_width=True):
         st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
-        st.session_state.numpad_buffer = "" # 다음 입력을 위해 초기화
+        st.session_state.numpad_buffer = "" 
         st.rerun()
 
 @st.dialog("SBL Warning!")
@@ -466,28 +490,6 @@ elif st.session_state.current_page == "input":
 
     step = st.session_state.step
 
-    def parse_scanned_data():
-        raw_val = st.session_state.scanned_raw_data
-        if not raw_val: return
-        if '$' in raw_val:
-            parts = [p for p in raw_val.split('$') if p]
-            if len(parts) >= 5:
-                plating_code = parts[2]
-                if plating_code == 'S110': st.session_state.plating_type = 'A'
-                elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                
-                date_str = parts[3]
-                if len(date_str) == 8 and date_str.isdigit():
-                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                    except ValueError: pass
-                
-                st.session_state.lot_input_field = parts[4]
-            else:
-                st.session_state.lot_input_field = parts[-1]
-        else:
-            st.session_state.lot_input_field = raw_val
-        st.session_state.scanned_raw_data = "" 
-
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -506,12 +508,16 @@ elif st.session_state.current_page == "input":
         with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
         st.markdown("<hr>", unsafe_allow_html=True)
+        
+        # 💡 스캔 팝업 버튼 (1x5)
         with st.container():
             st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             
             with sc1:
-                st.text_input("**스캔 데이터**", key="scanned_raw_data", on_change=parse_scanned_data, placeholder="터치하여 스캐너 앱 실행")
+                st.markdown("**스캔 데이터**")
+                if st.button("📷 스캐너 실행", key="btn_scan_open", use_container_width=True):
+                    scanner_dialog()
             with sc2:
                 st.text_input("**LOT (적용됨)**", value=st.session_state.lot_input_field, disabled=True)
             with sc3:
@@ -574,7 +580,6 @@ elif st.session_state.current_page == "input":
         render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
     elif step == 4:
-        # 💡 자동 계산 로직
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
@@ -584,7 +589,6 @@ elif st.session_state.current_page == "input":
             st.text_input("**검사 수량 (자동)**", value=f"{total_qty:,}", disabled=True)
         with q2: 
             st.markdown("**양품수량**")
-            # 양품수량 입력 버튼
             if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
                 val = str(st.session_state.good_qty)
                 st.session_state.numpad_buffer = val if val != "0" else ""
