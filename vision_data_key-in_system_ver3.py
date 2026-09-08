@@ -30,7 +30,6 @@ model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Sea
 
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
-# 💡 대소문자/확장자 무시하고 이미지를 자동 탐색하는 로고 인코딩 함수
 def get_image_base64(base_name):
     search_dirs = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
     for directory in search_dirs:
@@ -83,7 +82,7 @@ if not st.session_state.unlocked:
         [data-testid="collapsedControl"] { display: none !important; }
         [data-testid="stToolbar"] { display: none !important; }
         footer { display: none !important; }
-        [data-testid="stAppViewContainer"] { background-color: #0B0F19 !important; }
+        [data-testid="stAppViewContainer"] { background-color: #ffffff !important; }
     </style>
     """
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
@@ -95,17 +94,17 @@ if not st.session_state.unlocked:
         if logo_l_data:
             st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
-            st.markdown("<h1 style='text-align: center; color: #60A5FA; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
             st.rerun()
 
         slider_html = """
-        <div id="slider-container" style="background: #111827; border: 1px solid #1F2937; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);">
-            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%); border-radius: 40px 0 0 40px;"></div>
-            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #9CA3AF; font-size: 18px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
-            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #1E3A8A; border: 2px solid #3B82F6; border-radius: 50%; box-shadow: 0 0 10px rgba(59,130,246,0.5); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #60A5FA; font-size: 20px;">▶</div>
+        <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #3b82f6; border-radius: 40px 0 0 40px;"></div>
+            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
+            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 24px;">▶</div>
         </div>
         <script>
             const container = document.getElementById('slider-container');
@@ -140,10 +139,10 @@ if not st.session_state.unlocked:
                 if (currentX > maxDrag) currentX = maxDrag;
                 thumb.style.transform = `translateX(${currentX}px)`;
                 fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
-                if (currentX > maxDrag * 0.4) { text.style.color = '#ffffff'; } else { text.style.color = '#9CA3AF'; }
+                if (currentX > maxDrag * 0.4) { text.style.color = '#ffffff'; } else { text.style.color = '#94a3b8'; }
                 if (currentX >= maxDrag) {
                     isDragging = false;
-                    text.innerText = "System Online";
+                    text.innerText = "Unlocked!";
                     thumb.innerHTML = "✔";
                     setTimeout(() => { unlockSystem(); }, 200);
                 }
@@ -159,7 +158,7 @@ if not st.session_state.unlocked:
                     currentX = 0;
                     thumb.style.transform = `translateX(0px)`;
                     fill.style.width = '0px';
-                    text.style.color = '#9CA3AF';
+                    text.style.color = '#94a3b8';
                     setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
                 }
             }
@@ -170,9 +169,12 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
             
-    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #4B5563; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
+    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
+# ----------------------------------------------------
+# 💡 라이트 테마 기반 하이브리드 CSS (입력창/버튼은 흰색 폰트)
+# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -181,48 +183,48 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
+/* 앱 배경 및 카드 배경 원복 (밝은 테마) */
 [data-testid="stAppViewContainer"] {
-    background-color: #050B14 !important;
+    background-color: #f1f5f9 !important;
 }
-
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #0B1221 !important;
-    border-radius: 8px !important;
-    border: 1px solid #1E2D4A !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important;
     padding: 1.5rem !important;
     margin-bottom: 0.5rem !important;
 }
 
-div[data-testid="stMarkdownContainer"] p { color: #8B9CB6 !important; }
-div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #E2E8F0 !important; }
+div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
+/* 💡 버튼 공통 규격 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
     max-height: 3.8rem !important;
-    font-size: 1.1rem !important; 
+    font-size: 1.2rem !important; 
     font-weight: bold !important; 
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
-    letter-spacing: 0.5px;
 }
 
+/* 💡 입력창 하이브리드 테마 (다크 배경 + 흰색 텍스트) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     height: 3.8rem !important;
     min-height: 3.8rem !important;
     max-height: 3.8rem !important;
-    border-radius: 6px !important;
-    background-color: #121C30 !important; 
-    border: 1px solid #233454 !important;
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    border: 1px solid #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important;
     box-sizing: border-box !important;
 }
 
@@ -236,7 +238,7 @@ div[data-testid="stTextInput"] input {
     font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
-    color: #38BDF8 !important; 
+    color: #ffffff !important; /* 모든 입력 텍스트 흰색 */
     padding: 0 10px !important;
     margin: 0 !important;
     background: transparent !important;
@@ -253,10 +255,10 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.2rem !important; 
     min-height: 150px !important; 
-    background-color: #121C30 !important; 
-    color: #F8FAFC !important;
-    border: 1px solid #233454 !important; 
-    border-radius: 6px !important; 
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important; 
+    color: #ffffff !important;
+    border: 1px solid #0f172a !important; 
+    border-radius: 8px !important; 
     padding: 15px !important;
 }
 
@@ -265,28 +267,28 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
+/* 💡 모든 버튼에 흰색 텍스트 강제 적용 */
 div[data-testid="stButton"] button[kind="primary"] {
-    background: linear-gradient(180deg, #1D4ED8 0%, #1E3A8A 100%) !important;
-    color: #FFFFFF !important;
-    border: 1px solid #2563EB !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5) !important;
+    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #1e40af !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
 }
 div[data-testid="stButton"] button[kind="primary"]:hover {
-    background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%) !important;
-    border: 1px solid #60A5FA !important;
+    background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%) !important;
 }
 div[data-testid="stButton"] button[kind="secondary"] {
-    background: linear-gradient(180deg, #1A263E 0%, #121C30 100%) !important;
-    color: #8B9CB6 !important;
-    border: 1px solid #233454 !important;
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
 }
 div[data-testid="stButton"] button[kind="secondary"]:hover {
-    background: linear-gradient(180deg, #233454 0%, #1A263E 100%) !important;
-    color: #E2E8F0 !important;
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%) !important;
 }
 
-[data-testid="stSidebar"] { background: linear-gradient(135deg, #020617 0%, #050B14 100%) !important; border-right: 1px solid #1E2D4A; }
-[data-testid="stSidebar"] * { color: #8B9CB6 !important; }
+/* 사이드바 크기 및 색상 */
+[data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
+[data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
     height: 100px !important; 
     max-height: 100px !important;
@@ -313,8 +315,6 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     background: #0B1221 !important;
     border: 1px solid #1E2D4A !important;
 }
-
-[data-testid="stDataFrame"] { background: transparent !important; }
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -332,21 +332,21 @@ components.html(
                 const text = btn.innerText || "";
                 
                 if (text.includes('⬅️ 이전')) { 
-                    btn.style.background = 'linear-gradient(180deg, #374151 0%, #1F2937 100%)'; 
-                    btn.style.color = '#D1D5DB'; 
-                    btn.style.border = '1px solid #4B5563'; 
+                    btn.style.background = 'linear-gradient(180deg, #64748b 0%, #475569 100%)'; 
+                    btn.style.color = '#ffffff'; 
+                    btn.style.border = '1px solid #334155'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 if (text.includes('다음 ➡️')) { 
-                    btn.style.background = 'linear-gradient(180deg, #059669 0%, #047857 100%)'; 
-                    btn.style.color = '#FFFFFF'; 
-                    btn.style.border = '1px solid #10B981'; 
+                    btn.style.background = 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)'; 
+                    btn.style.color = '#ffffff'; 
+                    btn.style.border = '1px solid #15803d'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 if (text.includes('데이터 최종 저장')) { 
                     btn.style.background = 'linear-gradient(180deg, #0284C7 0%, #0369A1 100%)';
-                    btn.style.border = '1px solid #38BDF8';
-                    btn.style.color = '#FFFFFF';
+                    btn.style.border = '1px solid #0c4a6e';
+                    btn.style.color = '#ffffff';
                     btn.style.setProperty('height', '150px', 'important');
                     btn.style.setProperty('max-height', '150px', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important'); 
@@ -354,9 +354,9 @@ components.html(
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.background = 'linear-gradient(180deg, #D97706 0%, #B45309 100%)';
-                    btn.style.color = '#FEF3C7';
-                    btn.style.border = '1px solid #F59E0B';
+                    btn.style.background = 'linear-gradient(180deg, #fcd34d 0%, #d97706 100%)';
+                    btn.style.color = '#ffffff';
+                    btn.style.border = '1px solid #b45309';
                     btn.style.setProperty('height', '65px', 'important');
                     btn.style.setProperty('font-size', '16px', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
@@ -532,7 +532,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#9CA3AF; padding:15px; background:#111827; border-radius:10px; margin-bottom:15px; border:1px solid #1F2937;'>{display_name}<br><span style='color:#60A5FA; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -569,7 +569,7 @@ def timepad_dialog(field_key, display_name):
     display_str = c_val.ljust(4, "_")
     display_str = f"{display_str[:2]}:{display_str[2:]}"
     
-    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#9CA3AF; padding:15px; background:#111827; border-radius:10px; margin-bottom:15px; border:1px solid #1F2937;'>{display_name}<br><span style='color:#60A5FA; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -614,7 +614,7 @@ def show_sbl_warning(defect_type, rate):
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
     img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
-    st.markdown(f"<h2 style='display: flex; align-items: center; color: #E2E8F0;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
     with col2:
@@ -633,37 +633,38 @@ if st.session_state.current_page == "analysis":
         with st.container(border=True):
             g_col1, g_col2 = st.columns(2)
             with g_col1:
-                st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📌 일자별 양/불량 현황</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📌 일자별 양/불량 현황</h4>", unsafe_allow_html=True)
                 df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
                 fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
                               color_discrete_sequence=['#10B981', '#EF4444'])
-                fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#9CA3AF'))
+                fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig1, use_container_width=True)
                 
             with g_col2:
-                st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
                 defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                 fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
                               color_discrete_sequence=['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#6B7280'])
-                fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#9CA3AF'))
+                fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig2, use_container_width=True)
             
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📋 전체 데이터 내역</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📋 전체 데이터 내역</h4>", unsafe_allow_html=True)
             st.dataframe(df, use_container_width=True, hide_index=True)
 
 elif st.session_state.current_page == "input":
     
-    top_c1, top_c2 = st.columns([0.8, 0.2])
+    # 💡 Data Analysis 버튼 폭을 주간/야간과 똑같이 1/6로 맞춤 ([5, 1] 비율)
+    top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
         
         st.markdown(
-            "<div style='background: linear-gradient(135deg, #111827 0%, #050B14 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #1E2D4A; height: 65px; display: flex; align-items: center;'>"
+            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 65px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
             f"{img_html}"
-            "<h3 style='color: #F8FAFC; margin: 0; font-weight: 800; font-size: 1.6rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
-            "</div>", 
+            f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.6rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
+            f"</div>", 
             unsafe_allow_html=True
         )
     with top_c2:
@@ -682,7 +683,7 @@ elif st.session_state.current_page == "input":
                 st.session_state.step = i
                 st.rerun()
 
-        st.markdown("<hr style='border-color: #1E2D4A; margin-top: -5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='border-color: #334155; margin-top: -5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
         
         c1, c2 = st.columns(2)
         with c1:
@@ -697,7 +698,7 @@ elif st.session_state.current_page == "input":
                     st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; color: #4B5563; font-size: 14px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 14px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
 
@@ -725,7 +726,7 @@ elif st.session_state.current_page == "input":
 
     if step == 1:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📌 기본 근무 정보</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📌 기본 근무 정보</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**근무일자**")
@@ -745,37 +746,45 @@ elif st.session_state.current_page == "input":
             with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📷 스캔 및 입고 정보</h4>", unsafe_allow_html=True)
-            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📷 스캔 및 입고 정보</h4>", unsafe_allow_html=True)
+            
+            # 💡 적용, A, B 버튼 폭을 1/6 비율로 정확히 일치화시키는 레이아웃 적용
+            sc1, sc2, sc3 = st.columns(3)
             with sc1:
-                st.markdown("**스캔 데이터**")
-                scan_in, scan_btn = st.columns([0.7, 0.3])
+                scan_in, scan_btn = st.columns(2)
                 with scan_in:
+                    st.markdown("**스캔 데이터**")
                     st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
                 with scan_btn:
+                    st.markdown("**&nbsp;**")
                     st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
+            
             with sc2:
-                st.markdown("**LOT (적용됨)**")
-                st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
+                lot_col, date_col = st.columns(2)
+                with lot_col:
+                    st.markdown("**LOT (적용됨)**")
+                    st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
+                with date_col:
+                    st.markdown("**입고일 (적용됨)**")
+                    st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
+            
             with sc3:
-                st.markdown("**입고일 (적용됨)**")
-                st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
-            with sc4:
-                st.markdown("**도금(A)**")
-                btn_a = "primary" if st.session_state.plating_type == "A" else "secondary"
-                if st.button("A", type=btn_a, key="plat_a", use_container_width=True):
-                    st.session_state.plating_type = "A"
-                    st.rerun()
-            with sc5:
-                st.markdown("**도금(B)**")
-                btn_b = "primary" if st.session_state.plating_type == "B" else "secondary"
-                if st.button("B", type=btn_b, key="plat_b", use_container_width=True):
-                    st.session_state.plating_type = "B"
-                    st.rerun()
+                st.markdown("**도금 구분**")
+                plat_a, plat_b = st.columns(2)
+                with plat_a:
+                    btn_a = "primary" if st.session_state.plating_type == "A" else "secondary"
+                    if st.button("A", type=btn_a, key="plat_a", use_container_width=True):
+                        st.session_state.plating_type = "A"
+                        st.rerun()
+                with plat_b:
+                    btn_b = "primary" if st.session_state.plating_type == "B" else "secondary"
+                    if st.button("B", type=btn_b, key="plat_b", use_container_width=True):
+                        st.session_state.plating_type = "B"
+                        st.rerun()
 
     elif step == 2:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>🕒 작업 시간</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🕒 작업 시간</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**시작일**")
@@ -812,7 +821,7 @@ elif st.session_state.current_page == "input":
                 st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>⚙️ 설비 및 검사 설정</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>⚙️ 설비 및 검사 설정</h4>", unsafe_allow_html=True)
             st.markdown("**호기**")
             render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
             st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
@@ -820,7 +829,7 @@ elif st.session_state.current_page == "input":
 
     elif step == 3:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>🎨 도장 공정</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🎨 도장 공정</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**도장일**")
@@ -835,7 +844,7 @@ elif st.session_state.current_page == "input":
                     numpad_dialog("painting_order", "도장순서")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>🧩 Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🧩 Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
             num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
             c4, c5, c6 = st.columns(3)
             with c4: 
@@ -856,7 +865,7 @@ elif st.session_state.current_page == "input":
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📦 수량 등록</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📦 수량 등록</h4>", unsafe_allow_html=True)
             q1, q2, q3 = st.columns(3)
             with q1: 
                 st.markdown("**검사 수량 (자동)**")
@@ -872,7 +881,7 @@ elif st.session_state.current_page == "input":
                 st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>🚨 불량 세부 내역</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🚨 불량 세부 내역</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**완전불량**")
@@ -937,7 +946,7 @@ elif st.session_state.current_page == "input":
                 st.session_state.offset_warned = True
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📈 실시간 수율 현황</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📈 실시간 수율 현황</h4>", unsafe_allow_html=True)
             rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
             
             c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#3B82F6", "#8B5CF6"
@@ -945,7 +954,7 @@ elif st.session_state.current_page == "input":
             fig_donut = go.Figure(go.Pie(
                 labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
                 hole=.65, sort=False, direction='clockwise',
-                marker=dict(colors=[c_yield, '#1E2D4A'], line=dict(color='#0B1221', width=2)), 
+                marker=dict(colors=[c_yield, '#e2e8f0'], line=dict(color='#ffffff', width=2)), 
                 hoverinfo="label+percent", textinfo="none"
             ))
             fig_donut.update_layout(
@@ -965,22 +974,22 @@ elif st.session_state.current_page == "input":
             })
             y_max = max(df_defects["비율 (%)"]) * 1.4 if not df_defects.empty and max(df_defects["비율 (%)"]) > 0 else 5
             fig_bar = go.Figure()
-            fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=[y_max]*4, marker_color='#1E2D4A', hoverinfo='none', width=0.45))
+            fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=[y_max]*4, marker_color='#f1f5f9', hoverinfo='none', width=0.45))
             fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=df_defects["비율 (%)"], marker_color=[c_comp, c_front, c_rear, c_offset], width=0.45, texttemplate=''))
             fig_bar.add_trace(go.Scatter(
                 x=df_defects["불량 항목"], y=df_defects["비율 (%)"], mode='markers+text',
-                marker=dict(size=40, color=[c_comp, c_front, c_rear, c_offset], line=dict(color='#0B1221', width=3)),
+                marker=dict(size=40, color=[c_comp, c_front, c_rear, c_offset], line=dict(color='white', width=3)),
                 text=df_defects["비율 (%)"].apply(lambda x: f"{x:.1f}"), textfont=dict(color='white', size=14, weight='bold'),
                 textposition='middle center', hoverinfo='none'
             ))
-            fig_bar.update_layout(barmode='overlay', showlegend=False, height=250, margin=dict(t=10, b=20, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, tickfont=dict(color='#9CA3AF')), yaxis=dict(showgrid=False, showticklabels=False, range=[0, y_max]))
+            fig_bar.update_layout(barmode='overlay', showlegend=False, height=250, margin=dict(t=10, b=20, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, tickfont=dict(color='#1e293b')), yaxis=dict(showgrid=False, showticklabels=False, range=[0, y_max]))
 
             g_col1, g_col2 = st.columns(2)
             with g_col1: st.plotly_chart(fig_donut, use_container_width=True)
             with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>💾 최종 확인 및 저장</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>💾 최종 확인 및 저장</h4>", unsafe_allow_html=True)
             rem_col, save_col = st.columns([0.7, 0.3])
             with rem_col:
                 st.markdown("**비고**")
@@ -1051,7 +1060,7 @@ elif st.session_state.current_page == "input":
 
     elif step == 5:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #60A5FA; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #1E2D4A; padding-bottom: 8px;'>📋 최근 저장 데이터 List</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📋 최근 저장 데이터 List</h4>", unsafe_allow_html=True)
             df_history = load_data().copy()
             if not df_history.empty:
                 recent_10 = df_history.iloc[::-1].head(10).copy()
