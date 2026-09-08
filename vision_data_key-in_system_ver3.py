@@ -102,9 +102,9 @@ if not st.session_state.unlocked:
 
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
-            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #3b82f6; border-radius: 40px 0 0 40px;"></div>
+            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #0033A0; border-radius: 40px 0 0 40px;"></div>
             <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
-            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 24px;">▶</div>
+            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #0033A0; font-size: 24px;">▶</div>
         </div>
         <script>
             const container = document.getElementById('slider-container');
@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 라이트 테마 + 버튼 높이 동기화 + 스캐너 스타일 적용
+# 💡 라이트 테마 + 파검(인천유나이티드) 그라데이션 적용
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -196,7 +196,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 공통 높이(3.8rem) 강제 동기화 (입력창 & 일반 버튼) */
+/* 💡 공통 높이(3.8rem) 및 폰트 크기(1.2rem) 강제 동기화 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -264,19 +264,20 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 💡 스캐너 텍스트 Placeholder 스타일 강제 적용 */
+/* 스캐너 텍스트 Placeholder 스타일 */
 input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 모든 버튼 흰색 텍스트 & 투톤 적용 */
+/* 💡 인천 유나이티드 파검 그라데이션 (Primary 버튼) */
 div[data-testid="stButton"] button[kind="primary"] {
-    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    background: linear-gradient(180deg, #0033A0 0%, #000000 100%) !important;
     color: #ffffff !important;
-    border: 1px solid #1e40af !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+    border: 1px solid #000000 !important;
+    box-shadow: 0 4px 10px rgba(0, 51, 160, 0.4) !important;
 }
 div[data-testid="stButton"] button[kind="primary"]:hover {
-    background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%) !important;
+    background: linear-gradient(180deg, #004ea2 0%, #111111 100%) !important;
+    box-shadow: 0 6px 12px rgba(0, 51, 160, 0.6) !important;
 }
 div[data-testid="stButton"] button[kind="secondary"] {
     background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important;
@@ -302,10 +303,10 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 18px !important; text-indent: 10px !important; text-align: left !important; }
 
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background: linear-gradient(90deg, #1E3A8A 0%, #1D4ED8 100%) !important; 
+    background: linear-gradient(90deg, #0033A0 0%, #000000 100%) !important; 
     color: #FFFFFF !important; 
     border: none !important; 
-    border-left: 4px solid #60A5FA !important;
+    border-left: 4px solid #005bb5 !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background: transparent !important; 
@@ -313,8 +314,8 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     border: 1px solid transparent !important; 
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background: #0B1221 !important;
-    border: 1px solid #1E2D4A !important;
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
 }
 </style>
 """
@@ -354,11 +355,12 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                // 💡 Data Analysis 버튼의 높이도 3.8rem으로 정확히 맞춤
+                // 💡 Data Analysis 버튼도 파검 그라데이션 적용 & 높이 3.8rem 일치화
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.background = 'linear-gradient(180deg, #fcd34d 0%, #d97706 100%)';
+                    btn.style.background = 'linear-gradient(180deg, #0033A0 0%, #000000 100%)';
                     btn.style.color = '#ffffff';
-                    btn.style.border = '1px solid #b45309';
+                    btn.style.border = '1px solid #000000';
+                    btn.style.boxShadow = '0 4px 10px rgba(0, 51, 160, 0.4)';
                     btn.style.setProperty('height', '3.8rem', 'important');
                     btn.style.setProperty('min-height', '3.8rem', 'important');
                     btn.style.setProperty('max-height', '3.8rem', 'important');
@@ -545,7 +547,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -582,7 +584,7 @@ def timepad_dialog(field_key, display_name):
     display_str = c_val.ljust(4, "_")
     display_str = f"{display_str[:2]}:{display_str[2:]}"
     
-    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#3b82f6; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -657,7 +659,7 @@ if st.session_state.current_page == "analysis":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
                 defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                 fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
-                              color_discrete_sequence=['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#6B7280'])
+                              color_discrete_sequence=['#EF4444', '#F59E0B', '#0033A0', '#8B5CF6', '#6B7280'])
                 fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig2, use_container_width=True)
             
@@ -672,7 +674,6 @@ elif st.session_state.current_page == "input":
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
         
-        # 💡 헤더 박스 높이를 Data Analysis 버튼과 동일하게(3.8rem) 맞춤
         st.markdown(
             f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 3.8rem; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
             f"{img_html}"
@@ -961,7 +962,7 @@ elif st.session_state.current_page == "input":
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📈 실시간 수율 현황</h4>", unsafe_allow_html=True)
             rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
             
-            c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#3B82F6", "#8B5CF6"
+            c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#0033A0", "#8B5CF6"
             
             fig_donut = go.Figure(go.Pie(
                 labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
