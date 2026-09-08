@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (카드 레이아웃 및 3.8rem 높이 정렬)
+# 마법 코드 1: UI 디자인 커스텀 (투톤 그라데이션 버튼)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -187,12 +187,12 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 💡 핵심: 앱 전체 배경을 옅은 회색으로 변경하여 하얀색 카드가 돋보이게 함 */
+/* 💡 앱 전체 배경 회색 (카드 UI 강조) */
 [data-testid="stAppViewContainer"] {
     background-color: #f1f5f9 !important;
 }
 
-/* 💡 카드 UI 디자인 (st.container(border=True) 영역 타겟팅) */
+/* 💡 카드 UI 디자인 */
 [data-testid="stVerticalBlockBorderWrapper"] {
     background-color: #ffffff !important;
     border-radius: 12px !important;
@@ -204,7 +204,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 버튼 및 모든 입력창 높이를 정확히 3.8rem으로 강제 고정 */
+/* 공통 높이 강제 고정 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -225,7 +225,7 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     min-height: 3.8rem !important;
     max-height: 3.8rem !important;
     border-radius: 8px !important;
-    background-color: #f8fafc !important; /* 카드 내부에서 입력창이 살짝 구분되도록 아주 연한 회색 부여 */
+    background-color: #f8fafc !important; 
     border: 1px solid #cbd5e1 !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -265,19 +265,29 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 메인 남색 테마 원복 */
+/* =========================================================
+   💡 고급스러운 투톤 그라데이션 버튼 (Primary & Secondary)
+========================================================= */
+/* 선택된 버튼 (Navy Two-tone) */
 div[data-testid="stButton"] button[kind="primary"] {
-    background-color: #1e293b !important;
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
     color: white !important;
-    border: 1px solid #1e293b !important;
+    border: 1px solid #0f172a !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
 }
 div[data-testid="stButton"] button[kind="primary"]:hover {
-    background-color: #0f172a !important;
+    background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
 }
+/* 선택 안 된 버튼 (White/Silver Two-tone) */
 div[data-testid="stButton"] button[kind="secondary"] {
-    background-color: white !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
     color: #1e293b !important;
     border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+div[data-testid="stButton"] button[kind="secondary"]:hover {
+    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%) !important;
 }
 
 /* 사이드바 크기 및 색상 */
@@ -295,17 +305,18 @@ div[data-testid="stButton"] button[kind="secondary"] {
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
 
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background-color: #3b82f6 !important; 
+    background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%) !important; 
     color: white !important; 
     border: 1px solid #2563eb !important; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
-    background-color: #475569 !important; 
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important; 
     color: #f8fafc !important; 
-    border: 1px solid #64748b !important; 
+    border: 1px solid #334155 !important; 
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background-color: #334155 !important;
+    background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
 }
 </style>
 """
@@ -322,9 +333,22 @@ components.html(
             const buttons = window.parent.document.querySelectorAll('button');
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
-                if (text.includes('⬅️ 이전')) { btn.style.backgroundColor = '#FFC000'; btn.style.color = '#000000'; btn.style.border = 'none'; btn.style.setProperty('height', '65px', 'important'); }
-                if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; btn.style.setProperty('height', '65px', 'important'); }
                 
+                // 💡 하단 네비게이션 및 Data Analysis 버튼에도 투톤 입체감 적용
+                if (text.includes('⬅️ 이전')) { 
+                    btn.style.background = 'linear-gradient(180deg, #fde047 0%, #eab308 100%)'; 
+                    btn.style.color = '#1e293b'; 
+                    btn.style.border = '1px solid #ca8a04'; 
+                    btn.style.setProperty('height', '65px', 'important'); 
+                    btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                }
+                if (text.includes('다음 ➡️')) { 
+                    btn.style.background = 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)'; 
+                    btn.style.color = '#ffffff'; 
+                    btn.style.border = '1px solid #15803d'; 
+                    btn.style.setProperty('height', '65px', 'important'); 
+                    btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                }
                 if (text.includes('데이터 최종 저장')) { 
                     btn.style.setProperty('height', '150px', 'important');
                     btn.style.setProperty('max-height', '150px', 'important');
@@ -333,12 +357,13 @@ components.html(
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
                 if (text.trim() === 'Data Analysis') { 
+                    btn.style.background = 'linear-gradient(180deg, #fcd34d 0%, #d97706 100%)';
+                    btn.style.color = '#ffffff';
+                    btn.style.border = '1px solid #b45309';
                     btn.style.setProperty('height', '65px', 'important');
                     btn.style.setProperty('font-size', '18px', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
-                    btn.style.backgroundColor = '#D4AF37';
-                    btn.style.color = '#000000';
-                    btn.style.border = 'none';
+                    btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                 }
             });
         };
@@ -705,7 +730,6 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
-    # 💡 각 단계를 깔끔한 하얀색 카드로 묶기 (st.container(border=True))
     if step == 1:
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📌 기본 근무 정보</h4>", unsafe_allow_html=True)
