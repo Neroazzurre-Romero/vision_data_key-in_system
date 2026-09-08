@@ -13,6 +13,7 @@ import openpyxl
 import streamlit.components.v1 as components
 import gspread
 from google.oauth2.service_account import Credentials
+import base64
 
 try:
     from PIL import Image
@@ -28,6 +29,13 @@ worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
+
+# 💡 로고 이미지 인코딩 함수
+def get_image_base64(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode('utf-8')
+    return None
 
 # ==========================================
 # 영구 세션 상태 초기화
@@ -77,8 +85,11 @@ if not st.session_state.unlocked:
     
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900;'>VISION DATA KEY-IN SYSTEM</h1>", unsafe_allow_html=True)
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        logo_l_base64 = get_image_base64("logo_large.png")
+        if logo_l_base64:
+            st.markdown(f"<div style='text-align: center;'><img src='data:image/png;base64,{logo_l_base64}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
@@ -157,14 +168,12 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀 (입력창-버튼 정렬 완벽화 및 150px 버튼 제어)
+# 마법 코드 1: UI 디자인 커스텀
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
-/* 푸터 숨김 */
 footer { display: none !important; } 
 
-/* 사이드바 토글 강제 노출 */
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 
 body { overscroll-behavior-y: none !important; } 
@@ -173,7 +182,6 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 핵심: 버튼 및 모든 입력창 높이를 정확히 3.8rem으로 강제 고정 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -228,13 +236,11 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
 
 div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
 
-/* 커서 숨김 */
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 💡 메인 남색 테마 원복 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -249,7 +255,6 @@ div[data-testid="stButton"] button[kind="secondary"] {
     border: 1px solid #cbd5e1 !important;
 }
 
-/* 사이드바 크기 및 색상 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -294,7 +299,6 @@ components.html(
                 if (text.includes('다음 ➡️')) { btn.style.backgroundColor = '#00B050'; btn.style.color = '#FFFFFF'; btn.style.border = 'none'; btn.style.setProperty('height', '65px', 'important'); }
                 
                 if (text.includes('데이터 최종 저장')) { 
-                    // 💡 저장버튼 크기와 마진을 CSS !important를 무시하고 150px로 덮어쓰기
                     btn.style.setProperty('height', '150px', 'important');
                     btn.style.setProperty('max-height', '150px', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important'); 
@@ -566,7 +570,9 @@ def show_sbl_warning(defect_type, rate):
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
-    st.markdown("## 종합 생산 데이터 분석 📊")
+    logo_s_base64 = get_image_base64("logo_small.png")
+    img_html = f"<img src='data:image/png;base64,{logo_s_base64}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_base64 else ""
+    st.markdown(f"<h2 style='display: flex; align-items: center;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
     with col2:
@@ -606,8 +612,12 @@ elif st.session_state.current_page == "input":
     
     top_c1, top_c2 = st.columns([0.8, 0.2])
     with top_c1:
-        st.markdown("""
+        logo_s_base64 = get_image_base64("logo_small.png")
+        img_html = f"<img src='data:image/png;base64,{logo_s_base64}' style='height: 40px; margin-right: 15px;'>" if logo_s_base64 else ""
+        
+        st.markdown(f"""
             <div style='background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); border: 1px solid #1e293b; height: 65px; display: flex; align-items: center;'>
+                {img_html}
                 <h3 style='color: #f8fafc; margin: 0; font-weight: 800; font-size: 1.6rem;'>VISION DATA KEY-IN SYSTEM</h3>
             </div>
         """, unsafe_allow_html=True)
@@ -668,7 +678,6 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
-    # 💡 label_visibility 적용
     if step == 1:
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -700,9 +709,7 @@ elif st.session_state.current_page == "input":
                 with scan_in:
                     st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
                 with scan_btn:
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        st.rerun()
+                    st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
             with sc2:
                 st.markdown("**LOT (적용됨)**")
                 st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -921,7 +928,6 @@ elif st.session_state.current_page == "input":
 
         st.markdown("<hr>", unsafe_allow_html=True)
         
-        # 💡 비고란과 저장 버튼의 완벽한 높이 정렬
         rem_col, save_col = st.columns([0.7, 0.3])
         with rem_col:
             st.markdown("**비고**")
