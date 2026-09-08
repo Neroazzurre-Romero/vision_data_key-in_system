@@ -30,15 +30,22 @@ model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Sea
 
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
-def get_image_base64(filename):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    path1 = os.path.join(script_dir, filename)
-    path2 = filename
-    
-    for path in [path1, path2]:
-        if os.path.exists(path):
-            with open(path, "rb") as img_file:
-                return base64.b64encode(img_file.read()).decode('utf-8')
+# 💡 대소문자/확장자 무시하고 이미지를 자동 탐색하는 로고 인코딩 함수
+def get_image_base64(base_name):
+    search_dirs = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
+    for directory in search_dirs:
+        if not os.path.exists(directory): continue
+        for file in os.listdir(directory):
+            if file.lower().startswith(base_name.lower()) and file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                filepath = os.path.join(directory, file)
+                try:
+                    with open(filepath, "rb") as img_file:
+                        ext = file.split('.')[-1].lower()
+                        mime_type = "image/jpeg" if ext in ['jpg', 'jpeg'] else "image/png"
+                        encoded = base64.b64encode(img_file.read()).decode('utf-8')
+                        return f"data:{mime_type};base64,{encoded}"
+                except Exception:
+                    pass
     return None
 
 if "unlocked" not in st.session_state: st.session_state.unlocked = False
@@ -84,9 +91,9 @@ if not st.session_state.unlocked:
     
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        logo_l_base64 = get_image_base64("logo_large.png")
-        if logo_l_base64:
-            st.markdown(f"<div style='text-align: center;'><img src='data:image/png;base64,{logo_l_base64}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+        logo_l_data = get_image_base64("logo")
+        if logo_l_data:
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #60A5FA; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
@@ -166,9 +173,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #4B5563; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# ----------------------------------------------------
-# 💡 다크 관제모니터 테마 CSS
-# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -177,12 +181,10 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 💡 앱 전체 배경 다크네이비 */
 [data-testid="stAppViewContainer"] {
     background-color: #050B14 !important;
 }
 
-/* 💡 카드 UI 디자인 (관제 모니터 느낌) */
 [data-testid="stVerticalBlockBorderWrapper"] {
     background-color: #0B1221 !important;
     border-radius: 8px !important;
@@ -192,11 +194,9 @@ body { overscroll-behavior-y: none !important; }
     margin-bottom: 0.5rem !important;
 }
 
-/* 글로벌 텍스트 색상 연한 파스텔톤 */
 div[data-testid="stMarkdownContainer"] p { color: #8B9CB6 !important; }
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #E2E8F0 !important; }
 
-/* 버튼 및 입력창 높이 고정 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -211,7 +211,6 @@ div[data-testid="stButton"] button {
     letter-spacing: 0.5px;
 }
 
-/* 입력창 다크 모드 */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -237,7 +236,7 @@ div[data-testid="stTextInput"] input {
     font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
-    color: #38BDF8 !important; /* 입력된 텍스트는 눈에 띄는 스카이블루 */
+    color: #38BDF8 !important; 
     padding: 0 10px !important;
     margin: 0 !important;
     background: transparent !important;
@@ -266,7 +265,6 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 💡 투톤 다크 버튼 */
 div[data-testid="stButton"] button[kind="primary"] {
     background: linear-gradient(180deg, #1D4ED8 0%, #1E3A8A 100%) !important;
     color: #FFFFFF !important;
@@ -287,7 +285,6 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     color: #E2E8F0 !important;
 }
 
-/* 사이드바 크기 및 색상 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #020617 0%, #050B14 100%) !important; border-right: 1px solid #1E2D4A; }
 [data-testid="stSidebar"] * { color: #8B9CB6 !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -317,7 +314,6 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     border: 1px solid #1E2D4A !important;
 }
 
-/* 표 배경 투명화 처리 */
 [data-testid="stDataFrame"] { background: transparent !important; }
 </style>
 """
@@ -536,7 +532,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#9CA3AF; padding:15px; background:#111827; border-radius:10px; margin-bottom:15px; border:1px solid #1F2937;'>{display_name}<br><span style='color:#60A5FA; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#9CA3AF; padding:15px; background:#111827; border-radius:10px; margin-bottom:15px; border:1px solid #1F2937;'>{display_name}<br><span style='color:#60A5FA; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -616,8 +612,8 @@ def show_sbl_warning(defect_type, rate):
 # 메인 프로세스 화면 구성
 # ==========================================
 if st.session_state.current_page == "analysis":
-    logo_s_base64 = get_image_base64("logo_small.png")
-    img_html = f"<img src='data:image/png;base64,{logo_s_base64}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_base64 else ""
+    logo_s_data = get_image_base64("at")
+    img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
     st.markdown(f"<h2 style='display: flex; align-items: center; color: #E2E8F0;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
@@ -660,10 +656,9 @@ elif st.session_state.current_page == "input":
     
     top_c1, top_c2 = st.columns([0.8, 0.2])
     with top_c1:
-        logo_s_base64 = get_image_base64("logo_small.png")
-        img_html = f"<img src='data:image/png;base64,{logo_s_base64}' style='height: 40px; margin-right: 15px;'>" if logo_s_base64 else ""
+        logo_s_data = get_image_base64("at")
+        img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
         
-        # 💡 HTML 들여쓰기를 제거하여 코드가 그대로 노출되는 버그 완벽 차단
         st.markdown(
             "<div style='background: linear-gradient(135deg, #111827 0%, #050B14 100%); padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #1E2D4A; height: 65px; display: flex; align-items: center;'>"
             f"{img_html}"
