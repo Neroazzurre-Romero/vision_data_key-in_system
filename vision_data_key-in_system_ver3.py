@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 라이트 테마 + 파검(인천유나이티드) 그라데이션 적용
+# 💡 라이트 테마 + 버튼 기본크기 원복 + 사이드바 검정-파랑 그라데이션
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -194,64 +194,29 @@ body { overscroll-behavior-y: none !important; }
     margin-bottom: 0.5rem !important;
 }
 
-div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
+div[data-testid="stMarkdownContainer"] p strong { font-size: 1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 공통 높이(3.8rem) 및 폰트 크기(1.2rem) 강제 동기화 */
-div[data-testid="stButton"] button { 
-    height: 3.8rem !important; 
-    min-height: 3.8rem !important; 
-    max-height: 3.8rem !important;
-    font-size: 1.2rem !important; 
-    font-weight: bold !important; 
-    border-radius: 8px !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-}
-
+/* 💡 입력창 기본 테마 (다크 배경 + 흰색 텍스트 유지) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 3.8rem !important;
-    min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
     border-radius: 8px !important;
     background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
     border: 1px solid #0f172a !important;
-    padding: 0 !important;
-    margin: 0 !important;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important;
-    box-sizing: border-box !important;
 }
 
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
-    height: 3.8rem !important;
-    min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
-    line-height: 3.8rem !important;
-    font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
     color: #ffffff !important; 
-    padding: 0 10px !important;
-    margin: 0 !important;
     background: transparent !important;
     border: none !important;
-    box-sizing: border-box !important;
-}
-
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
-    display: flex !important;
-    align-items: center !important;
-    height: 3.8rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { 
-    font-size: 1.2rem !important; 
-    min-height: 150px !important; 
     background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important; 
     color: #ffffff !important;
     border: 1px solid #0f172a !important; 
@@ -268,7 +233,7 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
 input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 💡 인천 유나이티드 파검 그라데이션 (Primary 버튼) */
+/* 💡 파검 그라데이션 (Primary 버튼) */
 div[data-testid="stButton"] button[kind="primary"] {
     background: linear-gradient(180deg, #0033A0 0%, #000000 100%) !important;
     color: #ffffff !important;
@@ -288,26 +253,28 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%) !important;
 }
 
-/* 사이드바 크기 및 색상 */
+/* 💡 사이드바 크기, 색상 및 검정-파랑 그라데이션 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
-    height: 100px !important; 
-    max-height: 100px !important;
+    height: 80px !important; 
+    max-height: 80px !important;
     justify-content: flex-start !important; 
     padding-left: 15px !important; 
     margin-bottom: 10px !important; 
     border-radius: 6px !important; 
     background-color: transparent !important;
 }
-[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 18px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 16px !important; text-indent: 10px !important; text-align: left !important; }
 
+/* 💡 사이드바 선택 시 메뉴: 검정->파랑, 왼쪽 선: 노란색(#FFC000) */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background: linear-gradient(90deg, #0033A0 0%, #000000 100%) !important; 
+    background: linear-gradient(90deg, #000000 0%, #0033A0 100%) !important; 
     color: #FFFFFF !important; 
     border: none !important; 
-    border-left: 4px solid #005bb5 !important;
+    border-left: 4px solid #FFC000 !important;
 }
+/* 사이드바 미선택 시: 배경과 동일 유지 */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background: transparent !important; 
     color: #8B9CB6 !important; 
@@ -355,29 +322,21 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                // 💡 Data Analysis 버튼도 파검 그라데이션 적용 & 높이 3.8rem 일치화
                 if (text.trim() === 'Data Analysis') { 
                     btn.style.background = 'linear-gradient(180deg, #0033A0 0%, #000000 100%)';
                     btn.style.color = '#ffffff';
                     btn.style.border = '1px solid #000000';
                     btn.style.boxShadow = '0 4px 10px rgba(0, 51, 160, 0.4)';
-                    btn.style.setProperty('height', '3.8rem', 'important');
-                    btn.style.setProperty('min-height', '3.8rem', 'important');
-                    btn.style.setProperty('max-height', '3.8rem', 'important');
-                    btn.style.setProperty('font-size', '1.2rem', 'important');
-                    btn.style.setProperty('margin-top', '0px', 'important');
                 }
             });
         };
         
-        // 💡 스캐너 칸 디자인 (노란 바탕, 검정 글씨, 1.2rem)
         const styleScanner = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
                 if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
                     el.style.setProperty('background-color', '#fef08a', 'important');
                     el.style.setProperty('color', '#000000', 'important');
-                    el.style.setProperty('font-size', '1.2rem', 'important');
                     el.style.setProperty('font-weight', '900', 'important');
                     
                     let parentDiv = el.parentElement;
@@ -424,7 +383,8 @@ components.html(
     """, height=0, width=0
 )
 
-def render_grid_buttons(options, state_key, columns):
+# 💡 use_container_width=False 매개변수 처리를 위해 함수 개선
+def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
     for row_opts in rows:
         cols = st.columns(columns)
@@ -433,7 +393,7 @@ def render_grid_buttons(options, state_key, columns):
                 if opt.strip() == "": st.write("") 
                 else:
                     btn_type = "primary" if st.session_state[state_key] == opt else "secondary"
-                    if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=True):
+                    if st.button(opt, key=f"btn_{state_key}_{opt}", type=btn_type, use_container_width=use_width):
                         st.session_state[state_key] = opt
                         st.rerun()
 
@@ -547,7 +507,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -659,7 +619,7 @@ if st.session_state.current_page == "analysis":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
                 defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                 fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
-                              color_discrete_sequence=['#EF4444', '#F59E0B', '#0033A0', '#8B5CF6', '#6B7280'])
+                              color_discrete_sequence=['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#6B7280'])
                 fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig2, use_container_width=True)
             
@@ -675,7 +635,7 @@ elif st.session_state.current_page == "input":
         img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
         
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 3.8rem; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
+            f"<div style='background: #ffffff; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
             f"{img_html}"
             f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.6rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
@@ -750,7 +710,8 @@ elif st.session_state.current_page == "input":
                 st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
             with c3:
                 st.markdown("**교대**")
-                render_grid_buttons(["주간", "야간"], "shift_type", 2)
+                # 💡 교대 주간/야간 버튼은 use_width=False로 하여 넓게 팽창하지 않도록 원복
+                render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=False)
             
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("**작업자**")
