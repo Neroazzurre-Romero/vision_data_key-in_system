@@ -75,6 +75,9 @@ for key, value in default_state.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
+# ==========================================
+# 메인 잠금 화면 (Splash Screen) - 파란색 걷어내고 다크슬레이트 적용
+# ==========================================
 if not st.session_state.unlocked:
     hide_sidebar_style = """
     <style>
@@ -102,9 +105,9 @@ if not st.session_state.unlocked:
 
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
-            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #0033A0; border-radius: 40px 0 0 40px;"></div>
+            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
             <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
-            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #0033A0; font-size: 24px;">▶</div>
+            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #1e293b; font-size: 24px;">▶</div>
         </div>
         <script>
             const container = document.getElementById('slider-container');
@@ -181,7 +184,7 @@ footer { display: none !important; }
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
 /* 배경 및 카드 레이아웃 */
 [data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; }
@@ -194,14 +197,14 @@ body { overscroll-behavior-y: none !important; }
     margin-bottom: 0.5rem !important;
 }
 
-div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
+div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 공통 높이(3.8rem) 및 폰트 크기(1.2rem) 동기화 */
+/* 💡 공통 높이(2.6rem - 2/3 사이즈) 및 폰트 크기 동기화 */
 div[data-testid="stButton"] button { 
-    height: 3.8rem !important; 
-    min-height: 3.8rem !important; 
-    max-height: 3.8rem !important;
-    font-size: 1.2rem !important; 
+    height: 2.6rem !important; 
+    min-height: 2.6rem !important; 
+    max-height: 2.6rem !important;
+    font-size: 1.1rem !important; 
     font-weight: bold !important; 
     border-radius: 8px !important;
     width: 100% !important;
@@ -210,13 +213,13 @@ div[data-testid="stButton"] button {
     box-sizing: border-box !important;
 }
 
-/* 💡 입력창 단색 테마 (단색 다크 배경 + 흰색 텍스트 유지) */
+/* 💡 입력창 높이 동일하게(2.6rem) 세팅 */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 3.8rem !important;
-    min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
+    height: 2.6rem !important;
+    min-height: 2.6rem !important;
+    max-height: 2.6rem !important;
     border-radius: 8px !important;
     background-color: #334155 !important;
     border: 1px solid #0f172a !important;
@@ -229,11 +232,11 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
-    height: 3.8rem !important;
-    min-height: 3.8rem !important;
-    max-height: 3.8rem !important;
-    line-height: 3.8rem !important;
-    font-size: 1.2rem !important;
+    height: 2.6rem !important;
+    min-height: 2.6rem !important;
+    max-height: 2.6rem !important;
+    line-height: 2.6rem !important;
+    font-size: 1.1rem !important;
     font-weight: bold !important;
     text-align: center !important;
     color: #ffffff !important; 
@@ -247,12 +250,12 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
-    height: 3.8rem !important;
+    height: 2.6rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { 
-    font-size: 1.2rem !important; 
-    min-height: 150px !important; 
+    font-size: 1.1rem !important; 
+    min-height: 120px !important; 
     background-color: #334155 !important; 
     color: #ffffff !important;
     border: 1px solid #0f172a !important; 
@@ -281,15 +284,15 @@ div[data-testid="stButton"] button[kind="secondary"]:hover {
     color: #ffffff !important;
 }
 
-/* 💡 Primary 버튼 단색 스타일 (그라데이션 제거) */
+/* 💡 Primary 버튼 단색 스타일 (차콜 네이비) */
 div[data-testid="stButton"] button[kind="primary"] {
-    background-color: #0033A0 !important;
+    background-color: #1e293b !important;
     color: #ffffff !important;
-    border: 1px solid #002277 !important;
+    border: 1px solid #0f172a !important;
     box-shadow: none !important;
 }
 div[data-testid="stButton"] button[kind="primary"]:hover {
-    background-color: #002277 !important;
+    background-color: #0f172a !important;
 }
 
 /* 💡 사이드바 메뉴 단색 디자인 */
@@ -309,7 +312,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
 
 /* 선택된 사이드바 버튼: 단색 배경 + 노란색 포인트 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background-color: #0033A0 !important; 
+    background-color: #1e293b !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
@@ -344,48 +347,47 @@ components.html(
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
                 
-                // 💡 자바스크립트로 강제 주입되는 모든 그라데이션 제거 (단색 처리)
                 if (text.includes('⬅️ 이전')) { 
                     btn.style.backgroundColor = '#64748b'; 
                     btn.style.background = 'none';
                     btn.style.color = '#ffffff'; 
                     btn.style.border = '1px solid #475569'; 
-                    btn.style.setProperty('height', '65px', 'important'); 
+                    btn.style.setProperty('height', '60px', 'important'); 
                 }
                 if (text.includes('다음 ➡️')) { 
                     btn.style.backgroundColor = '#16a34a'; 
                     btn.style.background = 'none';
                     btn.style.color = '#ffffff'; 
                     btn.style.border = '1px solid #15803d'; 
-                    btn.style.setProperty('height', '65px', 'important'); 
+                    btn.style.setProperty('height', '60px', 'important'); 
                 }
                 if (text.includes('데이터 최종 저장')) { 
                     btn.style.backgroundColor = '#0369a1';
                     btn.style.background = 'none';
                     btn.style.border = '1px solid #0c4a6e';
                     btn.style.color = '#ffffff';
-                    btn.style.setProperty('height', '150px', 'important');
-                    btn.style.setProperty('max-height', '150px', 'important');
+                    btn.style.setProperty('height', '120px', 'important');
+                    btn.style.setProperty('max-height', '120px', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important'); 
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
+                // 💡 Data Analysis 버튼 높이를 메인 헤더박스 높이(3rem/48px)와 동기화
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.backgroundColor = '#0033A0';
+                    btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
                     btn.style.color = '#ffffff';
-                    btn.style.border = '1px solid #002277';
+                    btn.style.border = '1px solid #0f172a';
                     btn.style.boxShadow = 'none';
-                    btn.style.setProperty('height', '65px', 'important');
-                    btn.style.setProperty('min-height', '65px', 'important');
-                    btn.style.setProperty('max-height', '65px', 'important');
-                    btn.style.setProperty('font-size', '1.2rem', 'important');
+                    btn.style.setProperty('height', '3rem', 'important');
+                    btn.style.setProperty('min-height', '3rem', 'important');
+                    btn.style.setProperty('max-height', '3rem', 'important');
+                    btn.style.setProperty('font-size', '1.1rem', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
                 }
             });
         };
         
-        // 💡 스캐너 텍스트칸 디자인 (노란 바탕, 검정 글씨)
         const styleScanner = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
@@ -439,6 +441,7 @@ components.html(
     """, height=0, width=0
 )
 
+# 💡 교대 주간/야간, 도금구분이 폭을 동일하게 채울 수 있도록 use_width=True로 세팅
 def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
     for row_opts in rows:
@@ -562,7 +565,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -599,7 +602,7 @@ def timepad_dialog(field_key, display_name):
     display_str = c_val.ljust(4, "_")
     display_str = f"{display_str[:2]}:{display_str[2:]}"
     
-    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#0033A0; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
     
     pad_rows = [
         ["7", "8", "9"],
@@ -674,7 +677,7 @@ if st.session_state.current_page == "analysis":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
                 defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                 fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
-                              color_discrete_sequence=['#EF4444', '#F59E0B', '#0033A0', '#8B5CF6', '#6B7280'])
+                              color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
                 fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig2, use_container_width=True)
             
@@ -687,12 +690,13 @@ elif st.session_state.current_page == "input":
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
+        img_html = f"<img src='{logo_s_data}' style='height: 35px; margin-right: 15px;'>" if logo_s_data else ""
         
+        # 💡 헤더 박스 높이를 3rem(48px)으로 축소하여 Data Analysis 버튼과 완벽 동기화
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 65px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
+            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 3rem; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
-            f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.6rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
+            f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.4rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
             unsafe_allow_html=True
         )
@@ -765,7 +769,8 @@ elif st.session_state.current_page == "input":
                 st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
             with c3:
                 st.markdown("**교대**")
-                render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=False)
+                # 💡 교대 주간/야간 폭을 넓게 채워 아래 도금 구분과 1/3 비율 맞춤 (use_width=True)
+                render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("**작업자**")
@@ -977,7 +982,7 @@ elif st.session_state.current_page == "input":
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📈 실시간 수율 현황</h4>", unsafe_allow_html=True)
             rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
             
-            c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#0033A0", "#8B5CF6"
+            c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#1e293b", "#8B5CF6"
             
             fig_donut = go.Figure(go.Pie(
                 labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
