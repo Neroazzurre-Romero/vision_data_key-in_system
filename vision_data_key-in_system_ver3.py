@@ -30,11 +30,16 @@ model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Sea
 
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM ----- (by. Romero)", layout="wide", initial_sidebar_state="expanded")
 
-# 💡 로고 이미지 인코딩 함수
-def get_image_base64(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode('utf-8')
+# 💡 절대 경로 추적 방식이 적용된 로고 인코딩 함수
+def get_image_base64(filename):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    path1 = os.path.join(script_dir, filename)
+    path2 = filename
+    
+    for path in [path1, path2]:
+        if os.path.exists(path):
+            with open(path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode('utf-8')
     return None
 
 # ==========================================
@@ -168,20 +173,38 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 마법 코드 1: UI 디자인 커스텀
+# 마법 코드 1: UI 디자인 커스텀 (카드 레이아웃 및 3.8rem 높이 정렬)
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
+/* 푸터 숨김 */
 footer { display: none !important; } 
 
+/* 사이드바 토글 강제 노출 */
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+.block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+
+/* 💡 핵심: 앱 전체 배경을 옅은 회색으로 변경하여 하얀색 카드가 돋보이게 함 */
+[data-testid="stAppViewContainer"] {
+    background-color: #f1f5f9 !important;
+}
+
+/* 💡 카드 UI 디자인 (st.container(border=True) 영역 타겟팅) */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important;
+    padding: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
+/* 버튼 및 모든 입력창 높이를 정확히 3.8rem으로 강제 고정 */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -202,7 +225,7 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     min-height: 3.8rem !important;
     max-height: 3.8rem !important;
     border-radius: 8px !important;
-    background-color: white !important;
+    background-color: #f8fafc !important; /* 카드 내부에서 입력창이 살짝 구분되도록 아주 연한 회색 부여 */
     border: 1px solid #cbd5e1 !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -234,13 +257,15 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
     height: 3.8rem !important;
 }
 
-div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; }
+div[data-baseweb="textarea"] textarea { font-size: 1.3rem !important; min-height: 150px !important; background-color: #f8fafc !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important; padding: 15px !important;}
 
+/* 커서 숨김 */
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
+/* 메인 남색 테마 원복 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: white !important;
@@ -255,6 +280,7 @@ div[data-testid="stButton"] button[kind="secondary"] {
     border: 1px solid #cbd5e1 !important;
 }
 
+/* 사이드바 크기 및 색상 */
 [data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -264,6 +290,7 @@ div[data-testid="stButton"] button[kind="secondary"] {
     padding-left: 15px !important; 
     margin-bottom: 10px !important; 
     border-radius: 8px !important; 
+    background-color: transparent !important;
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 20px !important; text-indent: 10px !important; text-align: left !important; }
 
@@ -572,7 +599,7 @@ def show_sbl_warning(defect_type, rate):
 if st.session_state.current_page == "analysis":
     logo_s_base64 = get_image_base64("logo_small.png")
     img_html = f"<img src='data:image/png;base64,{logo_s_base64}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_base64 else ""
-    st.markdown(f"<h2 style='display: flex; align-items: center;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
     with col2:
@@ -588,25 +615,25 @@ if st.session_state.current_page == "analysis":
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
-        st.markdown("<hr>", unsafe_allow_html=True)
-        g_col1, g_col2 = st.columns(2)
-        
-        with g_col1:
-            st.markdown("### 일자별 양/불량 생산 현황")
-            df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
-            fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
-                          color_discrete_sequence=['#00b050', '#b22222'])
-            st.plotly_chart(fig1, use_container_width=True)
+        with st.container(border=True):
+            g_col1, g_col2 = st.columns(2)
+            with g_col1:
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📌 일자별 양/불량 현황</h4>", unsafe_allow_html=True)
+                df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
+                fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
+                              color_discrete_sequence=['#00b050', '#b22222'])
+                st.plotly_chart(fig1, use_container_width=True)
+                
+            with g_col2:
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>🚨 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
+                defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
+                fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.4, 
+                              color_discrete_sequence=px.colors.qualitative.Pastel)
+                st.plotly_chart(fig2, use_container_width=True)
             
-        with g_col2:
-            st.markdown("### 주요 불량 유형 비율")
-            defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
-            fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.4, 
-                          color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig2, use_container_width=True)
-            
-        st.markdown("### 📋 저장된 전체 데이터")
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📋 전체 데이터 내역</h4>", unsafe_allow_html=True)
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
 elif st.session_state.current_page == "input":
     
@@ -678,31 +705,31 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
+    # 💡 각 단계를 깔끔한 하얀색 카드로 묶기 (st.container(border=True))
     if step == 1:
-        c1, c2, c3 = st.columns(3)
-        with c1: 
-            st.markdown("**근무일자**")
-            st.session_state.work_date = st.date_input("근무일자", value=st.session_state.work_date, label_visibility="collapsed")
-        with c2: 
-            st.markdown("**모델명**")
-            st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
-        with c3:
-            st.markdown("**교대**")
-            render_grid_buttons(["주간", "야간"], "shift_type", 2)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("**작업자**")
-        w_col1, w_col2, w_col3 = st.columns(3)
-        with w_col1: st.session_state.worker_a = st.selectbox("A조", worker_a_list, index=worker_a_list.index(st.session_state.worker_a) if st.session_state.worker_a in worker_a_list else 0, label_visibility="collapsed")
-        with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
-        with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
-
-        st.markdown("<hr>", unsafe_allow_html=True)
-        
-        with st.container():
-            st.markdown("<div id='scanner_target'></div>", unsafe_allow_html=True)
-            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📌 기본 근무 정보</h4>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns(3)
+            with c1: 
+                st.markdown("**근무일자**")
+                st.session_state.work_date = st.date_input("근무일자", value=st.session_state.work_date, label_visibility="collapsed")
+            with c2: 
+                st.markdown("**모델명**")
+                st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
+            with c3:
+                st.markdown("**교대**")
+                render_grid_buttons(["주간", "야간"], "shift_type", 2)
             
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("**작업자**")
+            w_col1, w_col2, w_col3 = st.columns(3)
+            with w_col1: st.session_state.worker_a = st.selectbox("A조", worker_a_list, index=worker_a_list.index(st.session_state.worker_a) if st.session_state.worker_a in worker_a_list else 0, label_visibility="collapsed")
+            with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
+            with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
+
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📷 스캔 및 입고 정보</h4>", unsafe_allow_html=True)
+            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
             with sc1:
                 st.markdown("**스캔 데이터**")
                 scan_in, scan_btn = st.columns([0.7, 0.3])
@@ -730,140 +757,148 @@ elif st.session_state.current_page == "input":
                     st.rerun()
 
     elif step == 2:
-        c1, c2, c3 = st.columns(3)
-        with c1: 
-            st.markdown("**시작일**")
-            st.session_state.start_date = st.date_input("시작일", value=st.session_state.start_date, label_visibility="collapsed")
-        with c2: 
-            st.markdown("**시작시간**")
-            time_str = st.session_state.start_time.strftime("%H:%M")
-            if st.button(time_str, key="btn_start_time", use_container_width=True):
-                st.session_state.timepad_buffer = st.session_state.start_time.strftime("%H%M")
-                timepad_dialog("start_time", "시작시간")
-        with c3: 
-            st.markdown("**휴동시간 (분)**")
-            if st.button(f"{st.session_state.idle_time:,}", key="btn_idle_time", use_container_width=True):
-                st.session_state.numpad_buffer = str(st.session_state.idle_time) if st.session_state.idle_time != 0 else ""
-                numpad_dialog("idle_time", "휴동시간 (분)")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>🕒 작업 시간</h4>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns(3)
+            with c1: 
+                st.markdown("**시작일**")
+                st.session_state.start_date = st.date_input("시작일", value=st.session_state.start_date, label_visibility="collapsed")
+            with c2: 
+                st.markdown("**시작시간**")
+                time_str = st.session_state.start_time.strftime("%H:%M")
+                if st.button(time_str, key="btn_start_time", use_container_width=True):
+                    st.session_state.timepad_buffer = st.session_state.start_time.strftime("%H%M")
+                    timepad_dialog("start_time", "시작시간")
+            with c3: 
+                st.markdown("**휴동시간 (분)**")
+                if st.button(f"{st.session_state.idle_time:,}", key="btn_idle_time", use_container_width=True):
+                    st.session_state.numpad_buffer = str(st.session_state.idle_time) if st.session_state.idle_time != 0 else ""
+                    numpad_dialog("idle_time", "휴동시간 (분)")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            c4, c5, c6 = st.columns(3)
+            with c4: 
+                st.markdown("**종료일**")
+                st.session_state.end_date = st.date_input("종료일", value=st.session_state.end_date, label_visibility="collapsed")
+            with c5: 
+                st.markdown("**종료시간**")
+                time_str = st.session_state.end_time.strftime("%H:%M")
+                if st.button(time_str, key="btn_end_time", use_container_width=True):
+                    st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
+                    timepad_dialog("end_time", "종료시간")
+            with c6: 
+                st.markdown("**소요시간 (차감됨)**")
+                start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
+                end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+                raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+                duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+                st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        c4, c5, c6 = st.columns(3)
-        with c4: 
-            st.markdown("**종료일**")
-            st.session_state.end_date = st.date_input("종료일", value=st.session_state.end_date, label_visibility="collapsed")
-        with c5: 
-            st.markdown("**종료시간**")
-            time_str = st.session_state.end_time.strftime("%H:%M")
-            if st.button(time_str, key="btn_end_time", use_container_width=True):
-                st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
-                timepad_dialog("end_time", "종료시간")
-        with c6: 
-            st.markdown("**소요시간 (차감됨)**")
-            start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
-            end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-            raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-            duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-            st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
-        
-        st.markdown("<br>**호기**", unsafe_allow_html=True)
-        render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
-        
-        st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
-        render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>⚙️ 설비 및 검사 설정</h4>", unsafe_allow_html=True)
+            st.markdown("**호기**")
+            render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
+            st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
+            render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
     elif step == 3:
-        c1, c2, c3 = st.columns(3)
-        with c1: 
-            st.markdown("**도장일**")
-            st.session_state.painting_date = st.date_input("도장일", value=st.session_state.painting_date, label_visibility="collapsed")
-        with c2: 
-            st.markdown("**도장라인**")
-            render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
-        with c3: 
-            st.markdown("**도장순서**")
-            if st.button(f"{st.session_state.painting_order:,}", key="btn_paint_order", use_container_width=True):
-                st.session_state.numpad_buffer = str(st.session_state.painting_order) if st.session_state.painting_order != 0 else ""
-                numpad_dialog("painting_order", "도장순서")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>🎨 도장 공정</h4>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns(3)
+            with c1: 
+                st.markdown("**도장일**")
+                st.session_state.painting_date = st.date_input("도장일", value=st.session_state.painting_date, label_visibility="collapsed")
+            with c2: 
+                st.markdown("**도장라인**")
+                render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
+            with c3: 
+                st.markdown("**도장순서**")
+                if st.button(f"{st.session_state.painting_order:,}", key="btn_paint_order", use_container_width=True):
+                    st.session_state.numpad_buffer = str(st.session_state.painting_order) if st.session_state.painting_order != 0 else ""
+                    numpad_dialog("painting_order", "도장순서")
         
-        st.markdown("<hr style='margin: 30px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
-        
-        num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
-        c4, c5, c6 = st.columns(3)
-        with c4: 
-            st.markdown("**CLIP**")
-            st.session_state.clip_val = st.selectbox("CLIP", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0, label_visibility="collapsed")
-        with c5: 
-            st.markdown("**BASE**")
-            st.session_state.base_val = st.selectbox("BASE", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0, label_visibility="collapsed")
-        with c6: 
-            st.markdown("**COVER**")
-            st.session_state.cover_val = st.selectbox("COVER", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0, label_visibility="collapsed")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>🧩 Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
+            num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
+            c4, c5, c6 = st.columns(3)
+            with c4: 
+                st.markdown("**CLIP**")
+                st.session_state.clip_val = st.selectbox("CLIP", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0, label_visibility="collapsed")
+            with c5: 
+                st.markdown("**BASE**")
+                st.session_state.base_val = st.selectbox("BASE", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0, label_visibility="collapsed")
+            with c6: 
+                st.markdown("**COVER**")
+                st.session_state.cover_val = st.selectbox("COVER", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0, label_visibility="collapsed")
 
-        st.markdown("<br>**조립기**", unsafe_allow_html=True)
-        render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
+            st.markdown("<br>**조립기**", unsafe_allow_html=True)
+            render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
     elif step == 4:
         bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
-        st.markdown("**🚨 수량 입력**")
-        q1, q2, q3 = st.columns(3)
-        with q1: 
-            st.markdown("**검사 수량 (자동)**")
-            st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
-        with q2: 
-            st.markdown("**양품수량**")
-            if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
-                val = str(st.session_state.good_qty)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("good_qty", "양품수량")
-        with q3: 
-            st.markdown("**불량수량 (자동)**")
-            st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📦 수량 등록</h4>", unsafe_allow_html=True)
+            q1, q2, q3 = st.columns(3)
+            with q1: 
+                st.markdown("**검사 수량 (자동)**")
+                st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
+            with q2: 
+                st.markdown("**양품수량**")
+                if st.button(f"{st.session_state.good_qty:,}", key="f_good", use_container_width=True): 
+                    val = str(st.session_state.good_qty)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("good_qty", "양품수량")
+            with q3: 
+                st.markdown("**불량수량 (자동)**")
+                st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
         
-        st.markdown("<br>**🚨 불량 세부**", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1: 
-            st.markdown("**완전불량**")
-            if st.button(f"{st.session_state.comp_def:,}", key="f_comp", use_container_width=True): 
-                val = str(st.session_state.comp_def)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("comp_def", "완전불량")
-        with c2: 
-            st.markdown("**전면불량**")
-            if st.button(f"{st.session_state.front_def:,}", key="f_front", use_container_width=True): 
-                val = str(st.session_state.front_def)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("front_def", "전면불량")
-        with c3: 
-            st.markdown("**배면불량**")
-            if st.button(f"{st.session_state.rear_def:,}", key="f_rear", use_container_width=True): 
-                val = str(st.session_state.rear_def)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("rear_def", "배면불량")
-        
-        c4, c5, c6, c7 = st.columns(4)
-        with c4: 
-            st.markdown("**옵셋불량**")
-            if st.button(f"{st.session_state.offset_def:,}", key="f_off", use_container_width=True): 
-                val = str(st.session_state.offset_def)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("offset_def", "옵셋불량")
-        with c5: 
-            st.markdown("**수량부족**")
-            if st.button(f"{st.session_state.shortage_qty:,}", key="f_short", use_container_width=True): 
-                val = str(st.session_state.shortage_qty)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("shortage_qty", "수량부족")
-        with c6: 
-            st.markdown("**기타**")
-            if st.button(f"{st.session_state.etc_def:,}", key="f_etc", use_container_width=True): 
-                val = str(st.session_state.etc_def)
-                st.session_state.numpad_buffer = val if val != "0" else ""
-                numpad_dialog("etc_def", "기타")
-        with c7: 
-            st.markdown("**OQC**")
-            st.session_state.oqc_status = st.selectbox("OQC", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status), label_visibility="collapsed")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>🚨 불량 세부 내역</h4>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns(3)
+            with c1: 
+                st.markdown("**완전불량**")
+                if st.button(f"{st.session_state.comp_def:,}", key="f_comp", use_container_width=True): 
+                    val = str(st.session_state.comp_def)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("comp_def", "완전불량")
+            with c2: 
+                st.markdown("**전면불량**")
+                if st.button(f"{st.session_state.front_def:,}", key="f_front", use_container_width=True): 
+                    val = str(st.session_state.front_def)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("front_def", "전면불량")
+            with c3: 
+                st.markdown("**배면불량**")
+                if st.button(f"{st.session_state.rear_def:,}", key="f_rear", use_container_width=True): 
+                    val = str(st.session_state.rear_def)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("rear_def", "배면불량")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            c4, c5, c6, c7 = st.columns(4)
+            with c4: 
+                st.markdown("**옵셋불량**")
+                if st.button(f"{st.session_state.offset_def:,}", key="f_off", use_container_width=True): 
+                    val = str(st.session_state.offset_def)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("offset_def", "옵셋불량")
+            with c5: 
+                st.markdown("**수량부족**")
+                if st.button(f"{st.session_state.shortage_qty:,}", key="f_short", use_container_width=True): 
+                    val = str(st.session_state.shortage_qty)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("shortage_qty", "수량부족")
+            with c6: 
+                st.markdown("**기타**")
+                if st.button(f"{st.session_state.etc_def:,}", key="f_etc", use_container_width=True): 
+                    val = str(st.session_state.etc_def)
+                    st.session_state.numpad_buffer = val if val != "0" else ""
+                    numpad_dialog("etc_def", "기타")
+            with c7: 
+                st.markdown("**OQC**")
+                st.session_state.oqc_status = st.selectbox("OQC", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(st.session_state.oqc_status), label_visibility="collapsed")
 
         if st.session_state.category == "1차 검사" and total_qty > 0:
             comp_rate = (st.session_state.comp_def / total_qty) * 100
@@ -884,124 +919,125 @@ elif st.session_state.current_page == "input":
                 show_sbl_warning("옵셋불량", offset_rate)
                 st.session_state.offset_warned = True
 
-        st.markdown("<hr><b>📈 수율 현황</b>", unsafe_allow_html=True)
-        rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
-        
-        c_yield, c_comp, c_front, c_rear, c_offset = "#002b5e", "#b22222", "#ed7d31", "#00b050", "#7030a0"
-        
-        fig_donut = go.Figure(go.Pie(
-            labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
-            hole=.65, sort=False, direction='clockwise',
-            marker=dict(colors=[c_yield, '#e2e8f0'], line=dict(color='#ffffff', width=2)), 
-            hoverinfo="label+percent", textinfo="none"
-        ))
-        fig_donut.update_layout(
-            showlegend=False, height=250, margin=dict(t=10, b=10, l=10, r=10),
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            annotations=[dict(text=f"{rate_good:.1f}%", x=0.5, y=0.5, font_size=30, font_color=c_yield, showarrow=False)]
-        )
-        
-        df_defects = pd.DataFrame({
-            "불량 항목": ['완전불량', '전면불량', '배면불량', '옵셋불량'], 
-            "비율 (%)": [
-                round((st.session_state.comp_def/total_qty)*100,1) if total_qty>0 else 0,
-                round((st.session_state.front_def/total_qty)*100,1) if total_qty>0 else 0,
-                round((st.session_state.rear_def/total_qty)*100,1) if total_qty>0 else 0,
-                round((st.session_state.offset_def/total_qty)*100,1) if total_qty>0 else 0
-            ]
-        })
-        y_max = max(df_defects["비율 (%)"]) * 1.4 if not df_defects.empty and max(df_defects["비율 (%)"]) > 0 else 5
-        fig_bar = go.Figure()
-        fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=[y_max]*4, marker_color='#f1f5f9', hoverinfo='none', width=0.45))
-        fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=df_defects["비율 (%)"], marker_color=[c_comp, c_front, c_rear, c_offset], width=0.45, texttemplate=''))
-        fig_bar.add_trace(go.Scatter(
-            x=df_defects["불량 항목"], y=df_defects["비율 (%)"], mode='markers+text',
-            marker=dict(size=40, color=[c_comp, c_front, c_rear, c_offset], line=dict(color='white', width=3)),
-            text=df_defects["비율 (%)"].apply(lambda x: f"{x:.1f}"), textfont=dict(color='white', size=14, weight='bold'),
-            textposition='middle center', hoverinfo='none'
-        ))
-        fig_bar.update_layout(barmode='overlay', showlegend=False, height=250, margin=dict(t=10, b=20, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False, range=[0, y_max]))
-
-        g_col1, g_col2 = st.columns(2)
-        with g_col1: st.plotly_chart(fig_donut, use_container_width=True)
-        with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
-
-        st.markdown("<hr>", unsafe_allow_html=True)
-        
-        rem_col, save_col = st.columns([0.7, 0.3])
-        with rem_col:
-            st.markdown("**비고**")
-            st.session_state.remarks = st.text_area("비고", value=st.session_state.remarks, height=150, label_visibility="collapsed")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📈 실시간 수율 현황</h4>", unsafe_allow_html=True)
+            rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
             
-        with save_col:
-            st.markdown("**&nbsp;**") # 비고 텍스트와 높이를 맞추기 위한 투명 텍스트
-            if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
-                if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
-                elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
-                else:
-                    with st.spinner("저장 중..."):
-                        start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
-                        end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-                        raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-                        duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+            c_yield, c_comp, c_front, c_rear, c_offset = "#002b5e", "#b22222", "#ed7d31", "#00b050", "#7030a0"
+            
+            fig_donut = go.Figure(go.Pie(
+                labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
+                hole=.65, sort=False, direction='clockwise',
+                marker=dict(colors=[c_yield, '#e2e8f0'], line=dict(color='#ffffff', width=2)), 
+                hoverinfo="label+percent", textinfo="none"
+            ))
+            fig_donut.update_layout(
+                showlegend=False, height=250, margin=dict(t=10, b=10, l=10, r=10),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                annotations=[dict(text=f"{rate_good:.1f}%", x=0.5, y=0.5, font_size=30, font_color=c_yield, showarrow=False)]
+            )
+            
+            df_defects = pd.DataFrame({
+                "불량 항목": ['완전불량', '전면불량', '배면불량', '옵셋불량'], 
+                "비율 (%)": [
+                    round((st.session_state.comp_def/total_qty)*100,1) if total_qty>0 else 0,
+                    round((st.session_state.front_def/total_qty)*100,1) if total_qty>0 else 0,
+                    round((st.session_state.rear_def/total_qty)*100,1) if total_qty>0 else 0,
+                    round((st.session_state.offset_def/total_qty)*100,1) if total_qty>0 else 0
+                ]
+            })
+            y_max = max(df_defects["비율 (%)"]) * 1.4 if not df_defects.empty and max(df_defects["비율 (%)"]) > 0 else 5
+            fig_bar = go.Figure()
+            fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=[y_max]*4, marker_color='#f1f5f9', hoverinfo='none', width=0.45))
+            fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=df_defects["비율 (%)"], marker_color=[c_comp, c_front, c_rear, c_offset], width=0.45, texttemplate=''))
+            fig_bar.add_trace(go.Scatter(
+                x=df_defects["불량 항목"], y=df_defects["비율 (%)"], mode='markers+text',
+                marker=dict(size=40, color=[c_comp, c_front, c_rear, c_offset], line=dict(color='white', width=3)),
+                text=df_defects["비율 (%)"].apply(lambda x: f"{x:.1f}"), textfont=dict(color='white', size=14, weight='bold'),
+                textposition='middle center', hoverinfo='none'
+            ))
+            fig_bar.update_layout(barmode='overlay', showlegend=False, height=250, margin=dict(t=10, b=20, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False), yaxis=dict(showgrid=False, showticklabels=False, range=[0, y_max]))
 
-                        uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
-                        upd_val = uph_val * 22
-                        good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
-                        
-                        if total_qty > 0:
-                            rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
-                            rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
-                            comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
-                            front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
-                            rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
-                            offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
-                        else:
-                            rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
+            g_col1, g_col2 = st.columns(2)
+            with g_col1: st.plotly_chart(fig_donut, use_container_width=True)
+            with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
-                        fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
-                        fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
-                        fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
-                        fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
-                        fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
-                        
-                        workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
-                        fmt_worker = ", ".join(workers) if workers else ""
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>💾 최종 확인 및 저장</h4>", unsafe_allow_html=True)
+            rem_col, save_col = st.columns([0.7, 0.3])
+            with rem_col:
+                st.markdown("**비고**")
+                st.session_state.remarks = st.text_area("비고", value=st.session_state.remarks, height=150, label_visibility="collapsed")
+                
+            with save_col:
+                st.markdown("**&nbsp;**")
+                if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
+                    if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
+                    elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
+                    else:
+                        with st.spinner("저장 중..."):
+                            start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
+                            end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+                            raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+                            duration_minutes = max(0, raw_duration - st.session_state.idle_time)
 
-                        new_data = pd.DataFrame([{
-                            "날짜": fmt_date, "교대": st.session_state.shift_type,
-                            "시작시간": start_dt.strftime("%H:%M"), "종료시간": end_dt.strftime("%H:%M"),
-                            "휴동시간": f"{st.session_state.idle_time:,}", "소요시간": f"{duration_minutes:,}", "구분": st.session_state.category, "호기": st.session_state.unit, 
-                            "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
-                            "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
-                            "양품률": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
-                            "완전불량률": f"{comp_rate_num:.1f}%", "전면불량률": f"{front_rate_num:.1f}%", "배면불량률": f"{rear_rate_num:.1f}%",
-                            "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
-                            "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
-                            "비고": st.session_state.remarks, "도장라인": fmt_paint_line, "도장일": fmt_paint_date, 
-                            "도장순서": st.session_state.painting_order, "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
-                            "CLIP": "" if st.session_state.clip_val == "선택안함" else st.session_state.clip_val, 
-                            "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
-                            "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
-                            "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", 
-                            "작업자": fmt_worker
-                        }])
-                        
-                        if save_data_append(new_data):
-                            st.success("저장 완료!")
-                            for k, v in default_state.items():
-                                st.session_state[k] = v
-                            time.sleep(1)
-                            st.session_state.step = 5
-                            st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
-                            st.rerun()
+                            uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
+                            upd_val = uph_val * 22
+                            good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
+                            
+                            if total_qty > 0:
+                                rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
+                                rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
+                                comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
+                                front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
+                                rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
+                                offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
+                            else:
+                                rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
+
+                            fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
+                            fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
+                            fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
+                            fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
+                            fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
+                            
+                            workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
+                            fmt_worker = ", ".join(workers) if workers else ""
+
+                            new_data = pd.DataFrame([{
+                                "날짜": fmt_date, "교대": st.session_state.shift_type,
+                                "시작시간": start_dt.strftime("%H:%M"), "종료시간": end_dt.strftime("%H:%M"),
+                                "휴동시간": f"{st.session_state.idle_time:,}", "소요시간": f"{duration_minutes:,}", "구분": st.session_state.category, "호기": st.session_state.unit, 
+                                "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
+                                "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
+                                "양품률": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
+                                "완전불량률": f"{comp_rate_num:.1f}%", "전면불량률": f"{front_rate_num:.1f}%", "배면불량률": f"{rear_rate_num:.1f}%",
+                                "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
+                                "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
+                                "비고": st.session_state.remarks, "도장라인": fmt_paint_line, "도장일": fmt_paint_date, 
+                                "도장순서": st.session_state.painting_order, "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
+                                "CLIP": "" if st.session_state.clip_val == "선택안함" else st.session_state.clip_val, 
+                                "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
+                                "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
+                                "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", 
+                                "작업자": fmt_worker
+                            }])
+                            
+                            if save_data_append(new_data):
+                                st.success("저장 완료!")
+                                for k, v in default_state.items():
+                                    st.session_state[k] = v
+                                time.sleep(1)
+                                st.session_state.step = 5
+                                st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
+                                st.rerun()
 
     elif step == 5:
-        st.markdown("---")
-        df_history = load_data().copy()
-        if not df_history.empty:
-            recent_10 = df_history.iloc[::-1].head(10).copy()
-            st.markdown("**최근 저장 데이터 List**")
-            st.dataframe(recent_10, use_container_width=True, hide_index=True)
-        else:
-            st.caption("저장된 데이터가 없습니다.")
+        with st.container(border=True):
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0;'>📋 최근 저장 데이터 List</h4>", unsafe_allow_html=True)
+            df_history = load_data().copy()
+            if not df_history.empty:
+                recent_10 = df_history.iloc[::-1].head(10).copy()
+                st.dataframe(recent_10, use_container_width=True, hide_index=True)
+            else:
+                st.caption("저장된 데이터가 없습니다.")
