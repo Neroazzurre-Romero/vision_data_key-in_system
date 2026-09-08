@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 UI 커스텀 스타일 CSS
+# 💡 단색(Flat) 테마 기반 CSS 
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -210,6 +210,7 @@ div[data-testid="stButton"] button {
     box-sizing: border-box !important;
 }
 
+/* 💡 입력창 단색 테마 (단색 다크 배경 + 흰색 텍스트 유지) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -217,11 +218,11 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     min-height: 3.8rem !important;
     max-height: 3.8rem !important;
     border-radius: 8px !important;
-    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    background-color: #334155 !important;
     border: 1px solid #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important;
+    box-shadow: none !important;
     box-sizing: border-box !important;
 }
 
@@ -252,7 +253,7 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.2rem !important; 
     min-height: 150px !important; 
-    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important; 
+    background-color: #334155 !important; 
     color: #ffffff !important;
     border: 1px solid #0f172a !important; 
     border-radius: 8px !important; 
@@ -268,36 +269,35 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
 input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 💡 일반 입력 버튼(Secondary) 스타일을 드롭다운 박스와 동일하게 세팅 */
+/* 💡 일반 입력 버튼(Secondary) 단색 스타일 */
 div[data-testid="stButton"] button[kind="secondary"] {
-    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    background-color: #475569 !important;
     color: #ffffff !important;
-    border: 1px solid #0f172a !important;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important;
+    border: 1px solid #334155 !important;
+    box-shadow: none !important;
 }
 div[data-testid="stButton"] button[kind="secondary"]:hover {
-    background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
+    background-color: #334155 !important;
     color: #ffffff !important;
 }
 
-/* 💡 인천 유나이티드 파검 그라데이션 (Primary 버튼) */
+/* 💡 Primary 버튼 단색 스타일 (그라데이션 제거) */
 div[data-testid="stButton"] button[kind="primary"] {
-    background: linear-gradient(180deg, #0033A0 0%, #000000 100%) !important;
+    background-color: #0033A0 !important;
     color: #ffffff !important;
-    border: 1px solid #000000 !important;
-    box-shadow: 0 4px 10px rgba(0, 51, 160, 0.4) !important;
+    border: 1px solid #002277 !important;
+    box-shadow: none !important;
 }
 div[data-testid="stButton"] button[kind="primary"]:hover {
-    background: linear-gradient(180deg, #004ea2 0%, #111111 100%) !important;
-    box-shadow: 0 6px 12px rgba(0, 51, 160, 0.6) !important;
+    background-color: #002277 !important;
 }
 
-/* 💡 사이드바 메뉴 디자인 */
-[data-testid="stSidebar"] { background: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important; }
+/* 💡 사이드바 메뉴 단색 디자인 */
+[data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
-    height: 100px !important; 
-    max-height: 100px !important;
+    height: 80px !important; 
+    max-height: 80px !important;
     justify-content: flex-start !important; 
     padding-left: 15px !important; 
     margin-bottom: 10px !important; 
@@ -305,25 +305,25 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: transparent !important;
     box-shadow: none !important;
 }
-[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 18px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 16px !important; text-indent: 10px !important; text-align: left !important; }
 
-/* 선택된 사이드바 버튼: 검정 -> 파랑 가로 그라데이션 + 노란색 포인트 */
+/* 선택된 사이드바 버튼: 단색 배경 + 노란색 포인트 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background: linear-gradient(90deg, #000000 0%, #0033A0 100%) !important; 
+    background-color: #0033A0 !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
     box-shadow: none !important;
 }
-/* 미선택 사이드바 버튼: 투명 (호버 시에도 수직 그라데이션 제거) */
+/* 미선택 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
-    background: transparent !important; 
+    background-color: transparent !important; 
     color: #8B9CB6 !important; 
     border: 1px solid transparent !important; 
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background: transparent !important;
+    background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
     box-shadow: none !important;
@@ -344,20 +344,24 @@ components.html(
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
                 
+                // 💡 자바스크립트로 강제 주입되는 모든 그라데이션 제거 (단색 처리)
                 if (text.includes('⬅️ 이전')) { 
-                    btn.style.background = 'linear-gradient(180deg, #64748b 0%, #475569 100%)'; 
+                    btn.style.backgroundColor = '#64748b'; 
+                    btn.style.background = 'none';
                     btn.style.color = '#ffffff'; 
-                    btn.style.border = '1px solid #334155'; 
+                    btn.style.border = '1px solid #475569'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 if (text.includes('다음 ➡️')) { 
-                    btn.style.background = 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)'; 
+                    btn.style.backgroundColor = '#16a34a'; 
+                    btn.style.background = 'none';
                     btn.style.color = '#ffffff'; 
                     btn.style.border = '1px solid #15803d'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 if (text.includes('데이터 최종 저장')) { 
-                    btn.style.background = 'linear-gradient(180deg, #0284C7 0%, #0369A1 100%)';
+                    btn.style.backgroundColor = '#0369a1';
+                    btn.style.background = 'none';
                     btn.style.border = '1px solid #0c4a6e';
                     btn.style.color = '#ffffff';
                     btn.style.setProperty('height', '150px', 'important');
@@ -366,12 +370,12 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                // 💡 Data Analysis 버튼 높이를 메인 헤더박스와 동일하게(65px) 완벽 동기화
                 if (text.trim() === 'Data Analysis') { 
-                    btn.style.background = 'linear-gradient(180deg, #0033A0 0%, #000000 100%)';
+                    btn.style.backgroundColor = '#0033A0';
+                    btn.style.background = 'none';
                     btn.style.color = '#ffffff';
-                    btn.style.border = '1px solid #000000';
-                    btn.style.boxShadow = '0 4px 10px rgba(0, 51, 160, 0.4)';
+                    btn.style.border = '1px solid #002277';
+                    btn.style.boxShadow = 'none';
                     btn.style.setProperty('height', '65px', 'important');
                     btn.style.setProperty('min-height', '65px', 'important');
                     btn.style.setProperty('max-height', '65px', 'important');
