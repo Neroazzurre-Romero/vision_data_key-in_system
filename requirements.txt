@@ -5,6 +5,4 @@ plotly
 openpyxl
 gspread
 google-auth
-opencv-python-headless
-pyzbar
 Pillow
