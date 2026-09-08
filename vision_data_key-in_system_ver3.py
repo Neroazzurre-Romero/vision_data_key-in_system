@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 라이트 테마 기반 하이브리드 CSS (입력창/버튼은 흰색 폰트)
+# 💡 라이트 테마 + 버튼 높이 동기화 + 스캐너 스타일 적용
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -183,10 +183,8 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 앱 배경 및 카드 배경 원복 (밝은 테마) */
-[data-testid="stAppViewContainer"] {
-    background-color: #f1f5f9 !important;
-}
+/* 배경 및 카드 레이아웃 */
+[data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; }
 [data-testid="stVerticalBlockBorderWrapper"] {
     background-color: #ffffff !important;
     border-radius: 12px !important;
@@ -198,7 +196,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.2rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 버튼 공통 규격 */
+/* 💡 공통 높이(3.8rem) 강제 동기화 (입력창 & 일반 버튼) */
 div[data-testid="stButton"] button { 
     height: 3.8rem !important; 
     min-height: 3.8rem !important; 
@@ -212,7 +210,6 @@ div[data-testid="stButton"] button {
     box-sizing: border-box !important;
 }
 
-/* 💡 입력창 하이브리드 테마 (다크 배경 + 흰색 텍스트) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -238,7 +235,7 @@ div[data-testid="stTextInput"] input {
     font-size: 1.2rem !important;
     font-weight: bold !important;
     text-align: center !important;
-    color: #ffffff !important; /* 모든 입력 텍스트 흰색 */
+    color: #ffffff !important; 
     padding: 0 10px !important;
     margin: 0 !important;
     background: transparent !important;
@@ -267,7 +264,11 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 💡 모든 버튼에 흰색 텍스트 강제 적용 */
+/* 💡 스캐너 텍스트 Placeholder 스타일 강제 적용 */
+input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
+input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
+
+/* 모든 버튼 흰색 텍스트 & 투톤 적용 */
 div[data-testid="stButton"] button[kind="primary"] {
     background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%) !important;
     color: #ffffff !important;
@@ -353,27 +354,39 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
+                // 💡 Data Analysis 버튼의 높이도 3.8rem으로 정확히 맞춤
                 if (text.trim() === 'Data Analysis') { 
                     btn.style.background = 'linear-gradient(180deg, #fcd34d 0%, #d97706 100%)';
                     btn.style.color = '#ffffff';
                     btn.style.border = '1px solid #b45309';
-                    btn.style.setProperty('height', '65px', 'important');
-                    btn.style.setProperty('font-size', '16px', 'important');
+                    btn.style.setProperty('height', '3.8rem', 'important');
+                    btn.style.setProperty('min-height', '3.8rem', 'important');
+                    btn.style.setProperty('max-height', '3.8rem', 'important');
+                    btn.style.setProperty('font-size', '1.2rem', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
                 }
             });
         };
         
+        // 💡 스캐너 칸 디자인 (노란 바탕, 검정 글씨, 1.2rem)
         const styleScanner = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
                 if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
-                    el.style.backgroundColor = '#064E3B';
-                    el.style.color = '#34D399';
+                    el.style.setProperty('background-color', '#fef08a', 'important');
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('font-size', '1.2rem', 'important');
+                    el.style.setProperty('font-weight', '900', 'important');
+                    
                     let parentDiv = el.parentElement;
                     if (parentDiv) {
-                        parentDiv.style.backgroundColor = '#064E3B';
-                        parentDiv.style.border = '1px solid #10B981';
+                        parentDiv.style.setProperty('background-color', '#fef08a', 'important');
+                        parentDiv.style.setProperty('border', 'none', 'important');
+                    }
+                    let grandParent = el.closest('div[data-baseweb="input"]');
+                    if (grandParent) {
+                        grandParent.style.setProperty('background-color', '#fef08a', 'important');
+                        grandParent.style.setProperty('border', '2px solid #eab308', 'important');
                     }
                 }
             });
@@ -495,7 +508,7 @@ def save_data_append(df):
 
 @st.dialog("📷 바코드/QR 스캐너")
 def scanner_dialog():
-    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#34D399; padding:15px; background:#064E3B; border-radius:10px; margin-bottom:15px; border:2px solid #10B981;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#fef08a; border-radius:10px; margin-bottom:15px; border:2px solid #eab308;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
     
     raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
     
@@ -654,14 +667,14 @@ if st.session_state.current_page == "analysis":
 
 elif st.session_state.current_page == "input":
     
-    # 💡 Data Analysis 버튼 폭을 주간/야간과 똑같이 1/6로 맞춤 ([5, 1] 비율)
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px;'>" if logo_s_data else ""
         
+        # 💡 헤더 박스 높이를 Data Analysis 버튼과 동일하게(3.8rem) 맞춤
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 65px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
+            f"<div style='background: #ffffff; padding: 0 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 3.8rem; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);'>"
             f"{img_html}"
             f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.6rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
@@ -748,7 +761,6 @@ elif st.session_state.current_page == "input":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>📷 스캔 및 입고 정보</h4>", unsafe_allow_html=True)
             
-            # 💡 적용, A, B 버튼 폭을 1/6 비율로 정확히 일치화시키는 레이아웃 적용
             sc1, sc2, sc3 = st.columns(3)
             with sc1:
                 scan_in, scan_btn = st.columns(2)
