@@ -100,6 +100,7 @@ if not st.session_state.unlocked:
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
             st.rerun()
+
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
             <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
@@ -111,19 +112,24 @@ if not st.session_state.unlocked:
             const thumb = document.getElementById('slider-thumb');
             const fill = document.getElementById('slider-fill');
             const text = document.getElementById('slider-text');
+
             const unlockSystem = () => {
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
             };
+
             const btns = window.parent.document.querySelectorAll('button');
             for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
+
             let isDragging = false;
             let startX, currentX = 0;
+
             function startDrag(e) {
                 isDragging = true;
                 let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
                 startX = clientX - currentX;
             }
+
             function drag(e) {
                 if (!isDragging) return;
                 if(e.cancelable) e.preventDefault();
@@ -142,6 +148,7 @@ if not st.session_state.unlocked:
                     setTimeout(() => { unlockSystem(); }, 200);
                 }
             }
+
             function endDrag(e) {
                 if (!isDragging) return;
                 isDragging = false;
@@ -156,11 +163,13 @@ if not st.session_state.unlocked:
                     setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
                 }
             }
+
             thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
         components.html(slider_html, height=90)
+            
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -187,7 +196,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 공통 높이(2.6rem - 2/3 사이즈) */
+/* 공통 높이(2.6rem) 설정 */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -202,13 +211,11 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 입력창 기본 테마 (배경 #E7E6E6, 텍스트 검정) */
+/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 2.6rem !important;
     min-height: 2.6rem !important;
-    max-height: 2.6rem !important;
     border-radius: 8px !important;
     background-color: #E7E6E6 !important;
     border: 1px solid #cbd5e1 !important;
@@ -219,17 +226,16 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-/* 다중선택 태그 보완 */
-span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
+/* 다중선택 텍스트박스 내부 태그 스타일 */
+span[data-baseweb="tag"] {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
 
-/* 텍스트 색상 (기본 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
-    height: 2.6rem !important;
     min-height: 2.6rem !important;
-    max-height: 2.6rem !important;
-    line-height: 2.6rem !important;
     font-size: 1.1rem !important;
     font-weight: bold !important;
     text-align: center !important;
@@ -245,7 +251,6 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
-    height: 2.6rem !important;
 }
 
 /* 비고란 (Textarea) */
@@ -269,26 +274,29 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
     background-color: #1e293b !important;
     border-color: #1e293b !important;
 }
+
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input {
     color: #ffffff !important;
 }
+
 div[data-baseweb="textarea"]:focus-within textarea {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border-color: #1e293b !important;
 }
+
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 스캐너 Placeholder 강제 스타일 */
+/* 스캐너 Placeholder */
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 일반 버튼(Secondary) 단색 스타일 */
+/* Secondary 버튼 */
 div[data-testid="stButton"] button[kind="secondary"] {
     background-color: #E7E6E6 !important;
     color: #000000 !important;
@@ -303,7 +311,7 @@ div[data-testid="stButton"] button[kind="secondary"]:active {
     border-color: #1e293b !important;
 }
 
-/* Primary 버튼 단색 스타일 (차콜 네이비) */
+/* Primary 버튼 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -314,7 +322,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 사이드바 메뉴 단색 디자인 (고정 크기 최적화) */
+/* 사이드바 메뉴 디자인 (고정 크기 최적화) */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -559,6 +567,7 @@ def save_data_append(df):
         st.error(f"데이터 저장 오류: {e}")
         return False
 
+# 💡 Callback 함수 분리로 Widget instantiated error 원천 차단
 def parse_scanned_data():
     raw_val = st.session_state.scanned_raw_data
     if not raw_val: return
@@ -579,6 +588,11 @@ def parse_scanned_data():
     else:
         st.session_state.lot_input_field = raw_val
     st.session_state.scanned_raw_data = "" 
+
+def on_scan_apply():
+    parse_scanned_data()
+    time.sleep(1)
+    st.session_state.step = 2
 
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
@@ -834,11 +848,8 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        time.sleep(1) # 1초 뒤 2단계 진입
-                        st.session_state.step = 2
-                        st.rerun()
+                    # 💡 On_click 콜백 적용 완료
+                    st.button("적용", type="primary", use_container_width=True, on_click=on_scan_apply)
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
                     st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -860,7 +871,7 @@ elif st.session_state.current_page == "input":
                     st.markdown("**시작시간**")
                     time_str = st.session_state.start_time.strftime("%H:%M")
                     if st.button(time_str, key="btn_start_time", use_container_width=True):
-                        st.session_state.timepad_buffer = "" # 💡 클리어 상태 Default
+                        st.session_state.timepad_buffer = ""
                         timepad_dialog("start_time", "시작시간")
                 with c3: st.write("")
                 with c4: st.write("")
@@ -871,7 +882,6 @@ elif st.session_state.current_page == "input":
             
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 검사 구분</h4>", unsafe_allow_html=True)
-                # 💡 개발품 제외
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
         elif step == 3:
@@ -886,7 +896,6 @@ elif st.session_state.current_page == "input":
                     st.session_state.painting_line = st.selectbox("도장라인", ["A Line", "B Line", "C Line"], index=["A Line", "B Line", "C Line"].index(st.session_state.painting_line), label_visibility="collapsed")
                 with c3: 
                     st.markdown("**도장순서**")
-                    # 💡 도장순서 클리어 상태 Default
                     display_val = str(st.session_state.painting_order) if st.session_state.painting_order != "" else "입력"
                     if st.button(display_val, key="btn_paint_order", use_container_width=True):
                         st.session_state.numpad_buffer = ""
@@ -895,7 +904,7 @@ elif st.session_state.current_page == "input":
         
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 조립 정보</h4>", unsafe_allow_html=True)
-                # 💡 숫자패드 + 라디오(체크박스 K) 적용
+                num_options = [str(i) for i in range(1, 11)]
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.write("")
@@ -945,7 +954,6 @@ elif st.session_state.current_page == "input":
                         fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
                         fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
                         
-                        # 💡 K 라디오버튼 조합 DB 저장
                         fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k and st.session_state.clip_val != "" else str(st.session_state.clip_val)
                         fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k and st.session_state.base_val != "" else str(st.session_state.base_val)
                         fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k and st.session_state.cover_val != "" else str(st.session_state.cover_val)
@@ -968,8 +976,8 @@ elif st.session_state.current_page == "input":
                         if save_data_append(new_data):
                             st.success("새로운 작업이 진행중 상태로 등록되었습니다!")
                             st.session_state.unique_id = ""
-                            time.sleep(1.5) # 💡 구글 시트 연동을 위한 대기시간 추가
-                            st.cache_data.clear() # 확실한 데이터 갱신
+                            time.sleep(1.5) 
+                            st.cache_data.clear() 
                             st.session_state.app_mode = "END"
                             st.session_state.step = 1
                             st.rerun()
@@ -1009,7 +1017,7 @@ elif st.session_state.current_page == "input":
                     st.markdown("**종료시간**")
                     time_str = st.session_state.end_time.strftime("%H:%M")
                     if st.button(time_str, key="btn_end_time", use_container_width=True):
-                        st.session_state.timepad_buffer = "" # 💡 클리어 상태 Default
+                        st.session_state.timepad_buffer = ""
                         timepad_dialog("end_time", "종료시간")
                 with c3: 
                     st.markdown("**휴동시간 (분)**")
