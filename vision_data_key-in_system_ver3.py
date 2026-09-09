@@ -55,15 +55,15 @@ if "unlocked" in st.query_params:
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "workers": [],
+    "shift_type": "주간", "worker": "작업자A",
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
     "painting_order": "", "painting_line": "A Line", 
-    "clip_val": "", "clip_k": False,
-    "base_val": "", "base_k": False,
-    "cover_val": "", "cover_k": False,
+    "clip_val": "", "clip_k": "일반",
+    "base_val": "", "base_k": "일반",
+    "cover_val": "", "cover_k": "일반",
     "assembler_val": "1호기",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
@@ -164,6 +164,9 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
+# ----------------------------------------------------
+# 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
+# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -212,11 +215,6 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-span[data-baseweb="tag"] {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-}
-
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
@@ -236,6 +234,7 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
+    height: 2.6rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { 
@@ -330,11 +329,12 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     border: 1px solid transparent !important;
 }
 
-div[data-testid="stCheckbox"] {
+div[data-testid="stRadio"] > div {
     display: flex;
+    flex-direction: row;
+    gap: 10px;
     align-items: center;
-    height: 2.6rem;
-    padding-left: 10px;
+    padding-left: 5px;
 }
 </style>
 """
@@ -367,6 +367,7 @@ components.html(
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 
+                // 💡 주요 액션 버튼 색상 커스텀 (#305496)
                 if (text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용') { 
                     btn.style.backgroundColor = '#305496';
                     btn.style.background = 'none';
@@ -502,37 +503,50 @@ def get_sheet():
 @st.cache_data(ttl=60)
 def load_data():
     sheet = get_sheet()
-    if sheet is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    if sheet is None: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
     try:
         raw_data = sheet.get_all_values()
-        valid_data = [row for row in raw_data if any(str(cell).strip() for cell in row)]
-        if len(valid_data) < 2: return pd.DataFrame(columns=EXCEL_COLUMNS)
-        header_idx = 0
-        for i, row in enumerate(valid_data[:10]):
+        if len(raw_data) < 2: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+        
+        # 실제 헤더 위치 찾기
+        header_idx = -1
+        for i, row in enumerate(raw_data[:15]):
             row_str = "".join(str(c).replace(" ", "") for c in row)
             if "날짜" in row_str or "교대" in row_str or "고유ID" in row_str.upper():
                 header_idx = i; break
-        headers = [str(h).strip() for h in valid_data[header_idx]]
-        df = pd.DataFrame(valid_data[header_idx+1:])
-        df.columns = headers[:len(df.columns)]
+                
+        if header_idx == -1: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+        
+        headers = [str(h).strip() for h in raw_data[header_idx]]
         
         # 💡 오타(률/율)가 있어도 스마트하게 매핑해주는 클리닝 로직
-        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in df.columns}
-        result_df = pd.DataFrame(index=df.index)
+        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
         
-        for col in EXCEL_COLUMNS:
-            col_key = col.replace(" ", "").replace("률", "율").upper()
-            if col_key in clean_headers: 
-                result_df[col] = df[clean_headers[col_key]]
-            else: 
-                result_df[col] = "" 
-                
+        data_list = []
+        for r_idx in range(header_idx + 1, len(raw_data)):
+            row = raw_data[r_idx]
+            if any(str(c).strip() for c in row):
+                row_data = {"_sheet_row": r_idx + 1} # 💡 구글 시트의 실제 행 번호(1-based)를 정확히 추적
+                for col in EXCEL_COLUMNS:
+                    col_key = col.replace(" ", "").replace("률", "율").upper()
+                    if col_key in clean_headers:
+                        orig_col_name = clean_headers[col_key]
+                        try:
+                            c_idx = headers.index(orig_col_name)
+                            row_data[col] = row[c_idx] if c_idx < len(row) else ""
+                        except:
+                            row_data[col] = ""
+                    else:
+                        row_data[col] = ""
+                data_list.append(row_data)
+        
+        result_df = pd.DataFrame(data_list)
         # 💡 강제 텍스트(String)화 방어 코드
         if 'LOT NO.' in result_df.columns:
-            result_df['LOT NO.'] = result_df['LOT NO.'].astype(str)
+            result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
             
         return result_df
-    except: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    except: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
 
 def save_data_append(df):
     sheet = get_sheet()
@@ -570,11 +584,6 @@ def parse_scanned_data():
     else:
         st.session_state.lot_input_field = raw_val
     st.session_state.scanned_raw_data = "" 
-
-def on_scan_apply():
-    parse_scanned_data()
-    time.sleep(1)
-    st.session_state.step = 2
 
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
@@ -643,6 +652,21 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
+# 하단 네비게이션 버튼을 위한 헬퍼 함수
+def render_nav_buttons(step_num, max_step):
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_nav = st.columns(6)
+    with c_nav[4]:
+        if step_num > 1:
+            if st.button("⬅️ 이전", use_container_width=True):
+                st.session_state.step -= 1
+                st.rerun()
+    with c_nav[5]:
+        if step_num < max_step:
+            if st.button("다음 ➡️", use_container_width=True):
+                st.session_state.step += 1
+                st.rerun()
+
 # ==========================================
 # Administrator (분석) 프로세스
 # ==========================================
@@ -663,10 +687,11 @@ if st.session_state.current_page == "analysis":
     else:
         numeric_cols = ["검사 수량", "양품수량", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
         for col in numeric_cols:
-            df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;상세 분석 조건 필터</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 상세 분석 조건 필터</h4>", unsafe_allow_html=True)
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
             with f_col1:
                 dates = df['날짜'].unique().tolist()
@@ -705,7 +730,7 @@ if st.session_state.current_page == "analysis":
             with st.container(border=True):
                 g_col1, g_col2 = st.columns(2)
                 with g_col1:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;조건별 양/불량 생산 현황</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 양/불량 생산 현황</h4>", unsafe_allow_html=True)
                     group_col = '날짜'
                     if len(selected_dates) == 1 and len(selected_models) > 1:
                         group_col = '모델명(MI)'
@@ -717,7 +742,7 @@ if st.session_state.current_page == "analysis":
                     st.plotly_chart(fig1, use_container_width=True)
                     
                 with g_col2:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;주요 불량 유형 비율 (도넛형)</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 비율 (도넛형)</h4>", unsafe_allow_html=True)
                     defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                     fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
                                   color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
@@ -725,7 +750,7 @@ if st.session_state.current_page == "analysis":
                     st.plotly_chart(fig2, use_container_width=True)
                     
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;조건별 수율 분석 요약표</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 수율 분석 요약표</h4>", unsafe_allow_html=True)
                 pivot_df = filtered_df.groupby(['날짜', '교대', '모델명(MI)', '구분']).agg({
                     '검사 수량': 'sum',
                     '양품수량': 'sum',
@@ -763,31 +788,31 @@ elif st.session_state.current_page == "input":
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
         st.markdown(f"<div style='text-align: center; color: #000000 !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
-        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;시작 프로세스</h4>", unsafe_allow_html=True)
-        if st.button("1단계 : 작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
+        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 시작 프로세스</h4>", unsafe_allow_html=True)
+        if st.button("작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "START"
             st.session_state.step = 1
             st.rerun()
-        if st.button("2단계 : 생산 시작", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==2) else "secondary", use_container_width=True):
+        if st.button("생산 시작", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==2) else "secondary", use_container_width=True):
             st.session_state.app_mode = "START"
             st.session_state.step = 2
             st.rerun()
-        if st.button("3단계 : 도장 및 조립", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==3) else "secondary", use_container_width=True):
+        if st.button("도장 및 조립", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==3) else "secondary", use_container_width=True):
             st.session_state.app_mode = "START"
             st.session_state.step = 3
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;종료 프로세스</h4>", unsafe_allow_html=True)
-        if st.button("1단계 : 작업 종료", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==1) else "secondary", use_container_width=True):
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 종료 프로세스</h4>", unsafe_allow_html=True)
+        if st.button("작업 종료", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "END"
             st.session_state.step = 1
             st.rerun()
-        if st.button("2단계 : VISION DATA", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==2) else "secondary", use_container_width=True):
+        if st.button("VISION DATA", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==2) else "secondary", use_container_width=True):
             st.session_state.app_mode = "END"
             st.session_state.step = 2
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;데이터 관리</h4>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 데이터 관리</h4>", unsafe_allow_html=True)
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
@@ -804,7 +829,7 @@ elif st.session_state.current_page == "input":
     if st.session_state.app_mode == "START":
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 작업 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 정보</h4>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**근무일자**")
@@ -816,11 +841,11 @@ elif st.session_state.current_page == "input":
                     st.markdown("**교대**")
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
-                    st.markdown("**작업자 (복수 선택)**")
-                    st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
+                    st.markdown("**작업자**")
+                    st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(st.session_state.worker) if st.session_state.worker in worker_list else 0, label_visibility="collapsed")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) LOT 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4>", unsafe_allow_html=True)
                 sc1, sc2, sc3, sc4, sc5, sc6 = st.columns(6)
                 with sc1:
                     st.markdown("**SCAN DATA**")
@@ -830,7 +855,9 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    st.button("적용", type="primary", use_container_width=True, on_click=on_scan_apply)
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        # 1초 뒤 넘어감 설정 삭제됨
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
                     st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -841,9 +868,11 @@ elif st.session_state.current_page == "input":
                     st.markdown("**도금구분**")
                     render_grid_buttons(["A", "B"], "plating_type", 2, use_width=True)
 
+            render_nav_buttons(step, 3)
+
         elif step == 2:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 시작 등록</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 시작 등록</h4>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**시작일**")
@@ -858,16 +887,18 @@ elif st.session_state.current_page == "input":
                 with c4: st.write("")
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 설비 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 설비 정보</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 6)
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 검사 구분</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 검사 구분</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
+
+            render_nav_buttons(step, 3)
 
         elif step == 3:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 도장 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 도장 정보</h4>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**도장일**")
@@ -884,88 +915,91 @@ elif st.session_state.current_page == "input":
                 with c4: st.write("")
         
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 조립 정보</h4>", unsafe_allow_html=True)
-                c1, c2, c3, c4 = st.columns(4)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립 정보</h4>", unsafe_allow_html=True)
+                c1, c2, c3 = st.columns(3)
                 with c1: 
-                    st.write("")
-                with c2: 
                     st.markdown("**CLIP**")
-                    c2_1, c2_2 = st.columns([0.7, 0.3])
-                    with c2_1:
+                    c1_1, c1_2 = st.columns([0.45, 0.55])
+                    with c1_1:
                         if st.button(str(st.session_state.clip_val) if st.session_state.clip_val != "" else "입력", key="btn_clip", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("clip_val", "CLIP")
-                    with c2_2:
-                        st.session_state.clip_k = st.checkbox("K", value=st.session_state.clip_k, key="chk_clip")
-                with c3: 
+                    with c1_2:
+                        st.session_state.clip_k = st.radio("CLIP_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.clip_k), horizontal=True, label_visibility="collapsed", key="rad_clip")
+                with c2: 
                     st.markdown("**BASE**")
-                    c3_1, c3_2 = st.columns([0.7, 0.3])
-                    with c3_1:
+                    c2_1, c2_2 = st.columns([0.45, 0.55])
+                    with c2_1:
                         if st.button(str(st.session_state.base_val) if st.session_state.base_val != "" else "입력", key="btn_base", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("base_val", "BASE")
-                    with c3_2:
-                        st.session_state.base_k = st.checkbox("K", value=st.session_state.base_k, key="chk_base")
-                with c4: 
+                    with c2_2:
+                        st.session_state.base_k = st.radio("BASE_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.base_k), horizontal=True, label_visibility="collapsed", key="rad_base")
+                with c3: 
                     st.markdown("**COVER**")
-                    c4_1, c4_2 = st.columns([0.7, 0.3])
-                    with c4_1:
+                    c3_1, c3_2 = st.columns([0.45, 0.55])
+                    with c3_1:
                         if st.button(str(st.session_state.cover_val) if st.session_state.cover_val != "" else "입력", key="btn_cover", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("cover_val", "COVER")
-                    with c4_2:
-                        st.session_state.cover_k = st.checkbox("K", value=st.session_state.cover_k, key="chk_cover")
+                    with c3_2:
+                        st.session_state.cover_k = st.radio("COVER_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.cover_k), horizontal=True, label_visibility="collapsed", key="rad_cover")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 조립기 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립기 정보</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("작업시작 등록", type="primary", use_container_width=True):
-                if not st.session_state.unique_id:
-                    st.warning("1단계에서 바코드를 스캔하여 '고유 ID'를 생성해주세요.")
-                else:
-                    with st.spinner("작업 시작 정보 등록 중..."):
-                        start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
-                        fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
-                        fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
-                        fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
-                        fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
-                        fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
-                        fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
-                        
-                        fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k and st.session_state.clip_val != "" else str(st.session_state.clip_val)
-                        fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k and st.session_state.base_val != "" else str(st.session_state.base_val)
-                        fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k and st.session_state.cover_val != "" else str(st.session_state.cover_val)
-                        
-                        # 💡 LOT NO에 싱글쿼트(')를 강제로 적용하여 구글 시트가 숫자로 오인하지 않도록 텍스트화 보장
-                        fmt_lot = f"'{st.session_state.lot_input_field}" if st.session_state.lot_input_field else ""
+            c_nav = st.columns(6)
+            with c_nav[4]:
+                if st.button("⬅️ 이전", use_container_width=True):
+                    st.session_state.step -= 1
+                    st.rerun()
+            with c_nav[5]:
+                if st.button("작업시작 등록", type="primary", use_container_width=True):
+                    if not st.session_state.unique_id:
+                        st.warning("1단계에서 바코드를 스캔하여 '고유 ID'를 생성해주세요.")
+                    else:
+                        with st.spinner("작업 시작 정보 등록 중..."):
+                            start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
+                            fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
+                            fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
+                            fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
+                            fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
+                            fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
+                            fmt_worker = st.session_state.worker
+                            
+                            # 💡 K 라디오버튼 조합 및 포맷 검증
+                            fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k == "K" and st.session_state.clip_val != "" else str(st.session_state.clip_val)
+                            fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k == "K" and st.session_state.base_val != "" else str(st.session_state.base_val)
+                            fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k == "K" and st.session_state.cover_val != "" else str(st.session_state.cover_val)
+                            
+                            # 💡 숫자로 입력된 LOT NO에 강제로 포맷팅을 적용해 구글시트에서 텍스트로 인식하게 함
+                            fmt_lot = f"'{st.session_state.lot_input_field}" if st.session_state.lot_input_field else ""
 
-                        # 💡 모든 '률'을 '율'로 강제 통일하여 딕셔너리 매핑 오류 원천 차단
-                        new_data = pd.DataFrame([{
-                            "고유 ID": st.session_state.unique_id, "상태": "진행중",
-                            "날짜": fmt_date, "교대": st.session_state.shift_type,
-                            "시작시간": start_dt.strftime("%H:%M"), "종료시간": "", "휴동시간": "", "소요시간": "", 
-                            "구분": st.session_state.category, "호기": st.session_state.unit, 
-                            "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, 
-                            "UPH": "", "UPD": "", "검사 수량": "", "양품수량": "", "양품 수량(전/배 포함)": "", "불량수량": "",
-                            "양품율": "", "양품율(전/배 포함)": "", "완전불량율": "", "전면불량율": "", "배면불량율": "",
-                            "완전불량": "", "전면불량": "", "배면불량": "", "옵셋불량": "", "수량부족": "", "기타": "", "OQC": "", "비고": "", 
-                            "도장라인": fmt_paint_line, "도장일": fmt_paint_date, "도장순서": st.session_state.painting_order, 
-                            "입고일": fmt_in_date, "LOT NO.": fmt_lot, 
-                            "CLIP": fmt_clip, "BASE": fmt_base, "COVER": fmt_cover, 
-                            "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", "작업자": fmt_worker
-                        }])
-                        
-                        if save_data_append(new_data):
-                            # 💡 가시성 높은 완료 메시지
-                            st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
-                            st.session_state.unique_id = ""
-                            time.sleep(1.5) 
-                            st.cache_data.clear() 
-                            st.session_state.app_mode = "END"
-                            st.session_state.step = 1
-                            st.rerun()
+                            new_data = pd.DataFrame([{
+                                "고유 ID": st.session_state.unique_id, "상태": "진행중",
+                                "날짜": fmt_date, "교대": st.session_state.shift_type,
+                                "시작시간": start_dt.strftime("%H:%M"), "종료시간": "", "휴동시간": "", "소요시간": "", 
+                                "구분": st.session_state.category, "호기": st.session_state.unit, 
+                                "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, 
+                                "UPH": "", "UPD": "", "검사 수량": "", "양품수량": "", "양품 수량(전/배 포함)": "", "불량수량": "",
+                                "양품율": "", "양품율(전/배 포함)": "", "완전불량율": "", "전면불량율": "", "배면불량율": "",
+                                "완전불량": "", "전면불량": "", "배면불량": "", "옵셋불량": "", "수량부족": "", "기타": "", "OQC": "", "비고": "", 
+                                "도장라인": fmt_paint_line, "도장일": fmt_paint_date, "도장순서": st.session_state.painting_order, 
+                                "입고일": fmt_in_date, "LOT NO.": fmt_lot, 
+                                "CLIP": fmt_clip, "BASE": fmt_base, "COVER": fmt_cover, 
+                                "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", "작업자": fmt_worker
+                            }])
+                            
+                            if save_data_append(new_data):
+                                st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
+                                st.session_state.unique_id = ""
+                                time.sleep(1.5) 
+                                st.cache_data.clear() 
+                                st.session_state.app_mode = "END"
+                                st.session_state.step = 1
+                                st.rerun()
 
     # ==========================================
     # 💡 2. [작업 마감] 모드 
@@ -976,24 +1010,29 @@ elif st.session_state.current_page == "input":
 
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 대상 LOT 선택</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 대상 LOT 선택</h4>", unsafe_allow_html=True)
                 if in_progress_df.empty:
                     st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
                     target_row = None
                 else:
-                    options = in_progress_df['고유 ID'].tolist()
-                    def format_option(uid):
-                        row = in_progress_df[in_progress_df['고유 ID'] == uid].iloc[0]
-                        return f"[{row['모델명(MI)']}] LOT: {row['LOT NO.']}"
+                    # 💡 모델별 2단계 필터링으로 빠르고 직관적인 선택 지원
+                    models_in_progress = in_progress_df['모델명(MI)'].unique().tolist()
+                    selected_model = st.selectbox("■ 모델명 선택", models_in_progress)
                     
-                    selected_id = st.selectbox("마감할 Lot를 선택하세요", options, format_func=format_option, label_visibility="collapsed")
+                    filtered_lots = in_progress_df[in_progress_df['모델명(MI)'] == selected_model]
+                    options = filtered_lots['고유 ID'].tolist()
+                    def format_option(uid):
+                        row = filtered_lots[filtered_lots['고유 ID'] == uid].iloc[0]
+                        return f"LOT: {row['LOT NO.']} (시작: {row['시작시간']})"
+                    
+                    selected_id = st.selectbox("■ 마감할 LOT 선택", options, format_func=format_option)
                     st.session_state.target_unique_id = selected_id
                     
-                    target_row = in_progress_df[in_progress_df['고유 ID'] == selected_id].iloc[0]
-                    st.success(f"📌 **모델명:** {target_row['모델명(MI)']} &nbsp;|&nbsp; **LOT:** {target_row['LOT NO.']} &nbsp;|&nbsp; **시작시간:** {target_row['시작시간']}")
+                    target_row = filtered_lots[filtered_lots['고유 ID'] == selected_id].iloc[0]
+                    st.markdown(f"<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 15px;'>📌 모델명: {target_row['모델명(MI)']} &nbsp;|&nbsp; LOT: {target_row['LOT NO.']} &nbsp;|&nbsp; 시작시간: {target_row['시작시간']}</div>", unsafe_allow_html=True)
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 작업 종료</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 종료</h4>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**종료일**")
@@ -1029,12 +1068,14 @@ elif st.session_state.current_page == "input":
                     st.markdown("**소요시간 (차감됨)**")
                     st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
 
+            render_nav_buttons(step, 2)
+
         elif step == 2:
             bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
             total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;수량 등록</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4>", unsafe_allow_html=True)
                 q1, q2, q3 = st.columns(3)
                 with q1: 
                     st.markdown("**검사 수량 (자동)**")
@@ -1050,7 +1091,7 @@ elif st.session_state.current_page == "input":
                     st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;불량 세부 내역</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 불량 세부 내역</h4>", unsafe_allow_html=True)
                 c1, c2, c3 = st.columns(3)
                 with c1: 
                     st.markdown("**완전불량**")
@@ -1115,7 +1156,7 @@ elif st.session_state.current_page == "input":
                     st.session_state.offset_warned = True
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;실시간 수율 현황</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 수율 현황</h4>", unsafe_allow_html=True)
                 rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
                 
                 c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#1e293b", "#8B5CF6"
@@ -1158,7 +1199,7 @@ elif st.session_state.current_page == "input":
                 with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최종 확인 및 저장</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최종 확인 및 저장</h4>", unsafe_allow_html=True)
                 rem_col, save_col = st.columns([0.7, 0.3])
                 with rem_col:
                     st.markdown("**비고**")
@@ -1166,93 +1207,101 @@ elif st.session_state.current_page == "input":
                     
                 with save_col:
                     st.markdown("**&nbsp;**")
-                    if st.button("Data 최종 저장", type="primary", use_container_width=True):
-                        if total_qty == 0: st.warning("입력된 수량 데이터가 없습니다.")
-                        elif not st.session_state.target_unique_id: st.warning("1단계에서 마감할 Lot를 선택해주세요.")
-                        else:
-                            with st.spinner("DB 마감 업데이트 중..."):
-                                df_all = load_data()
-                                target_id = st.session_state.target_unique_id
-                                df_target = df_all[df_all['고유 ID'] == target_id]
-                                
-                                if df_target.empty:
-                                    st.error("오류: DB에서 해당 Lot를 찾을 수 없습니다.")
-                                else:
-                                    target_idx = df_target.index[0]
-                                    target_row = df_target.iloc[0].to_dict()
+                    
+                    c_nav = st.columns(2)
+                    with c_nav[0]:
+                        if st.button("⬅️ 이전", use_container_width=True):
+                            st.session_state.step -= 1
+                            st.rerun()
+                    with c_nav[1]:
+                        if st.button("Data 최종 저장", type="primary", use_container_width=True):
+                            if total_qty == 0: st.warning("입력된 수량 데이터가 없습니다.")
+                            elif not st.session_state.target_unique_id: st.warning("1단계에서 마감할 Lot를 선택해주세요.")
+                            else:
+                                with st.spinner("DB 마감 업데이트 중..."):
+                                    df_all = load_data()
+                                    target_id = st.session_state.target_unique_id
+                                    df_target = df_all[df_all['고유 ID'] == target_id]
                                     
-                                    try:
-                                        m, d = map(int, target_row['날짜'].split('/'))
-                                        y = st.session_state.work_date.year
-                                        s_date = datetime(y, m, d).date()
-                                        s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
-                                        start_dt = datetime.combine(s_date, s_time)
-                                        end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-                                        if end_dt < start_dt: end_dt += timedelta(days=1)
-                                        
-                                        raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-                                        duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-                                    except:
-                                        duration_minutes = 0
-
-                                    uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
-                                    upd_val = uph_val * 22
-                                    good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
-                                    
-                                    if total_qty > 0:
-                                        rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
-                                        rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
-                                        comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
-                                        front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
-                                        rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
-                                        offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
+                                    if df_target.empty:
+                                        st.error("오류: DB에서 해당 Lot를 찾을 수 없습니다.")
                                     else:
-                                        rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
-
-                                    # 💡 기존 1단계 정보들을 보존하고 수량/종료 정보만 덮어쓰기
-                                    target_row.update({
-                                        "상태": "완료",
-                                        "종료시간": st.session_state.end_time.strftime("%H:%M"),
-                                        "휴동시간": f"{st.session_state.idle_time:,}", 
-                                        "소요시간": f"{duration_minutes:,}",
-                                        "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
-                                        "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
-                                        "양품율": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
-                                        "완전불량율": f"{comp_rate_num:.1f}%", "전면불량율": f"{front_rate_num:.1f}%", "배면불량율": f"{rear_rate_num:.1f}%",
-                                        "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
-                                        "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
-                                        "비고": st.session_state.remarks
-                                    })
-                                    
-                                    sheet = get_sheet()
-                                    if sheet:
-                                        sheet_row = target_idx + 2
-                                        updated_row_list = ["nan" if pd.isna(target_row.get(col, "")) else "" if str(target_row.get(col, "")).strip().lower() in ["nan", "none"] else str(target_row.get(col, "")).strip() for col in EXCEL_COLUMNS]
-                                        sheet.update(f'A{sheet_row}', [updated_row_list])
+                                        target_idx = df_target.index[0]
+                                        target_row = df_target.iloc[0].to_dict()
                                         
-                                        # 💡 가시성 높은 알림창으로 교체
-                                        st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
-                                        st.cache_data.clear()
-                                        for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
-                                            if k in default_state: st.session_state[k] = default_state[k]
-                                        time.sleep(1.5)
-                                        st.session_state.step = 1
-                                        st.rerun()
+                                        try:
+                                            m, d = map(int, target_row['날짜'].split('/'))
+                                            y = st.session_state.work_date.year
+                                            s_date = datetime(y, m, d).date()
+                                            s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
+                                            start_dt = datetime.combine(s_date, s_time)
+                                            end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+                                            if end_dt < start_dt: end_dt += timedelta(days=1)
+                                            
+                                            raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+                                            duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+                                        except:
+                                            duration_minutes = 0
+
+                                        uph_val = int((total_qty / duration_minutes) * 60) if duration_minutes > 0 else 0
+                                        upd_val = uph_val * 22
+                                        good_include_front_rear = st.session_state.good_qty + st.session_state.front_def + st.session_state.rear_def
+                                        
+                                        if total_qty > 0:
+                                            rate_good = round((st.session_state.good_qty / total_qty) * 100, 1)
+                                            rate_good_inc = round((good_include_front_rear / total_qty) * 100, 1)
+                                            comp_rate_num = round(st.session_state.comp_def / total_qty * 100, 1)
+                                            front_rate_num = round(st.session_state.front_def / total_qty * 100, 1)
+                                            rear_rate_num = round(st.session_state.rear_def / total_qty * 100, 1)
+                                            offset_rate_num = round(st.session_state.offset_def / total_qty * 100, 1)
+                                        else:
+                                            rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
+
+                                        # 💡 완벽하게 1단계 원본 값 유지하며 덮어쓰기 업데이트
+                                        target_row.update({
+                                            "상태": "완료",
+                                            "종료시간": st.session_state.end_time.strftime("%H:%M"),
+                                            "휴동시간": f"{st.session_state.idle_time:,}", 
+                                            "소요시간": f"{duration_minutes:,}",
+                                            "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
+                                            "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
+                                            "양품율": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
+                                            "완전불량율": f"{comp_rate_num:.1f}%", "전면불량율": f"{front_rate_num:.1f}%", "배면불량율": f"{rear_rate_num:.1f}%",
+                                            "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
+                                            "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
+                                            "비고": st.session_state.remarks
+                                        })
+                                        
+                                        sheet = get_sheet()
+                                        if sheet:
+                                            sheet_row = target_row['_sheet_row'] # 💡 찾은 구글 시트 원본 행 번호 반영
+                                            updated_row_list = ["nan" if pd.isna(target_row.get(col, "")) else "" if str(target_row.get(col, "")).strip().lower() in ["nan", "none"] else str(target_row.get(col, "")).strip() for col in EXCEL_COLUMNS]
+                                            sheet.update(values=[updated_row_list], range_name=f'A{sheet_row}')
+                                            
+                                            st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
+                                            st.cache_data.clear()
+                                            for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
+                                                if k in default_state: st.session_state[k] = default_state[k]
+                                            time.sleep(1.5)
+                                            # 💡 마감 후 데이터 에디터 탭으로 리다이렉션
+                                            st.session_state.app_mode = "EDIT"
+                                            st.session_state.step = 1
+                                            st.rerun()
 
     # ==========================================
     # 💡 3. [데이터 수정] 모드
     # ==========================================
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 Data List (직접 수정 가능)</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List (직접 수정 가능)</h4>", unsafe_allow_html=True)
             df_history = load_data().copy()
             
             if not df_history.empty:
-                df_history['orig_index'] = df_history.index + 2
+                # 💡 구글 시트의 원본 행 번호를 추적 (수정 적용을 위함)
+                df_history['orig_index'] = df_history['_sheet_row']
                 recent_20 = df_history.iloc[::-1].head(20).copy()
-                display_df = recent_20.drop(columns=['orig_index'])
+                display_df = recent_20.drop(columns=['orig_index', '_sheet_row'])
                 
-                # 💡 LOT NO 컬럼은 문자형(TextColumn)으로 명시적으로 선언하여 숫자로 추론되는 버그 차단
                 edited_df = st.data_editor(
                     display_df, 
                     use_container_width=True, 
@@ -1270,7 +1319,7 @@ elif st.session_state.current_page == "input":
                             new_row = edited_df.loc[idx].fillna("").astype(str).tolist()
                             if old_row != new_row:
                                 gspread_row = recent_20.loc[idx, 'orig_index']
-                                sheet.update(f'A{gspread_row}', [new_row])
+                                sheet.update(values=[new_row], range_name=f'A{gspread_row}')
                                 changed = True
                     
                     if changed:
