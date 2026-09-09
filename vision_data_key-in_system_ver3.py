@@ -215,6 +215,11 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
+span[data-baseweb="tag"] {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
@@ -234,7 +239,6 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
-    height: 2.6rem !important;
 }
 
 div[data-baseweb="textarea"] textarea { 
@@ -352,28 +356,17 @@ components.html(
             buttons.forEach(btn => {
                 const text = btn.innerText || "";
                 
-                if (text.includes('⬅️ 이전')) { 
-                    btn.style.backgroundColor = '#E7E6E6'; 
-                    btn.style.background = 'none';
-                    btn.style.color = '#000000'; 
-                    btn.style.border = '1px solid #cbd5e1'; 
-                    btn.style.setProperty('height', '65px', 'important'); 
-                }
-                if (text.includes('다음 ➡️')) { 
-                    btn.style.backgroundColor = '#16a34a'; 
-                    btn.style.background = 'none';
-                    btn.style.color = '#ffffff'; 
-                    btn.style.border = '1px solid #15803d'; 
-                    btn.style.setProperty('height', '65px', 'important'); 
+                // 💡 이전, 다음, 주요 버튼 파란색 (#305496) 적용
+                if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용') { 
+                    btn.style.setProperty('background', '#305496', 'important');
+                    btn.style.setProperty('background-color', '#305496', 'important');
+                    btn.style.setProperty('border', '1px solid #203864', 'important');
+                    btn.style.setProperty('color', '#ffffff', 'important');
+                    btn.style.setProperty('box-shadow', 'none', 'important');
                 }
                 
-                // 💡 주요 액션 버튼 색상 커스텀 (#305496)
-                if (text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용') { 
-                    btn.style.backgroundColor = '#305496';
-                    btn.style.background = 'none';
-                    btn.style.border = '1px solid #203864';
-                    btn.style.color = '#ffffff';
-                    btn.style.boxShadow = 'none';
+                if (text.includes('⬅️ 이전') || text.includes('다음 ➡️')) {
+                    btn.style.setProperty('height', '65px', 'important'); 
                 }
                 if (text.includes('Data 최종 저장')) {
                     btn.style.setProperty('height', '150px', 'important');
@@ -469,7 +462,6 @@ def render_grid_buttons(options, state_key, columns, use_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
 
-# 💡 '률' 및 '율' 표기 혼선 완벽 매핑을 위한 표준 컬럼 적용
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 EXCEL_COLUMNS = [
     "고유 ID", "상태", "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", 
@@ -508,7 +500,6 @@ def load_data():
         raw_data = sheet.get_all_values()
         if len(raw_data) < 2: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
         
-        # 실제 헤더 위치 찾기
         header_idx = -1
         for i, row in enumerate(raw_data[:15]):
             row_str = "".join(str(c).replace(" ", "") for c in row)
@@ -518,15 +509,13 @@ def load_data():
         if header_idx == -1: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
         
         headers = [str(h).strip() for h in raw_data[header_idx]]
-        
-        # 💡 오타(률/율)가 있어도 스마트하게 매핑해주는 클리닝 로직
         clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
         
         data_list = []
         for r_idx in range(header_idx + 1, len(raw_data)):
             row = raw_data[r_idx]
             if any(str(c).strip() for c in row):
-                row_data = {"_sheet_row": r_idx + 1} # 💡 구글 시트의 실제 행 번호(1-based)를 정확히 추적
+                row_data = {"_sheet_row": r_idx + 1}
                 for col in EXCEL_COLUMNS:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
                     if col_key in clean_headers:
@@ -541,7 +530,6 @@ def load_data():
                 data_list.append(row_data)
         
         result_df = pd.DataFrame(data_list)
-        # 💡 강제 텍스트(String)화 방어 코드
         if 'LOT NO.' in result_df.columns:
             result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
             
@@ -558,12 +546,13 @@ def save_data_append(df):
         for _, row in df.iterrows():
             records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
         sheet.append_rows(records, value_input_option='USER_ENTERED')
-        load_data.clear() 
+        st.cache_data.clear() 
         return True
     except Exception as e:
         st.error(f"데이터 저장 오류: {e}")
         return False
 
+# 💡 Callback 함수: 버튼 클릭 시 session_state 에러 방지
 def parse_scanned_data():
     raw_val = st.session_state.scanned_raw_data
     if not raw_val: return
@@ -652,7 +641,6 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
-# 하단 네비게이션 버튼을 위한 헬퍼 함수
 def render_nav_buttons(step_num, max_step):
     st.markdown("<br>", unsafe_allow_html=True)
     c_nav = st.columns(6)
@@ -855,9 +843,8 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    if st.button("적용", type="primary", use_container_width=True):
-                        parse_scanned_data()
-                        # 1초 뒤 넘어감 설정 삭제됨
+                    # 💡 On_click callback 방식으로 변경 (Error 방지)
+                    st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
                     st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -916,33 +903,35 @@ elif st.session_state.current_page == "input":
         
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립 정보</h4>", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns(3)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1: 
+                    st.write("")
+                with c2: 
                     st.markdown("**CLIP**")
-                    c1_1, c1_2 = st.columns([0.45, 0.55])
-                    with c1_1:
+                    c2_1, c2_2 = st.columns([0.45, 0.55])
+                    with c2_1:
                         if st.button(str(st.session_state.clip_val) if st.session_state.clip_val != "" else "입력", key="btn_clip", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("clip_val", "CLIP")
-                    with c1_2:
+                    with c2_2:
                         st.session_state.clip_k = st.radio("CLIP_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.clip_k), horizontal=True, label_visibility="collapsed", key="rad_clip")
-                with c2: 
+                with c3: 
                     st.markdown("**BASE**")
-                    c2_1, c2_2 = st.columns([0.45, 0.55])
-                    with c2_1:
+                    c3_1, c3_2 = st.columns([0.45, 0.55])
+                    with c3_1:
                         if st.button(str(st.session_state.base_val) if st.session_state.base_val != "" else "입력", key="btn_base", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("base_val", "BASE")
-                    with c2_2:
+                    with c3_2:
                         st.session_state.base_k = st.radio("BASE_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.base_k), horizontal=True, label_visibility="collapsed", key="rad_base")
-                with c3: 
+                with c4: 
                     st.markdown("**COVER**")
-                    c3_1, c3_2 = st.columns([0.45, 0.55])
-                    with c3_1:
+                    c4_1, c4_2 = st.columns([0.45, 0.55])
+                    with c4_1:
                         if st.button(str(st.session_state.cover_val) if st.session_state.cover_val != "" else "입력", key="btn_cover", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("cover_val", "COVER")
-                    with c3_2:
+                    with c4_2:
                         st.session_state.cover_k = st.radio("COVER_Type", ["일반", "K"], index=["일반", "K"].index(st.session_state.cover_k), horizontal=True, label_visibility="collapsed", key="rad_cover")
 
             with st.container(border=True):
@@ -969,12 +958,10 @@ elif st.session_state.current_page == "input":
                             fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
                             fmt_worker = st.session_state.worker
                             
-                            # 💡 K 라디오버튼 조합 및 포맷 검증
                             fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k == "K" and st.session_state.clip_val != "" else str(st.session_state.clip_val)
                             fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k == "K" and st.session_state.base_val != "" else str(st.session_state.base_val)
                             fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k == "K" and st.session_state.cover_val != "" else str(st.session_state.cover_val)
                             
-                            # 💡 숫자로 입력된 LOT NO에 강제로 포맷팅을 적용해 구글시트에서 텍스트로 인식하게 함
                             fmt_lot = f"'{st.session_state.lot_input_field}" if st.session_state.lot_input_field else ""
 
                             new_data = pd.DataFrame([{
@@ -1015,7 +1002,6 @@ elif st.session_state.current_page == "input":
                     st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
                     target_row = None
                 else:
-                    # 💡 모델별 2단계 필터링으로 빠르고 직관적인 선택 지원
                     models_in_progress = in_progress_df['모델명(MI)'].unique().tolist()
                     selected_model = st.selectbox("■ 모델명 선택", models_in_progress)
                     
@@ -1257,7 +1243,6 @@ elif st.session_state.current_page == "input":
                                         else:
                                             rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
 
-                                        # 💡 완벽하게 1단계 원본 값 유지하며 덮어쓰기 업데이트
                                         target_row.update({
                                             "상태": "완료",
                                             "종료시간": st.session_state.end_time.strftime("%H:%M"),
@@ -1274,7 +1259,7 @@ elif st.session_state.current_page == "input":
                                         
                                         sheet = get_sheet()
                                         if sheet:
-                                            sheet_row = target_row['_sheet_row'] # 💡 찾은 구글 시트 원본 행 번호 반영
+                                            sheet_row = target_row['_sheet_row'] 
                                             updated_row_list = ["nan" if pd.isna(target_row.get(col, "")) else "" if str(target_row.get(col, "")).strip().lower() in ["nan", "none"] else str(target_row.get(col, "")).strip() for col in EXCEL_COLUMNS]
                                             sheet.update(values=[updated_row_list], range_name=f'A{sheet_row}')
                                             
@@ -1283,7 +1268,6 @@ elif st.session_state.current_page == "input":
                                             for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
                                                 if k in default_state: st.session_state[k] = default_state[k]
                                             time.sleep(1.5)
-                                            # 💡 마감 후 데이터 에디터 탭으로 리다이렉션
                                             st.session_state.app_mode = "EDIT"
                                             st.session_state.step = 1
                                             st.rerun()
@@ -1297,7 +1281,6 @@ elif st.session_state.current_page == "input":
             df_history = load_data().copy()
             
             if not df_history.empty:
-                # 💡 구글 시트의 원본 행 번호를 추적 (수정 적용을 위함)
                 df_history['orig_index'] = df_history['_sheet_row']
                 recent_20 = df_history.iloc[::-1].head(20).copy()
                 display_df = recent_20.drop(columns=['orig_index', '_sheet_row'])
