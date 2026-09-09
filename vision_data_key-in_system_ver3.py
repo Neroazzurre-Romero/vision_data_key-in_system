@@ -23,9 +23,7 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_a_list = ["A조", "작업자입력1", "작업자입력2"]
-worker_b_list = ["B조", "작업자입력3", "작업자입력4"]
-worker_c_list = ["C조", "작업자입력5", "작업자입력6"]
+worker_list = ["작업자A", "작업자B", "작업자C", "작업자D", "작업자E", "작업자F"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
 st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
@@ -57,12 +55,12 @@ if "unlocked" in st.query_params:
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "worker_a": "A조", "worker_b": "B조", "worker_c": "C조",
+    "shift_type": "주간", "workers": [],
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
-    "painting_order": 1, "painting_line": "B Line", "clip_val": "1",
+    "painting_order": 1, "painting_line": "A Line", "assembly_type": "일반", "clip_val": "1",
     "base_val": "1", "cover_val": "1", "assembler_val": "선택안함",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
@@ -196,7 +194,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 공통 높이(2.6rem - 2/3 사이즈) */
+/* 공통 높이(2.6rem) 설정 */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -211,13 +209,11 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 입력창 기본 테마 (배경 #E7E6E6, 텍스트 검정) */
+/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    height: 2.6rem !important;
     min-height: 2.6rem !important;
-    max-height: 2.6rem !important;
     border-radius: 8px !important;
     background-color: #E7E6E6 !important;
     border: 1px solid #cbd5e1 !important;
@@ -228,14 +224,16 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-/* 텍스트 색상 (기본 검정) */
+/* 다중선택 텍스트박스 내부 태그 스타일 */
+span[data-baseweb="tag"] {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
-    height: 2.6rem !important;
     min-height: 2.6rem !important;
-    max-height: 2.6rem !important;
-    line-height: 2.6rem !important;
     font-size: 1.1rem !important;
     font-weight: bold !important;
     text-align: center !important;
@@ -251,10 +249,9 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
-    height: 2.6rem !important;
 }
 
-/* 비고란 (Textarea) - 최종 저장 버튼과 동일한 150px 높이 강제 설정 */
+/* 비고란 (Textarea) */
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.1rem !important; 
     height: 150px !important;
@@ -268,7 +265,7 @@ div[data-baseweb="textarea"] textarea {
     transition: all 0.2s ease;
 }
 
-/* 입력창 포커스 시 적용버튼 색상(#1e293b) + 글자 흰색 전환 */
+/* 포커스 시 배경/텍스트 색상 반전 */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
@@ -293,18 +290,17 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     cursor: pointer !important;
 }
 
-/* 스캐너 Placeholder 강제 스타일 */
-input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
-input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
+/* 스캐너 Placeholder */
+input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
+input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 일반 버튼(Secondary) 단색 스타일 (배경 #E7E6E6, 텍스트 검정) */
+/* Secondary 버튼 */
 div[data-testid="stButton"] button[kind="secondary"] {
     background-color: #E7E6E6 !important;
     color: #000000 !important;
     border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
 }
-/* 포커스/호버 시 적용버튼 색상으로 변경 */
 div[data-testid="stButton"] button[kind="secondary"]:hover,
 div[data-testid="stButton"] button[kind="secondary"]:focus,
 div[data-testid="stButton"] button[kind="secondary"]:active {
@@ -313,7 +309,7 @@ div[data-testid="stButton"] button[kind="secondary"]:active {
     border-color: #1e293b !important;
 }
 
-/* Primary 버튼 단색 스타일 (차콜 네이비) */
+/* Primary 버튼 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -324,7 +320,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 사이드바 메뉴 단색 디자인 */
+/* 사이드바 메뉴 디자인 */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -339,26 +335,21 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 15px !important; text-indent: 10px !important; text-align: left !important; }
 
-/* 선택된 사이드바 버튼: 네이비 단색 배경 + 노란색 포인트 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #1e293b !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
-    box-shadow: none !important;
 }
-/* 미선택 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: transparent !important; 
     color: #8B9CB6 !important; 
     border: 1px solid transparent !important; 
-    box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
-    box-shadow: none !important;
 }
 </style>
 """
@@ -413,13 +404,24 @@ components.html(
                     btn.style.setProperty('font-size', '1.6rem', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
                 }
+                // 💡 작업시작 등록 색상 변경 (#305496)
+                if (text.includes('작업시작 등록')) { 
+                    btn.style.backgroundColor = '#305496';
+                    btn.style.background = 'none';
+                    btn.style.color = '#ffffff';
+                    btn.style.border = '1px solid #203864';
+                    btn.style.boxShadow = 'none';
+                    btn.style.setProperty('height', '65px', 'important');
+                    btn.style.setProperty('font-size', '1.2rem', 'important');
+                    btn.style.setProperty('margin-top', '10px', 'important');
+                }
             });
         };
         
         const styleScanner = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('스캐너 앱 실행')) {
+                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
                     el.style.setProperty('font-size', '1.2rem', 'important');
                     el.style.setProperty('font-weight', '900', 'important');
                     
@@ -564,9 +566,7 @@ def save_data_append(df):
 @st.dialog("📷 바코드/QR 스캐너")
 def scanner_dialog():
     st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#fef08a; border-radius:10px; margin-bottom:15px; border:2px solid #eab308;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
-    
-    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="여기를 터치하여 스캔하세요")
-    
+    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="SCAN APP")
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("적용 (Enter)", type="primary", use_container_width=True):
         if raw_scan:
@@ -576,12 +576,10 @@ def scanner_dialog():
                 plating_code = parts[2]
                 if plating_code == 'S110': st.session_state.plating_type = 'A'
                 elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                
                 date_str = parts[3]
                 if len(date_str) == 8 and date_str.isdigit():
                     try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
                     except ValueError: pass
-                
                 st.session_state.lot_input_field = parts[4]
             else:
                 st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
@@ -589,32 +587,21 @@ def scanner_dialog():
 
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
-    if digit == "C": 
-        st.session_state.numpad_buffer = ""
-    elif digit == "⬅": 
-        st.session_state.numpad_buffer = c_val[:-1]
+    if digit == "C": st.session_state.numpad_buffer = ""
+    elif digit == "⬅": st.session_state.numpad_buffer = c_val[:-1]
     else:
-        if len(c_val) < 8: 
-            st.session_state.numpad_buffer = c_val + digit
+        if len(c_val) < 8: st.session_state.numpad_buffer = c_val + digit
 
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
     st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
-    
-    pad_rows = [
-        ["7", "8", "9"],
-        ["4", "5", "6"],
-        ["1", "2", "3"],
-        ["C", "0", "⬅"]
-    ]
-    
+    pad_rows = [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["C", "0", "⬅"]]
     for r in pad_rows:
         cols = st.columns(3)
         for i, val in enumerate(r):
             with cols[i]:
                 st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True, on_click=pad_callback, args=(val,))
-                    
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("적용 (Enter)", type="primary", use_container_width=True):
         st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
@@ -623,35 +610,23 @@ def numpad_dialog(field_key, display_name):
 
 def timepad_callback(digit):
     c_val = st.session_state.timepad_buffer
-    if digit == "C": 
-        st.session_state.timepad_buffer = ""
-    elif digit == "⬅": 
-        st.session_state.timepad_buffer = c_val[:-1]
+    if digit == "C": st.session_state.timepad_buffer = ""
+    elif digit == "⬅": st.session_state.timepad_buffer = c_val[:-1]
     else:
-        if len(c_val) < 4: 
-            st.session_state.timepad_buffer = c_val + digit
+        if len(c_val) < 4: st.session_state.timepad_buffer = c_val + digit
 
 @st.dialog("⏰ 시간 입력 패드 (HH:MM)")
 def timepad_dialog(field_key, display_name):
     c_val = st.session_state.timepad_buffer
     display_str = c_val.ljust(4, "_")
     display_str = f"{display_str[:2]}:{display_str[2:]}"
-    
     st.markdown(f"<div style='text-align:center; font-size:1.5rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem; letter-spacing: 2px;'>{display_str}</span></div>", unsafe_allow_html=True)
-    
-    pad_rows = [
-        ["7", "8", "9"],
-        ["4", "5", "6"],
-        ["1", "2", "3"],
-        ["C", "0", "⬅"]
-    ]
-    
+    pad_rows = [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["C", "0", "⬅"]]
     for r in pad_rows:
         cols = st.columns(3)
         for i, val in enumerate(r):
             with cols[i]:
                 st.button(val, key=f"tpad_{field_key}_{val}", use_container_width=True, on_click=timepad_callback, args=(val,))
-                    
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("적용 (Enter)", type="primary", use_container_width=True):
         if len(st.session_state.timepad_buffer) == 4:
@@ -664,10 +639,8 @@ def timepad_dialog(field_key, display_name):
                     st.rerun()
                 else:
                     st.error("유효한 시간(00~23)과 분(00~59)을 입력하세요.")
-            except ValueError:
-                pass
-        else:
-            st.error("4자리 숫자를 모두 입력하세요 (예: 0830)")
+            except ValueError: pass
+        else: st.error("4자리 숫자를 모두 입력하세요 (예: 0830)")
 
 @st.dialog("SBL Warning!")
 def show_sbl_warning(defect_type, rate):
@@ -677,7 +650,7 @@ def show_sbl_warning(defect_type, rate):
         st.rerun()
 
 # ==========================================
-# 메인 프로세스 화면 구성
+# Administrator (분석) 프로세스
 # ==========================================
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
@@ -768,13 +741,15 @@ if st.session_state.current_page == "analysis":
                 pivot_df['불량률(%)'] = (pivot_df['불량수량'] / pivot_df['검사 수량'] * 100).round(1).astype(str) + '%'
                 st.dataframe(pivot_df, use_container_width=True, hide_index=True)
 
+# ==========================================
+# Main Input App
+# ==========================================
 elif st.session_state.current_page == "input":
     
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 20px;'>" if logo_s_data else ""
-        
         st.markdown(
             f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 8rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
@@ -794,49 +769,37 @@ elif st.session_state.current_page == "input":
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
         st.markdown(f"<div style='text-align: center; color: #000000 !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
-        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;작업 프로세스 선택</h4>", unsafe_allow_html=True)
-        if st.button("▶️ 1. 새로운 Lot 시작", type="primary" if st.session_state.app_mode=="START" else "secondary", use_container_width=True):
+        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;시작 프로세스</h4>", unsafe_allow_html=True)
+        if st.button("1단계 : 작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "START"
             st.session_state.step = 1
             st.rerun()
-        if st.button("⏹️ 2. 진행 중 Lot 마감", type="primary" if st.session_state.app_mode=="END" else "secondary", use_container_width=True):
+        if st.button("2단계 : 생산 시작", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==2) else "secondary", use_container_width=True):
+            st.session_state.app_mode = "START"
+            st.session_state.step = 2
+            st.rerun()
+        if st.button("3단계 : 도장 및 조립", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==3) else "secondary", use_container_width=True):
+            st.session_state.app_mode = "START"
+            st.session_state.step = 3
+            st.rerun()
+
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;종료 프로세스</h4>", unsafe_allow_html=True)
+        if st.button("1단계 : 작업 종료", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "END"
             st.session_state.step = 1
             st.rerun()
-        if st.button("📋 3. 데이터 수정 (Edit)", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
+        if st.button("2단계 : VISION DATA", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==2) else "secondary", use_container_width=True):
+            st.session_state.app_mode = "END"
+            st.session_state.step = 2
+            st.rerun()
+
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■&nbsp;&nbsp;데이터 관리</h4>", unsafe_allow_html=True)
+        if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-
-        if st.session_state.app_mode == "START":
-            steps_titles = ["기본 및 입고 정보", "시간 및 설비 설정", "도장 및 Assemble"]
-        elif st.session_state.app_mode == "END":
-            steps_titles = ["Lot 선택/마감 시간", "VISION 수량 입력", "불량 및 최종 마감"]
-        else:
-            steps_titles = ["데이터 에디터"]
-
-        for i, title in enumerate(steps_titles, 1):
-            btn_type = "primary" if st.session_state.step == i else "secondary"
-            if st.button(f"{i}단계: {title}", key=f"nav_step_{i}", type=btn_type, use_container_width=True):
-                st.session_state.step = i
-                st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.session_state.step > 1:
-                if st.button("⬅️ 이전", use_container_width=True):
-                    st.session_state.step -= 1
-                    st.rerun()
-        with c2:
-            if st.session_state.step < len(steps_titles):
-                if st.button("다음 ➡️", use_container_width=True):
-                    st.session_state.step += 1
-                    st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 14px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
@@ -851,12 +814,10 @@ elif st.session_state.current_page == "input":
                 plating_code = parts[2]
                 if plating_code == 'S110': st.session_state.plating_type = 'A'
                 elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                
                 date_str = parts[3]
                 if len(date_str) == 8 and date_str.isdigit():
                     try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
                     except ValueError: pass
-                
                 st.session_state.lot_input_field = parts[4]
             else:
                 st.session_state.lot_input_field = parts[-1]
@@ -864,11 +825,14 @@ elif st.session_state.current_page == "input":
             st.session_state.lot_input_field = raw_val
         st.session_state.scanned_raw_data = "" 
 
+    # ==========================================
+    # 💡 1. [작업 시작] 모드 
+    # ==========================================
     if st.session_state.app_mode == "START":
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;기본 근무 정보</h4>", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns(3)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 작업 정보</h4>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**근무일자**")
                     st.session_state.work_date = st.date_input("근무일자", value=st.session_state.work_date, label_visibility="collapsed")
@@ -877,59 +841,37 @@ elif st.session_state.current_page == "input":
                     st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
                 with c3:
                     st.markdown("**교대**")
-                    render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("**작업자**")
-                w_col1, w_col2, w_col3 = st.columns(3)
-                with w_col1: st.session_state.worker_a = st.selectbox("A조", worker_a_list, index=worker_a_list.index(st.session_state.worker_a) if st.session_state.worker_a in worker_a_list else 0, label_visibility="collapsed")
-                with w_col2: st.session_state.worker_b = st.selectbox("B조", worker_b_list, index=worker_b_list.index(st.session_state.worker_b) if st.session_state.worker_b in worker_b_list else 0, label_visibility="collapsed")
-                with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
+                    st.session_state.shift_type = st.selectbox("교대", ["주간", "야간"], index=["주간", "야간"].index(st.session_state.shift_type), label_visibility="collapsed")
+                with c4:
+                    st.markdown("**작업자 (복수 선택 가능)**")
+                    st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;스캔 및 입고 정보</h4>", unsafe_allow_html=True)
-                
-                st.markdown("**고유 ID (스캔 시 자동할당)**")
-                st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                sc1, sc2, sc3 = st.columns(3)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) LOT 정보</h4>", unsafe_allow_html=True)
+                sc1, sc2, sc3, sc4, sc5, sc6 = st.columns(6)
                 with sc1:
-                    scan_in, scan_btn = st.columns(2)
-                    with scan_in:
-                        st.markdown("**스캔 데이터**")
-                        st.text_input("스캔 데이터", key="scanned_raw_data", label_visibility="collapsed", placeholder="스캐너 앱 실행")
-                    with scan_btn:
-                        st.markdown("**&nbsp;**")
-                        st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
-                
+                    st.markdown("**SCAN DATA**")
+                    st.text_input("SCAN DATA", key="scanned_raw_data", label_visibility="collapsed", placeholder="SCAN APP")
                 with sc2:
-                    lot_col, date_col = st.columns(2)
-                    with lot_col:
-                        st.markdown("**LOT (적용됨)**")
-                        st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
-                    with date_col:
-                        st.markdown("**입고일 (적용됨)**")
-                        st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
-                
+                    st.markdown("**고유 ID (자동할당)**")
+                    st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
-                    st.markdown("**도금 구분**")
-                    plat_a, plat_b = st.columns(2)
-                    with plat_a:
-                        btn_a = "primary" if st.session_state.plating_type == "A" else "secondary"
-                        if st.button("A", type=btn_a, key="plat_a", use_container_width=True):
-                            st.session_state.plating_type = "A"
-                            st.rerun()
-                    with plat_b:
-                        btn_b = "primary" if st.session_state.plating_type == "B" else "secondary"
-                        if st.button("B", type=btn_b, key="plat_b", use_container_width=True):
-                            st.session_state.plating_type = "B"
-                            st.rerun()
+                    st.markdown("**&nbsp;**")
+                    st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
+                with sc4:
+                    st.markdown("**LOT (적용됨)**")
+                    st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
+                with sc5:
+                    st.markdown("**입고일 (적용됨)**")
+                    st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
+                with sc6:
+                    st.markdown("**도금구분**")
+                    st.session_state.plating_type = st.selectbox("도금구분", ["A", "B"], index=["A", "B"].index(st.session_state.plating_type), label_visibility="collapsed")
 
         elif step == 2:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;시작 시간</h4>", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns(3)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 시작 등록</h4>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**시작일**")
                     st.session_state.start_date = st.date_input("시작일", value=st.session_state.start_date, label_visibility="collapsed")
@@ -939,63 +881,68 @@ elif st.session_state.current_page == "input":
                     if st.button(time_str, key="btn_start_time", use_container_width=True):
                         st.session_state.timepad_buffer = st.session_state.start_time.strftime("%H%M")
                         timepad_dialog("start_time", "시작시간")
-                with c3:
-                    st.write("") 
+                with c3: st.write("")
+                with c4: st.write("")
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;설비 및 검사 설정</h4>", unsafe_allow_html=True)
-                st.markdown("**호기**")
-                render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
-                st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 설비 정보</h4>", unsafe_allow_html=True)
+                render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 6)
+            
+            with st.container(border=True):
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 검사 구분</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "개발품", "완불재검"], "category", 7)
 
         elif step == 3:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;도장 공정</h4>", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns(3)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 도장 정보</h4>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**도장일**")
                     st.session_state.painting_date = st.date_input("도장일", value=st.session_state.painting_date, label_visibility="collapsed")
                 with c2: 
                     st.markdown("**도장라인**")
-                    render_grid_buttons(["A Line", "B Line", "C Line"], "painting_line", 3)
+                    st.session_state.painting_line = st.selectbox("도장라인", ["A Line", "B Line", "C Line"], index=["A Line", "B Line", "C Line"].index(st.session_state.painting_line), label_visibility="collapsed")
                 with c3: 
                     st.markdown("**도장순서**")
                     if st.button(f"{st.session_state.painting_order:,}", key="btn_paint_order", use_container_width=True):
                         st.session_state.numpad_buffer = str(st.session_state.painting_order) if st.session_state.painting_order != 0 else ""
                         numpad_dialog("painting_order", "도장순서")
-            
+                with c4: st.write("")
+        
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
-                num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
-                c4, c5, c6 = st.columns(3)
-                with c4: 
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 조립 정보</h4>", unsafe_allow_html=True)
+                num_options = [str(i) for i in range(1, 11)]
+                c1, c2, c3, c4 = st.columns(4)
+                with c1:
+                    st.markdown("**구분**")
+                    st.session_state.assembly_type = st.selectbox("조립구분", ["일반", "K"], index=["일반", "K"].index(st.session_state.assembly_type), label_visibility="collapsed")
+                with c2: 
                     st.markdown("**CLIP**")
                     st.session_state.clip_val = st.selectbox("CLIP", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0, label_visibility="collapsed")
-                with c5: 
+                with c3: 
                     st.markdown("**BASE**")
                     st.session_state.base_val = st.selectbox("BASE", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0, label_visibility="collapsed")
-                with c6: 
+                with c4: 
                     st.markdown("**COVER**")
                     st.session_state.cover_val = st.selectbox("COVER", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0, label_visibility="collapsed")
 
-                st.markdown("<br>**조립기**", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 조립기 정보</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("▶️ 작업 시작 (진행중 DB 등록)", type="primary", use_container_width=True):
+            if st.button("작업시작 등록", type="primary", use_container_width=True):
                 if not st.session_state.unique_id:
                     st.warning("1단계에서 바코드를 스캔하여 '고유 ID'를 생성해주세요.")
                 else:
-                    with st.spinner("시작 정보 등록 중..."):
+                    with st.spinner("작업 시작 정보 등록 중..."):
                         start_dt = datetime.combine(st.session_state.start_date, st.session_state.start_time)
                         fmt_date = f"{st.session_state.work_date.month}/{st.session_state.work_date.day}"
                         fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
                         fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
                         fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
-                        fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
-                        workers = [w for w in [st.session_state.worker_a, st.session_state.worker_b, st.session_state.worker_c] if w not in ["A조", "B조", "C조"]]
-                        fmt_worker = ", ".join(workers) if workers else ""
+                        fmt_assembler = f"{st.session_state.assembly_type} - {st.session_state.assembler_val.replace('호기', '')}" if st.session_state.assembler_val != "선택안함" else ""
+                        fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
 
                         new_data = pd.DataFrame([{
                             "고유 ID": st.session_state.unique_id, "상태": "진행중",
@@ -1022,17 +969,20 @@ elif st.session_state.current_page == "input":
                             st.session_state.step = 1
                             st.rerun()
 
+    # ==========================================
+    # 💡 2. [작업 마감] 모드 
+    # ==========================================
     elif st.session_state.app_mode == "END":
         df_all = load_data()
         in_progress_df = df_all[df_all['상태'] == '진행중'].copy()
 
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;진행 중인 Lot 선택</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;1) 대상 LOT 선택</h4>", unsafe_allow_html=True)
                 if in_progress_df.empty:
                     st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
+                    target_row = None
                 else:
-                    # 💡 드롭다운 리스트 포맷을 깔끔하게 [모델명] LOT 번호 로만 표시
                     options = in_progress_df['고유 ID'].tolist()
                     def format_option(uid):
                         row = in_progress_df[in_progress_df['고유 ID'] == uid].iloc[0]
@@ -1042,42 +992,43 @@ elif st.session_state.current_page == "input":
                     st.session_state.target_unique_id = selected_id
                     
                     target_row = in_progress_df[in_progress_df['고유 ID'] == selected_id].iloc[0]
-                    st.success(f"📌 **모델명:** {target_row['모델명(MI)']} &nbsp;|&nbsp; **LOT:** {target_row['LOT NO.']} &nbsp;|&nbsp; **호기:** {target_row['호기']}")
+                    st.success(f"📌 **모델명:** {target_row['모델명(MI)']} &nbsp;|&nbsp; **LOT:** {target_row['LOT NO.']} &nbsp;|&nbsp; **시작시간:** {target_row['시작시간']}")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;마감 시간 정보</h4>", unsafe_allow_html=True)
-                c4, c5, c6 = st.columns(3)
-                with c4: 
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 작업 종료</h4>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns(4)
+                with c1: 
                     st.markdown("**종료일**")
                     st.session_state.end_date = st.date_input("종료일", value=st.session_state.end_date, label_visibility="collapsed")
-                with c5: 
+                with c2: 
                     st.markdown("**종료시간**")
                     time_str = st.session_state.end_time.strftime("%H:%M")
                     if st.button(time_str, key="btn_end_time", use_container_width=True):
                         st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
                         timepad_dialog("end_time", "종료시간")
-                with c6: 
+                with c3: 
                     st.markdown("**휴동시간 (분)**")
                     if st.button(f"{st.session_state.idle_time:,}", key="btn_idle_time", use_container_width=True):
                         st.session_state.numpad_buffer = str(st.session_state.idle_time) if st.session_state.idle_time != 0 else ""
                         numpad_dialog("idle_time", "휴동시간 (분)")
-                
-                if not in_progress_df.empty:
-                    try:
-                        m, d = map(int, target_row['날짜'].split('/'))
-                        y = st.session_state.work_date.year
-                        s_date = datetime(y, m, d).date()
-                        s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
-                        start_dt = datetime.combine(s_date, s_time)
-                        end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
-                        if end_dt < start_dt: end_dt += timedelta(days=1)
-                        
-                        raw_duration = int((end_dt - start_dt).total_seconds() / 60)
-                        duration_minutes = max(0, raw_duration - st.session_state.idle_time)
-                    except: duration_minutes = 0
+                with c4:
+                    if target_row is not None:
+                        try:
+                            m, d = map(int, target_row['날짜'].split('/'))
+                            y = st.session_state.work_date.year
+                            s_date = datetime(y, m, d).date()
+                            s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
+                            start_dt = datetime.combine(s_date, s_time)
+                            end_dt = datetime.combine(st.session_state.end_date, st.session_state.end_time)
+                            if end_dt < start_dt: end_dt += timedelta(days=1)
+                            
+                            raw_duration = int((end_dt - start_dt).total_seconds() / 60)
+                            duration_minutes = max(0, raw_duration - st.session_state.idle_time)
+                        except: duration_minutes = 0
+                    else:
+                        duration_minutes = 0
                     
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("**예상 소요시간 (차감됨)**")
+                    st.markdown("**소요시간 (차감됨)**")
                     st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
 
         elif step == 2:
@@ -1099,11 +1050,7 @@ elif st.session_state.current_page == "input":
                 with q3: 
                     st.markdown("**불량수량 (자동)**")
                     st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
-
-        elif step == 3:
-            bad_qty = st.session_state.comp_def + st.session_state.front_def + st.session_state.rear_def + st.session_state.offset_def + st.session_state.etc_def
-            total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
-
+            
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;불량 세부 내역</h4>", unsafe_allow_html=True)
                 c1, c2, c3 = st.columns(3)
@@ -1170,6 +1117,49 @@ elif st.session_state.current_page == "input":
                     st.session_state.offset_warned = True
 
             with st.container(border=True):
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;실시간 수율 현황</h4>", unsafe_allow_html=True)
+                rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
+                
+                c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#1e293b", "#8B5CF6"
+                
+                fig_donut = go.Figure(go.Pie(
+                    labels=['양품율', '불량율'], values=[rate_good, 100-rate_good if rate_good > 0 else 0], 
+                    hole=.65, sort=False, direction='clockwise',
+                    marker=dict(colors=[c_yield, '#e2e8f0'], line=dict(color='#ffffff', width=2)), 
+                    hoverinfo="label+percent", textinfo="none"
+                ))
+                fig_donut.update_layout(
+                    showlegend=False, height=250, margin=dict(t=10, b=10, l=10, r=10),
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    annotations=[dict(text=f"{rate_good:.1f}%", x=0.5, y=0.5, font_size=30, font_color=c_yield, showarrow=False)]
+                )
+                
+                df_defects = pd.DataFrame({
+                    "불량 항목": ['완전불량', '전면불량', '배면불량', '옵셋불량'], 
+                    "비율 (%)": [
+                        round((st.session_state.comp_def/total_qty)*100,1) if total_qty>0 else 0,
+                        round((st.session_state.front_def/total_qty)*100,1) if total_qty>0 else 0,
+                        round((st.session_state.rear_def/total_qty)*100,1) if total_qty>0 else 0,
+                        round((st.session_state.offset_def/total_qty)*100,1) if total_qty>0 else 0
+                    ]
+                })
+                y_max = max(df_defects["비율 (%)"]) * 1.4 if not df_defects.empty and max(df_defects["비율 (%)"]) > 0 else 5
+                fig_bar = go.Figure()
+                fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=[y_max]*4, marker_color='#f1f5f9', hoverinfo='none', width=0.45))
+                fig_bar.add_trace(go.Bar(x=df_defects["불량 항목"], y=df_defects["비율 (%)"], marker_color=[c_comp, c_front, c_rear, c_offset], width=0.45, texttemplate=''))
+                fig_bar.add_trace(go.Scatter(
+                    x=df_defects["불량 항목"], y=df_defects["비율 (%)"], mode='markers+text',
+                    marker=dict(size=40, color=[c_comp, c_front, c_rear, c_offset], line=dict(color='white', width=3)),
+                    text=df_defects["비율 (%)"].apply(lambda x: f"{x:.1f}"), textfont=dict(color='white', size=14, weight='bold'),
+                    textposition='middle center', hoverinfo='none'
+                ))
+                fig_bar.update_layout(barmode='overlay', showlegend=False, height=250, margin=dict(t=10, b=20, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, tickfont=dict(color='#1e293b')), yaxis=dict(showgrid=False, showticklabels=False, range=[0, y_max]))
+
+                g_col1, g_col2 = st.columns(2)
+                with g_col1: st.plotly_chart(fig_donut, use_container_width=True)
+                with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
+
+            with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최종 확인 및 저장</h4>", unsafe_allow_html=True)
                 rem_col, save_col = st.columns([0.7, 0.3])
                 with rem_col:
@@ -1183,6 +1173,7 @@ elif st.session_state.current_page == "input":
                         elif not st.session_state.target_unique_id: st.warning("1단계에서 마감할 Lot를 선택해주세요.")
                         else:
                             with st.spinner("DB 마감 업데이트 중..."):
+                                df_all = load_data()
                                 target_id = st.session_state.target_unique_id
                                 df_target = df_all[df_all['고유 ID'] == target_id]
                                 
@@ -1248,6 +1239,9 @@ elif st.session_state.current_page == "input":
                                         st.session_state.step = 1
                                         st.rerun()
 
+    # ==========================================
+    # 💡 3. [데이터 수정] 모드
+    # ==========================================
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 Data List (직접 수정 가능)</h4>", unsafe_allow_html=True)
