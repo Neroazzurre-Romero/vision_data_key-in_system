@@ -161,7 +161,8 @@ if not st.session_state.unlocked:
         </script>
         """
         components.html(slider_html, height=90)
-    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
+    # 💡 스플래시 화면 텍스트 !important 적용
+    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
 hide_streamlit_style = """
@@ -438,7 +439,6 @@ components.html(
     """, height=0, width=0
 )
 
-# 💡 .get()을 활용하여 상태 속성 에러 원천 차단
 def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
     for row_opts in rows:
@@ -675,7 +675,7 @@ if st.session_state.current_page == "analysis":
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 상세 분석 조건 필터</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 상세 분석 조건 필터</h4><br>", unsafe_allow_html=True)
             f_col1, f_col2, f_col3, f_col4 = st.columns(4)
             with f_col1:
                 dates = df['날짜'].unique().tolist()
@@ -714,7 +714,7 @@ if st.session_state.current_page == "analysis":
             with st.container(border=True):
                 g_col1, g_col2 = st.columns(2)
                 with g_col1:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 양/불량 생산 현황</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 양/불량 생산 현황</h4><br>", unsafe_allow_html=True)
                     group_col = '날짜'
                     if len(selected_dates) == 1 and len(selected_models) > 1:
                         group_col = '모델명(MI)'
@@ -726,7 +726,7 @@ if st.session_state.current_page == "analysis":
                     st.plotly_chart(fig1, use_container_width=True)
                     
                 with g_col2:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 비율 (도넛형)</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 비율 (도넛형)</h4><br>", unsafe_allow_html=True)
                     defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                     fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
                                   color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
@@ -734,7 +734,7 @@ if st.session_state.current_page == "analysis":
                     st.plotly_chart(fig2, use_container_width=True)
                     
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 수율 분석 요약표</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 수율 분석 요약표</h4><br>", unsafe_allow_html=True)
                 pivot_df = filtered_df.groupby(['날짜', '교대', '모델명(MI)', '구분']).agg({
                     '검사 수량': 'sum',
                     '양품수량': 'sum',
@@ -772,7 +772,7 @@ elif st.session_state.current_page == "input":
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
         st.markdown(f"<div style='text-align: center; color: #000000 !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
-        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 시작 프로세스</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 시작 프로세스</h4><br>", unsafe_allow_html=True)
         if st.button("작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "START"
             st.session_state.step = 1
@@ -786,7 +786,7 @@ elif st.session_state.current_page == "input":
             st.session_state.step = 3
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 종료 프로세스</h4>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 종료 프로세스</h4><br>", unsafe_allow_html=True)
         if st.button("작업 종료", type="primary" if (st.session_state.app_mode=="END" and st.session_state.step==1) else "secondary", use_container_width=True):
             st.session_state.app_mode = "END"
             st.session_state.step = 1
@@ -796,14 +796,15 @@ elif st.session_state.current_page == "input":
             st.session_state.step = 2
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 데이터 관리</h4>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 데이터 관리</h4><br>", unsafe_allow_html=True)
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; color: #FFC000; font-size: 14px; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
+        # 💡 사이드바 Created by 텍스트 !important 적용
+        st.markdown("<div style='text-align: center; color: #FFC000 !important; font-size: 14px; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
 
@@ -813,7 +814,7 @@ elif st.session_state.current_page == "input":
     if st.session_state.app_mode == "START":
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 정보</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**근무일자**")
@@ -832,7 +833,7 @@ elif st.session_state.current_page == "input":
                     st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(w_val) if w_val in worker_list else 0, label_visibility="collapsed")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4><br>", unsafe_allow_html=True)
                 sc1, sc2, sc3, sc4, sc5, sc6 = st.columns(6)
                 with sc1:
                     st.markdown("**SCAN DATA**")
@@ -863,7 +864,7 @@ elif st.session_state.current_page == "input":
 
         elif step == 2:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 시작 등록</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 시작 등록</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**시작일**")
@@ -880,18 +881,19 @@ elif st.session_state.current_page == "input":
                 with c4: st.write("")
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 설비 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 설비 정보</h4><br>", unsafe_allow_html=True)
                 render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 6)
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 검사 구분</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 검사 구분</h4><br>", unsafe_allow_html=True)
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
             render_nav_buttons(step, 3)
 
         elif step == 3:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 도장 정보</h4>", unsafe_allow_html=True)
+                # 💡 도장 정보 마진 추가
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 도장 정보</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**도장일**")
@@ -911,7 +913,7 @@ elif st.session_state.current_page == "input":
                 with c4: st.write("")
         
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립 정보</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.write("")
@@ -947,7 +949,7 @@ elif st.session_state.current_page == "input":
                         st.session_state.cover_k = st.checkbox("K", value=st.session_state.get("cover_k", False), key="chk_cover")
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립기 정보</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립기 정보</h4><br>", unsafe_allow_html=True)
                 render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "assembler_val", 6)
 
             st.markdown("<br>", unsafe_allow_html=True)
@@ -1024,7 +1026,7 @@ elif st.session_state.current_page == "input":
 
         if step == 1:
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 대상 LOT 선택</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 대상 LOT 선택</h4><br>", unsafe_allow_html=True)
                 if in_progress_df.empty:
                     st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
                     target_row = None
@@ -1048,7 +1050,7 @@ elif st.session_state.current_page == "input":
                     st.markdown(f"<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 15px;'>📌 모델명: {target_row['모델명(MI)']} &nbsp;|&nbsp; LOT: {target_row['LOT NO.']} &nbsp;|&nbsp; 시작시간: {target_row['시작시간']}</div>", unsafe_allow_html=True)
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 종료</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 종료</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.markdown("**종료일**")
@@ -1104,7 +1106,7 @@ elif st.session_state.current_page == "input":
             total_qty = max(0, st.session_state.get("good_qty", 0) + bad_qty - st.session_state.get("shortage_qty", 0))
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4><br>", unsafe_allow_html=True)
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
                     st.markdown("**검사 수량 (자동)**")
@@ -1125,7 +1127,7 @@ elif st.session_state.current_page == "input":
                     st.session_state.oqc_status = st.selectbox("OQC", ["선택안함", "육안", "OQC"], index=["선택안함", "육안", "OQC"].index(o_val) if o_val in ["선택안함", "육안", "OQC"] else 0, label_visibility="collapsed")
             
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 불량 세부 내역</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 불량 세부 내역</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: 
                     st.markdown("**완전불량**")
@@ -1190,7 +1192,7 @@ elif st.session_state.current_page == "input":
                     st.session_state.offset_warned = True
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 수율 현황</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 수율 현황</h4><br>", unsafe_allow_html=True)
                 rate_good = round((st.session_state.get("good_qty", 0) / total_qty) * 100, 1) if total_qty > 0 else 0.0
                 
                 c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#1e293b", "#8B5CF6"
@@ -1233,7 +1235,7 @@ elif st.session_state.current_page == "input":
                 with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
             with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최종 확인 및 저장</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최종 확인 및 저장</h4><br>", unsafe_allow_html=True)
                 rem_col, nav_col1, nav_col2 = st.columns([0.6, 0.2, 0.2])
                 with rem_col:
                     st.markdown("**비고**")
@@ -1326,7 +1328,7 @@ elif st.session_state.current_page == "input":
     # ==========================================
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
             df_history = load_data().copy()
             
             if not df_history.empty:
