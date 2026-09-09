@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import os
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta, timezone
 import time
 from io import BytesIO
 from openpyxl.styles import Font
@@ -55,12 +55,12 @@ if "unlocked" in st.query_params:
     st.query_params.clear()
 
 default_state = {
-    "work_date": datetime.now().date(), "shift_type": "주간", 
+    "work_date": datetime.now(timezone(timedelta(hours=9))).date(), "shift_type": "주간", 
     "worker_a": "A조", "worker_b": "B조", "worker_c": "C조",
-    "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now().date(),
-    "plating_type": "A", "start_date": datetime.now().date(), "start_time": datetime.now().time(),
-    "end_date": datetime.now().date(), "end_time": datetime.now().time(), "unit": "1호기",
-    "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now().date(),
+    "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
+    "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
+    "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
+    "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
     "painting_order": 1, "painting_line": "B Line", "clip_val": "1",
     "base_val": "1", "cover_val": "1", "assembler_val": "선택안함",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 단색(Flat) 테마 & 사이드바 그라데이션 제거
+# 💡 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -211,7 +211,7 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 💡 입력창 기본 테마 (배경 #E7E6E6, 테두리, 그림자 없음) */
+/* 입력창 기본 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -228,7 +228,7 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-/* 💡 텍스트 색상 (기본 검정) */
+/* 텍스트 색상 (기본 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
@@ -254,7 +254,7 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
     height: 2.6rem !important;
 }
 
-/* 💡 비고란 (Textarea) - 최종 저장 버튼과 동일한 150px 높이 강제 설정 */
+/* 비고란 (Textarea) - 최종 저장 버튼과 동일한 150px 높이 강제 설정 */
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.1rem !important; 
     height: 150px !important;
@@ -268,7 +268,7 @@ div[data-baseweb="textarea"] textarea {
     transition: all 0.2s ease;
 }
 
-/* 💡 입력창 포커스 시 적용버튼 색상(#1e293b) + 글자 흰색 전환 */
+/* 입력창 포커스 시 적용버튼 색상(#1e293b) + 글자 흰색 전환 */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
@@ -297,14 +297,13 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
 input[placeholder*="스캐너 앱 실행"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="스캐너 앱 실행"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 💡 일반 버튼(Secondary) 단색 스타일 (배경 #E7E6E6, 텍스트 검정) */
+/* 일반 버튼(Secondary) 단색 스타일 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stButton"] button[kind="secondary"] {
     background-color: #E7E6E6 !important;
     color: #000000 !important;
     border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
 }
-/* 포커스/호버 시 적용버튼 색상으로 변경 */
 div[data-testid="stButton"] button[kind="secondary"]:hover,
 div[data-testid="stButton"] button[kind="secondary"]:focus,
 div[data-testid="stButton"] button[kind="secondary"]:active {
@@ -313,7 +312,7 @@ div[data-testid="stButton"] button[kind="secondary"]:active {
     border-color: #1e293b !important;
 }
 
-/* 💡 Primary 버튼 단색 스타일 (차콜 네이비) */
+/* Primary 버튼 단색 스타일 (차콜 네이비) */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -324,7 +323,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 💡 사이드바 메뉴 단색 디자인 (그라데이션 제거, 노란색 포인트 유지) */
+/* 사이드바 메뉴 단색 디자인 */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -355,7 +354,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background-color: #1e293b !important;
+    background-color: transparent !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
     box-shadow: none !important;
@@ -390,7 +389,7 @@ components.html(
                     btn.style.border = '1px solid #15803d'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
-                if (text.includes('데이터 최종 저장')) { 
+                if (text.includes('Data 최종 저장')) { 
                     btn.style.backgroundColor = '#0369a1';
                     btn.style.background = 'none';
                     btn.style.border = '1px solid #0c4a6e';
@@ -401,7 +400,6 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                // 💡 Data Analysis 버튼 높이를 메인 헤더박스와 동일하게(6rem) 2배 확장
                 if (text.trim() === 'Data Analysis') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
@@ -417,7 +415,6 @@ components.html(
             });
         };
         
-        // 💡 스캐너 텍스트칸 동적 포커스 및 노란색 강조
         const styleScanner = () => {
             if (!window.parent.document) return;
             window.parent.document.querySelectorAll('input').forEach(el => {
@@ -430,7 +427,6 @@ components.html(
                     if (parentDiv) parentDiv.style.setProperty('border', 'none', 'important');
                     if (grandParent) grandParent.style.setProperty('border', '2px solid #eab308', 'important');
                     
-                    // 이벤트 리스너를 통해 포커스 상태 감지하여 색상 반전
                     if (!el.getAttribute('data-scanner-listener')) {
                         el.setAttribute('data-scanner-listener', 'true');
                         el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
@@ -480,7 +476,6 @@ components.html(
     """, height=0, width=0
 )
 
-# 💡 교대 주간/야간, 도금구분이 폭을 동일하게 채울 수 있도록 use_width=True로 세팅
 def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
     for row_opts in rows:
@@ -727,7 +722,6 @@ elif st.session_state.current_page == "input":
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 60px; margin-right: 20px;'>" if logo_s_data else ""
         
-        # 💡 헤더 박스 높이를 6rem으로 확장 및 메인 타이틀 중앙 정렬 (justify-content: center)
         st.markdown(
             f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
@@ -741,6 +735,13 @@ elif st.session_state.current_page == "input":
             st.rerun()
 
     with st.sidebar:
+        # 💡 현재 시간 사이드바 고정 및 KST(UTC+9) 설정
+        KST = timezone(timedelta(hours=9))
+        now = datetime.now(KST)
+        weekdays = ['월', '화', '수', '목', '금', '토', '일']
+        current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
+        st.markdown(f"<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 0.95rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
+        
         steps_titles = [
             "생산 등록", "작업 정보", "Assemble & Coating", 
             "VISION Data", "Report & History"
@@ -793,12 +794,6 @@ elif st.session_state.current_page == "input":
         st.session_state.scanned_raw_data = "" 
 
     if step == 1:
-        # 💡 현재 시각 및 요일 디스플레이 표시 
-        now = datetime.now()
-        weekdays = ['월', '화', '수', '목', '금', '토', '일']
-        current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
-        st.markdown(f"<div style='text-align: right; color: #64748b; font-weight: bold; font-size: 1.05rem; margin-bottom: 10px;'>🕒 {current_time_str}</div>", unsafe_allow_html=True)
-
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;기본 근무 정보</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
@@ -1070,7 +1065,7 @@ elif st.session_state.current_page == "input":
                 
             with save_col:
                 st.markdown("**&nbsp;**")
-                if st.button("💾 데이터 최종 저장", type="primary", use_container_width=True):
+                if st.button("Data 최종 저장", type="primary", use_container_width=True):
                     if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
                     elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
                     else:
@@ -1131,10 +1126,9 @@ elif st.session_state.current_page == "input":
                                 st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
                                 st.rerun()
 
-    # 💡 웹 상에서 직접 표 데이터를 수정하고 구글 시트에 즉시 반영하는 기능 구현
     elif step == 5:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 데이터 List (직접 수정 가능)</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 Data List</h4>", unsafe_allow_html=True)
             df_history = load_data().copy()
             
             if not df_history.empty:
@@ -1145,7 +1139,7 @@ elif st.session_state.current_page == "input":
                 edited_df = st.data_editor(display_df, use_container_width=True, hide_index=True)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🔄 수정 사항 구글 시트에 적용", type="primary", use_container_width=True):
+                if st.button("Data 수정 적용", type="primary", use_container_width=True):
                     sheet = get_sheet()
                     changed = False
                     with st.spinner("구글 시트 업데이트 중..."):
