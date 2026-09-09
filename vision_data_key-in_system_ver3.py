@@ -55,7 +55,7 @@ if "unlocked" in st.query_params:
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "worker": "작업자A",
+    "shift_type": "주간", "workers": [],
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
@@ -161,7 +161,6 @@ if not st.session_state.unlocked:
         </script>
         """
         components.html(slider_html, height=90)
-    # 💡 스플래시 화면 텍스트 !important 적용
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -185,6 +184,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
+/* 💡 모든 버튼 기본 배경색을 입력창(#E7E6E6)과 동일하게 고정 적용 */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -196,9 +196,34 @@ div[data-testid="stButton"] button {
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    background-color: #E7E6E6 !important; 
+    color: #000000 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
     transition: all 0.2s ease;
 }
 
+/* 포커스/호버 시 색상 전환 */
+div[data-testid="stButton"] button:hover,
+div[data-testid="stButton"] button:focus,
+div[data-testid="stButton"] button:active {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+    border-color: #1e293b !important;
+}
+
+/* Primary 버튼 단색 스타일 (차콜 네이비) 덮어쓰기 */
+div[data-testid="stButton"] button[kind="primary"] {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #0f172a !important;
+    box-shadow: none !important;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover {
+    background-color: #0f172a !important;
+}
+
+/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -276,30 +301,7 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-div[data-testid="stButton"] button[kind="secondary"] {
-    background-color: #E7E6E6 !important;
-    color: #000000 !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: none !important;
-}
-div[data-testid="stButton"] button[kind="secondary"]:hover,
-div[data-testid="stButton"] button[kind="secondary"]:focus,
-div[data-testid="stButton"] button[kind="secondary"]:active {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border-color: #1e293b !important;
-}
-
-div[data-testid="stButton"] button[kind="primary"] {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border: 1px solid #0f172a !important;
-    box-shadow: none !important;
-}
-div[data-testid="stButton"] button[kind="primary"]:hover {
-    background-color: #0f172a !important;
-}
-
+/* 사이드바 메뉴 디자인 */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -310,6 +312,8 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     margin-bottom: 5px !important; 
     border-radius: 6px !important; 
     background-color: transparent !important;
+    border: 1px solid transparent !important; 
+    color: #8B9CB6 !important;
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
@@ -320,12 +324,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
 }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
-    background-color: transparent !important; 
-    color: #8B9CB6 !important; 
-    border: 1px solid transparent !important; 
-}
-[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+[data-testid="stSidebar"] .stButton > button:hover {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
@@ -803,7 +802,6 @@ elif st.session_state.current_page == "input":
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-        # 💡 사이드바 Created by 텍스트 !important 적용
         st.markdown("<div style='text-align: center; color: #FFC000 !important; font-size: 14px; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
@@ -892,7 +890,6 @@ elif st.session_state.current_page == "input":
 
         elif step == 3:
             with st.container(border=True):
-                # 💡 도장 정보 마진 추가
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 도장 정보</h4><br>", unsafe_allow_html=True)
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
