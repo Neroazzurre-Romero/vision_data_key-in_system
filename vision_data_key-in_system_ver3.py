@@ -55,7 +55,7 @@ if "unlocked" in st.query_params:
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "worker": "작업자A",
+    "shift_type": "주간", "workers": [],
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
@@ -368,15 +368,14 @@ components.html(
                 }
 
                 if (text.trim() === 'ADMINISTRATOR') { 
-                    btn.style.backgroundColor = '#1e293b';
-                    btn.style.background = 'none';
-                    btn.style.color = '#FFC000';
-                    btn.style.border = '1px solid #0f172a';
-                    btn.style.setProperty('height', '6.4rem', 'important');
-                    btn.style.setProperty('min-height', '6.4rem', 'important');
-                    btn.style.setProperty('max-height', '6.4rem', 'important');
-                    btn.style.setProperty('font-size', '1.3rem', 'important');
-                    btn.style.setProperty('font-weight', '900', 'important');
+                    btn.style.setProperty('background', '#1e293b', 'important');
+                    btn.style.setProperty('background-color', '#1e293b', 'important');
+                    btn.style.setProperty('color', '#FFC000', 'important');
+                    btn.style.setProperty('border', '1px solid #0f172a', 'important');
+                    btn.style.setProperty('height', '90px', 'important');
+                    btn.style.setProperty('min-height', '90px', 'important');
+                    btn.style.setProperty('max-height', '90px', 'important');
+                    btn.style.setProperty('font-size', '1.6rem', 'important');
                 }
             });
         };
@@ -749,9 +748,9 @@ elif st.session_state.current_page == "input":
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        img_html = f"<img src='{logo_s_data}' style='height: 96px; margin-right: 20px;'>" if logo_s_data else ""
+        img_html = f"<img src='{logo_s_data}' style='height: 80px; margin-right: 20px;'>" if logo_s_data else ""
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6.4rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
+            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 90px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
             f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.8rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
@@ -822,8 +821,8 @@ elif st.session_state.current_page == "input":
                     st.markdown("**교대**")
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
-                    st.markdown("**작업자 (복수 선택)**")
-                    st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
+                    st.markdown("**작업자**")
+                    st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(st.session_state.worker) if st.session_state.worker in worker_list else 0, label_visibility="collapsed")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4>", unsafe_allow_html=True)
@@ -836,7 +835,7 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
+                    st.button("적용", type="primary", use_container_width=True, on_click=on_scan_apply)
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
                     st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -878,16 +877,7 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 검사 구분</h4>", unsafe_allow_html=True)
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
-            st.markdown("<br>", unsafe_allow_html=True)
-            c_nav = st.columns(6)
-            with c_nav[4]:
-                if st.button("⬅️ 이전", use_container_width=True):
-                    st.session_state.step = 1
-                    st.rerun()
-            with c_nav[5]:
-                if st.button("다음 ➡️", use_container_width=True):
-                    st.session_state.step = 3
-                    st.rerun()
+            render_nav_buttons(step, 3)
 
         elif step == 3:
             with st.container(border=True):
@@ -948,7 +938,7 @@ elif st.session_state.current_page == "input":
             c_nav = st.columns(6)
             with c_nav[4]:
                 if st.button("⬅️ 이전", use_container_width=True):
-                    st.session_state.step -= 2
+                    st.session_state.step -= 1
                     st.rerun()
             with c_nav[5]:
                 if st.button("작업시작 등록", type="primary", use_container_width=True):
@@ -988,7 +978,6 @@ elif st.session_state.current_page == "input":
                             if save_data_append(new_data):
                                 st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
                                 
-                                # 💡 모든 입력창 초기화 로직
                                 for k, v in default_state.items():
                                     if k not in ["app_mode", "current_page", "step", "unlocked"]:
                                         st.session_state[k] = v
@@ -1285,7 +1274,6 @@ elif st.session_state.current_page == "input":
                                         st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
                                         st.cache_data.clear()
                                         
-                                        # 💡 모든 입력창 초기화 로직
                                         for k, v in default_state.items():
                                             if k not in ["app_mode", "current_page", "step", "unlocked"]:
                                                 st.session_state[k] = v
