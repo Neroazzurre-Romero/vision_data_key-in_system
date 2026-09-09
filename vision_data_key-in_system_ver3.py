@@ -55,7 +55,7 @@ if "unlocked" in st.query_params:
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "workers": [],
+    "shift_type": "주간", "worker": "작업자A",
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
@@ -184,7 +184,6 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 💡 모든 버튼 기본 배경색을 입력창(#E7E6E6)과 동일하게 고정 적용 */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -203,7 +202,6 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 포커스/호버 시 색상 전환 */
 div[data-testid="stButton"] button:hover,
 div[data-testid="stButton"] button:focus,
 div[data-testid="stButton"] button:active {
@@ -212,7 +210,6 @@ div[data-testid="stButton"] button:active {
     border-color: #1e293b !important;
 }
 
-/* Primary 버튼 단색 스타일 (차콜 네이비) 덮어쓰기 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -223,7 +220,6 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -238,10 +234,7 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-span[data-baseweb="tag"] {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-}
+span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
 
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
@@ -301,7 +294,6 @@ div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* 사이드바 메뉴 디자인 */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -464,7 +456,7 @@ SPREADSHEET_ID = "1DeMJJkuq7bYa4XNK_NbkqZ-vOJKqGhmYXIvHm3yJl8E"
 TAB_NAME = "VISION_DATA_DB"
 
 @st.cache_resource(ttl=600)
-def get_sheet():
+def get_spreadsheet_doc():
     for attempt in range(3):
         try:
             creds_data = st.secrets["google_credentials"]
@@ -473,14 +465,85 @@ def get_sheet():
             if "private_key" in creds_dict: creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
             creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
             doc = gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-            try: return doc.worksheet(TAB_NAME)
-            except: return doc.sheet1
+            return doc
         except Exception as e:
             if "503" in str(e) and attempt < 2:
                 time.sleep(2)
                 continue
             return None
 
+def get_sheet():
+    doc = get_spreadsheet_doc()
+    if doc:
+        try: return doc.worksheet(TAB_NAME)
+        except: return doc.sheet1
+    return None
+
+# 💡 분석을 위해 "Q"가 들어간 모든 시트와 DB시트를 불러오고 컬럼을 자동 매핑하는 로직
+@st.cache_data(ttl=60)
+def load_analysis_data():
+    doc = get_spreadsheet_doc()
+    if doc is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    
+    all_data = []
+    for ws in doc.worksheets():
+        if "Q" in ws.title.upper() or ws.title == TAB_NAME:
+            raw_data = ws.get_all_values()
+            if len(raw_data) < 2: continue
+            
+            header_idx = -1
+            for i, row in enumerate(raw_data[:15]):
+                row_str = "".join(str(c).replace(" ", "") for c in row)
+                if "날짜" in row_str or "교대" in row_str or "모델명" in row_str:
+                    header_idx = i; break
+                    
+            if header_idx == -1: continue
+            
+            headers = [str(h).strip() for h in raw_data[header_idx]]
+            clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
+            
+            ws_data = []
+            for r_idx in range(header_idx + 1, len(raw_data)):
+                row = raw_data[r_idx]
+                if any(str(c).strip() for c in row):
+                    row_data = {}
+                    for col in EXCEL_COLUMNS:
+                        col_key = col.replace(" ", "").replace("률", "율").upper()
+                        # 과거 데이터의 변형된 이름들 스마트 매핑
+                        if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
+                        elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
+                        else: aliases = []
+                        
+                        matched_header = None
+                        if col_key in clean_headers:
+                            matched_header = clean_headers[col_key]
+                        else:
+                            for alias in aliases:
+                                if alias in clean_headers:
+                                    matched_header = clean_headers[alias]
+                                    break
+                                    
+                        if matched_header:
+                            try:
+                                c_idx = headers.index(matched_header)
+                                row_data[col] = row[c_idx] if c_idx < len(row) else ""
+                            except:
+                                row_data[col] = ""
+                        else:
+                            row_data[col] = "" # 과거에 없던 컬럼은 빈칸 처리
+                    ws_data.append(row_data)
+            
+            if ws_data:
+                all_data.append(pd.DataFrame(ws_data))
+                
+    if not all_data: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    
+    result_df = pd.concat(all_data, ignore_index=True)
+    if 'LOT NO.' in result_df.columns:
+        result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
+    return result_df
+
+# 편집 및 저장을 위한 단일 시트 로드
 @st.cache_data(ttl=60)
 def load_data():
     sheet = get_sheet()
@@ -664,7 +727,8 @@ if st.session_state.current_page == "analysis":
             st.session_state.current_page = "input"
             st.rerun()
             
-    df = load_data().copy()
+    # 💡 분석 페이지는 load_analysis_data()를 사용하여 여러 분기(Q) 탭을 모두 병합해 가져옴
+    df = load_analysis_data().copy()
     if df.empty: 
         st.warning("저장된 데이터가 없습니다.")
     else:
