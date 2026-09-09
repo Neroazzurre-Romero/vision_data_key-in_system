@@ -173,7 +173,7 @@ if not st.session_state.unlocked:
     st.stop()
 
 # ----------------------------------------------------
-# 💡 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
+# 💡 단색(Flat) 테마 & 사이드바 그라데이션 제거
 # ----------------------------------------------------
 hide_streamlit_style = """
 <style>
@@ -211,7 +211,7 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 💡 입력창 기본 테마 (배경 #E7E6E6, 텍스트 검정) */
+/* 💡 입력창 기본 테마 (배경 #E7E6E6, 테두리, 그림자 없음) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -324,7 +324,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 사이드바 메뉴 단색 디자인 */
+/* 💡 사이드바 메뉴 단색 디자인 (그라데이션 제거, 노란색 포인트 유지) */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -339,9 +339,9 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 16px !important; text-indent: 10px !important; text-align: left !important; }
 
-/* 선택된 사이드바 버튼 */
+/* 선택된 사이드바 버튼: 네이비 단색 배경 + 노란색 포인트 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background: linear-gradient(90deg, #000000 0%, #0033A0 100%) !important; 
+    background-color: #1e293b !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
@@ -355,7 +355,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background-color: transparent !important;
+    background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
     box-shadow: none !important;
@@ -705,7 +705,7 @@ if st.session_state.current_page == "analysis":
         with st.container(border=True):
             g_col1, g_col2 = st.columns(2)
             with g_col1:
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 일자별 양/불량 현황</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;일자별 양/불량 현황</h4>", unsafe_allow_html=True)
                 df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
                 fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
                               color_discrete_sequence=['#10B981', '#EF4444'])
@@ -713,16 +713,12 @@ if st.session_state.current_page == "analysis":
                 st.plotly_chart(fig1, use_container_width=True)
                 
             with g_col2:
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 비율</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;주요 불량 유형 비율</h4>", unsafe_allow_html=True)
                 defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
                 fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
                               color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
                 fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
                 st.plotly_chart(fig2, use_container_width=True)
-            
-        with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 전체 데이터 내역</h4>", unsafe_allow_html=True)
-            st.dataframe(df, use_container_width=True, hide_index=True)
 
 elif st.session_state.current_page == "input":
     
@@ -731,9 +727,9 @@ elif st.session_state.current_page == "input":
         logo_s_data = get_image_base64("at")
         img_html = f"<img src='{logo_s_data}' style='height: 60px; margin-right: 20px;'>" if logo_s_data else ""
         
-        # 💡 헤더 박스 높이를 기존의 2배(6rem)로 확장 
+        # 💡 헤더 박스 높이를 6rem으로 확장 및 메인 타이틀 중앙 정렬 (justify-content: center)
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6rem; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
+            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
             f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 2.2rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
@@ -797,8 +793,14 @@ elif st.session_state.current_page == "input":
         st.session_state.scanned_raw_data = "" 
 
     if step == 1:
+        # 💡 현재 시각 및 요일 디스플레이 표시 
+        now = datetime.now()
+        weekdays = ['월', '화', '수', '목', '금', '토', '일']
+        current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
+        st.markdown(f"<div style='text-align: right; color: #64748b; font-weight: bold; font-size: 1.05rem; margin-bottom: 10px;'>🕒 {current_time_str}</div>", unsafe_allow_html=True)
+
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 기본 근무 정보</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;기본 근무 정보</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**근무일자**")
@@ -818,7 +820,7 @@ elif st.session_state.current_page == "input":
             with w_col3: st.session_state.worker_c = st.selectbox("C조", worker_c_list, index=worker_c_list.index(st.session_state.worker_c) if st.session_state.worker_c in worker_c_list else 0, label_visibility="collapsed")
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 스캔 및 입고 정보</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;스캔 및 입고 정보</h4>", unsafe_allow_html=True)
             
             sc1, sc2, sc3 = st.columns(3)
             with sc1:
@@ -855,7 +857,7 @@ elif st.session_state.current_page == "input":
 
     elif step == 2:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 시간</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;작업 시간</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**시작일**")
@@ -892,7 +894,7 @@ elif st.session_state.current_page == "input":
                 st.text_input("소요시간", value=f"{duration_minutes:,} 분", disabled=True, label_visibility="collapsed")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 설비 및 검사 설정</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;설비 및 검사 설정</h4>", unsafe_allow_html=True)
             st.markdown("**호기**")
             render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
             st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
@@ -900,7 +902,7 @@ elif st.session_state.current_page == "input":
 
     elif step == 3:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 도장 공정</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;도장 공정</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**도장일**")
@@ -915,7 +917,7 @@ elif st.session_state.current_page == "input":
                     numpad_dialog("painting_order", "도장순서")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;Assemble 부품 및 설비</h4>", unsafe_allow_html=True)
             num_options = ["1"] + [str(i) for i in range(2, 11)] + ["선택안함"]
             c4, c5, c6 = st.columns(3)
             with c4: 
@@ -936,7 +938,7 @@ elif st.session_state.current_page == "input":
         total_qty = max(0, st.session_state.good_qty + bad_qty - st.session_state.shortage_qty)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;수량 등록</h4>", unsafe_allow_html=True)
             q1, q2, q3 = st.columns(3)
             with q1: 
                 st.markdown("**검사 수량 (자동)**")
@@ -952,7 +954,7 @@ elif st.session_state.current_page == "input":
                 st.text_input("불량수량", value=f"{bad_qty:,}", disabled=True, label_visibility="collapsed")
         
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 불량 세부 내역</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;불량 세부 내역</h4>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.markdown("**완전불량**")
@@ -1017,7 +1019,7 @@ elif st.session_state.current_page == "input":
                 st.session_state.offset_warned = True
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 수율 현황</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;실시간 수율 현황</h4>", unsafe_allow_html=True)
             rate_good = round((st.session_state.good_qty / total_qty) * 100, 1) if total_qty > 0 else 0.0
             
             c_yield, c_comp, c_front, c_rear, c_offset = "#10B981", "#EF4444", "#F59E0B", "#1e293b", "#8B5CF6"
@@ -1060,7 +1062,7 @@ elif st.session_state.current_page == "input":
             with g_col2: st.plotly_chart(fig_bar, use_container_width=True)
 
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최종 확인 및 저장</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최종 확인 및 저장</h4>", unsafe_allow_html=True)
             rem_col, save_col = st.columns([0.7, 0.3])
             with rem_col:
                 st.markdown("**비고**")
@@ -1068,7 +1070,7 @@ elif st.session_state.current_page == "input":
                 
             with save_col:
                 st.markdown("**&nbsp;**")
-                if st.button("💾 데이터 최종 저장\n(구글 시트 전송)", type="primary", use_container_width=True):
+                if st.button("💾 데이터 최종 저장", type="primary", use_container_width=True):
                     if total_qty == 0: st.warning("입력된 데이터(검사수량)가 없습니다.")
                     elif not st.session_state.lot_input_field: st.warning("LOT 번호를 1단계에서 확인해주세요.")
                     else:
@@ -1129,12 +1131,38 @@ elif st.session_state.current_page == "input":
                                 st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
                                 st.rerun()
 
+    # 💡 웹 상에서 직접 표 데이터를 수정하고 구글 시트에 즉시 반영하는 기능 구현
     elif step == 5:
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 데이터 List</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 데이터 List (직접 수정 가능)</h4>", unsafe_allow_html=True)
             df_history = load_data().copy()
+            
             if not df_history.empty:
+                df_history['orig_index'] = df_history.index + 2
                 recent_10 = df_history.iloc[::-1].head(10).copy()
-                st.dataframe(recent_10, use_container_width=True, hide_index=True)
+                display_df = recent_10.drop(columns=['orig_index'])
+                
+                edited_df = st.data_editor(display_df, use_container_width=True, hide_index=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🔄 수정 사항 구글 시트에 적용", type="primary", use_container_width=True):
+                    sheet = get_sheet()
+                    changed = False
+                    with st.spinner("구글 시트 업데이트 중..."):
+                        for idx in edited_df.index:
+                            old_row = display_df.loc[idx].fillna("").astype(str).tolist()
+                            new_row = edited_df.loc[idx].fillna("").astype(str).tolist()
+                            if old_row != new_row:
+                                gspread_row = recent_10.loc[idx, 'orig_index']
+                                sheet.update(f'A{gspread_row}', [new_row])
+                                changed = True
+                    
+                    if changed:
+                        st.success("✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!")
+                        load_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.info("수정된 항목이 없습니다.")
             else:
                 st.caption("저장된 데이터가 없습니다.")
