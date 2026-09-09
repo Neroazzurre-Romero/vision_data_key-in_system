@@ -92,7 +92,7 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
@@ -172,9 +172,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# ----------------------------------------------------
-# 💡 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
-# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -355,7 +352,7 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background-color: transparent !important;
+    background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
     box-shadow: none !important;
@@ -401,7 +398,6 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                // 💡 Administrator 버튼 높이를 메인 헤더박스와 동일하게(8rem)
                 if (text.trim() === 'Administrator') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
@@ -682,7 +678,7 @@ def show_sbl_warning(defect_type, rate):
 # ==========================================
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
-    img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
+    img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
     st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
@@ -722,10 +718,8 @@ elif st.session_state.current_page == "input":
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        # 💡 로고 크기 2배(120px)
-        img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 20px;'>" if logo_s_data else ""
+        img_html = f"<img src='{logo_s_data}' style='height: 60px; margin-right: 20px;'>" if logo_s_data else ""
         
-        # 💡 헤더 박스 높이를 8rem으로 확장 및 메인 타이틀 중앙 정렬
         st.markdown(
             f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 8rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
@@ -739,12 +733,12 @@ elif st.session_state.current_page == "input":
             st.rerun()
 
     with st.sidebar:
-        # 💡 현재 시간 사이드바 고정 및 폰트 축소/검정색 텍스트/메인페이지 배경색상
+        # 💡 강제 폰트 색상을 !important로 주입하여 무조건 검정색으로 보이도록 보강
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
-        st.markdown(f"<div style='text-align: center; color: #000000; background-color: #f1f5f9; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; color: #000000 !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
         steps_titles = [
             "생산 등록", "작업 정보", "Assemble & Coating", 
@@ -897,7 +891,8 @@ elif st.session_state.current_page == "input":
             st.markdown("**호기**")
             render_grid_buttons(["1호기", "2호기", "3호기", "4호기", "5호기", "6호기"], "unit", 3)
             st.markdown("<br>**검사 구분**", unsafe_allow_html=True)
-            render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
+            # 💡 개발품 추가
+            render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "개발품", "완불재검"], "category", 7)
 
     elif step == 3:
         with st.container(border=True):
