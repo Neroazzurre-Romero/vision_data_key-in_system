@@ -100,7 +100,6 @@ if not st.session_state.unlocked:
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
             st.rerun()
-
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
             <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
@@ -112,24 +111,19 @@ if not st.session_state.unlocked:
             const thumb = document.getElementById('slider-thumb');
             const fill = document.getElementById('slider-fill');
             const text = document.getElementById('slider-text');
-
             const unlockSystem = () => {
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
             };
-
             const btns = window.parent.document.querySelectorAll('button');
             for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
-
             let isDragging = false;
             let startX, currentX = 0;
-
             function startDrag(e) {
                 isDragging = true;
                 let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
                 startX = clientX - currentX;
             }
-
             function drag(e) {
                 if (!isDragging) return;
                 if(e.cancelable) e.preventDefault();
@@ -148,7 +142,6 @@ if not st.session_state.unlocked:
                     setTimeout(() => { unlockSystem(); }, 200);
                 }
             }
-
             function endDrag(e) {
                 if (!isDragging) return;
                 isDragging = false;
@@ -163,19 +156,14 @@ if not st.session_state.unlocked:
                     setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
                 }
             }
-
             thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
         components.html(slider_html, height=90)
-            
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# ----------------------------------------------------
-# 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
-# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -196,7 +184,6 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 공통 높이(2.6rem) 설정 */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -211,7 +198,6 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
@@ -226,7 +212,6 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-/* 다중선택 텍스트박스 내부 태그 스타일 */
 span[data-baseweb="tag"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -253,7 +238,6 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child
     align-items: center !important;
 }
 
-/* 비고란 (Textarea) */
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.1rem !important; 
     height: 150px !important;
@@ -267,36 +251,30 @@ div[data-baseweb="textarea"] textarea {
     transition: all 0.2s ease;
 }
 
-/* 포커스 시 배경/텍스트 색상 반전 */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
     background-color: #1e293b !important;
     border-color: #1e293b !important;
 }
-
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input {
     color: #ffffff !important;
 }
-
 div[data-baseweb="textarea"]:focus-within textarea {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border-color: #1e293b !important;
 }
-
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 스캐너 Placeholder */
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* Secondary 버튼 */
 div[data-testid="stButton"] button[kind="secondary"] {
     background-color: #E7E6E6 !important;
     color: #000000 !important;
@@ -311,7 +289,6 @@ div[data-testid="stButton"] button[kind="secondary"]:active {
     border-color: #1e293b !important;
 }
 
-/* Primary 버튼 */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -322,7 +299,6 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 사이드바 메뉴 디자인 (고정 크기 최적화) */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
@@ -337,14 +313,12 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 
-/* 선택된 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #1e293b !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
 }
-/* 미선택 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: transparent !important; 
     color: #8B9CB6 !important; 
@@ -356,7 +330,6 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     border: 1px solid transparent !important;
 }
 
-/* K 체크박스 정렬을 위한 CSS */
 div[data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
@@ -394,7 +367,6 @@ components.html(
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
                 
-                // 💡 주요 액션 버튼 색상 커스텀 (#305496)
                 if (text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용') { 
                     btn.style.backgroundColor = '#305496';
                     btn.style.background = 'none';
@@ -496,11 +468,12 @@ def render_grid_buttons(options, state_key, columns, use_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
 
+# 💡 '률' 및 '율' 표기 혼선 완벽 매핑을 위한 표준 컬럼 적용
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 EXCEL_COLUMNS = [
     "고유 ID", "상태", "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", 
     "모델명(MI)", "도금구분", "UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", 
-    "불량수량", "양품률", "양품율(전/배 포함)", "완전불량률", "전면불량률", "배면불량률", 
+    "불량수량", "양품율", "양품율(전/배 포함)", "완전불량율", "전면불량율", "배면불량율", 
     "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타", "OQC", "비고", 
     "도장라인", "도장일", "도장순서", "입고일", "LOT NO.", "CLIP", "BASE", "COVER", 
     "조립기", "월", "작업자"
@@ -542,12 +515,22 @@ def load_data():
         headers = [str(h).strip() for h in valid_data[header_idx]]
         df = pd.DataFrame(valid_data[header_idx+1:])
         df.columns = headers[:len(df.columns)]
-        clean_headers = {c.replace(" ", "").upper(): c for c in df.columns}
+        
+        # 💡 오타(률/율)가 있어도 스마트하게 매핑해주는 클리닝 로직
+        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in df.columns}
         result_df = pd.DataFrame(index=df.index)
+        
         for col in EXCEL_COLUMNS:
-            col_key = col.replace(" ", "").upper()
-            if col_key in clean_headers: result_df[col] = df[clean_headers[col_key]]
-            else: result_df[col] = "" 
+            col_key = col.replace(" ", "").replace("률", "율").upper()
+            if col_key in clean_headers: 
+                result_df[col] = df[clean_headers[col_key]]
+            else: 
+                result_df[col] = "" 
+                
+        # 💡 강제 텍스트(String)화 방어 코드
+        if 'LOT NO.' in result_df.columns:
+            result_df['LOT NO.'] = result_df['LOT NO.'].astype(str)
+            
         return result_df
     except: return pd.DataFrame(columns=EXCEL_COLUMNS)
 
@@ -561,13 +544,12 @@ def save_data_append(df):
         for _, row in df.iterrows():
             records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
         sheet.append_rows(records, value_input_option='USER_ENTERED')
-        st.cache_data.clear() 
+        load_data.clear() 
         return True
     except Exception as e:
         st.error(f"데이터 저장 오류: {e}")
         return False
 
-# 💡 Callback 함수 분리로 Widget instantiated error 원천 차단
 def parse_scanned_data():
     raw_val = st.session_state.scanned_raw_data
     if not raw_val: return
@@ -848,7 +830,6 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    # 💡 On_click 콜백 적용 완료
                     st.button("적용", type="primary", use_container_width=True, on_click=on_scan_apply)
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
@@ -869,8 +850,8 @@ elif st.session_state.current_page == "input":
                     st.session_state.start_date = st.date_input("시작일", value=st.session_state.start_date, label_visibility="collapsed")
                 with c2: 
                     st.markdown("**시작시간**")
-                    time_str = st.session_state.start_time.strftime("%H:%M")
-                    if st.button(time_str, key="btn_start_time", use_container_width=True):
+                    display_val = st.session_state.start_time.strftime("%H:%M") if st.session_state.start_time else "입력"
+                    if st.button(display_val, key="btn_start_time", use_container_width=True):
                         st.session_state.timepad_buffer = ""
                         timepad_dialog("start_time", "시작시간")
                 with c3: st.write("")
@@ -904,7 +885,6 @@ elif st.session_state.current_page == "input":
         
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 조립 정보</h4>", unsafe_allow_html=True)
-                num_options = [str(i) for i in range(1, 11)]
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.write("")
@@ -957,7 +937,11 @@ elif st.session_state.current_page == "input":
                         fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k and st.session_state.clip_val != "" else str(st.session_state.clip_val)
                         fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k and st.session_state.base_val != "" else str(st.session_state.base_val)
                         fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k and st.session_state.cover_val != "" else str(st.session_state.cover_val)
+                        
+                        # 💡 LOT NO에 싱글쿼트(')를 강제로 적용하여 구글 시트가 숫자로 오인하지 않도록 텍스트화 보장
+                        fmt_lot = f"'{st.session_state.lot_input_field}" if st.session_state.lot_input_field else ""
 
+                        # 💡 모든 '률'을 '율'로 강제 통일하여 딕셔너리 매핑 오류 원천 차단
                         new_data = pd.DataFrame([{
                             "고유 ID": st.session_state.unique_id, "상태": "진행중",
                             "날짜": fmt_date, "교대": st.session_state.shift_type,
@@ -965,16 +949,17 @@ elif st.session_state.current_page == "input":
                             "구분": st.session_state.category, "호기": st.session_state.unit, 
                             "모델명(MI)": st.session_state.model_name, "도금구분": st.session_state.plating_type, 
                             "UPH": "", "UPD": "", "검사 수량": "", "양품수량": "", "양품 수량(전/배 포함)": "", "불량수량": "",
-                            "양품률": "", "양품율(전/배 포함)": "", "완전불량률": "", "전면불량률": "", "배면불량률": "",
+                            "양품율": "", "양품율(전/배 포함)": "", "완전불량율": "", "전면불량율": "", "배면불량율": "",
                             "완전불량": "", "전면불량": "", "배면불량": "", "옵셋불량": "", "수량부족": "", "기타": "", "OQC": "", "비고": "", 
                             "도장라인": fmt_paint_line, "도장일": fmt_paint_date, "도장순서": st.session_state.painting_order, 
-                            "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
+                            "입고일": fmt_in_date, "LOT NO.": fmt_lot, 
                             "CLIP": fmt_clip, "BASE": fmt_base, "COVER": fmt_cover, 
                             "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", "작업자": fmt_worker
                         }])
                         
                         if save_data_append(new_data):
-                            st.success("새로운 작업이 진행중 상태로 등록되었습니다!")
+                            # 💡 가시성 높은 완료 메시지
+                            st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
                             st.session_state.unique_id = ""
                             time.sleep(1.5) 
                             st.cache_data.clear() 
@@ -1015,8 +1000,8 @@ elif st.session_state.current_page == "input":
                     st.session_state.end_date = st.date_input("종료일", value=st.session_state.end_date, label_visibility="collapsed")
                 with c2: 
                     st.markdown("**종료시간**")
-                    time_str = st.session_state.end_time.strftime("%H:%M")
-                    if st.button(time_str, key="btn_end_time", use_container_width=True):
+                    display_val = st.session_state.end_time.strftime("%H:%M") if st.session_state.end_time else "입력"
+                    if st.button(display_val, key="btn_end_time", use_container_width=True):
                         st.session_state.timepad_buffer = ""
                         timepad_dialog("end_time", "종료시간")
                 with c3: 
@@ -1224,6 +1209,7 @@ elif st.session_state.current_page == "input":
                                     else:
                                         rate_good = rate_good_inc = comp_rate_num = front_rate_num = rear_rate_num = offset_rate_num = 0.0
 
+                                    # 💡 기존 1단계 정보들을 보존하고 수량/종료 정보만 덮어쓰기
                                     target_row.update({
                                         "상태": "완료",
                                         "종료시간": st.session_state.end_time.strftime("%H:%M"),
@@ -1231,8 +1217,8 @@ elif st.session_state.current_page == "input":
                                         "소요시간": f"{duration_minutes:,}",
                                         "UPH": f"{uph_val:,}", "UPD": f"{upd_val:,}",
                                         "검사 수량": f"{total_qty:,}", "양품수량": f"{st.session_state.good_qty:,}", "양품 수량(전/배 포함)": f"{good_include_front_rear:,}", "불량수량": f"{bad_qty:,}",
-                                        "양품률": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
-                                        "완전불량률": f"{comp_rate_num:.1f}%", "전면불량률": f"{front_rate_num:.1f}%", "배면불량률": f"{rear_rate_num:.1f}%",
+                                        "양품율": f"{rate_good:.1f}%", "양품율(전/배 포함)": f"{rate_good_inc:.1f}%",
+                                        "완전불량율": f"{comp_rate_num:.1f}%", "전면불량율": f"{front_rate_num:.1f}%", "배면불량율": f"{rear_rate_num:.1f}%",
                                         "완전불량": f"{st.session_state.comp_def:,}", "전면불량": f"{st.session_state.front_def:,}", "배면불량": f"{st.session_state.rear_def:,}", "옵셋불량": f"{st.session_state.offset_def:,}", "수량부족": f"{st.session_state.shortage_qty:,}", "기타": f"{st.session_state.etc_def:,}",
                                         "OQC": "" if st.session_state.oqc_status == "선택안함" else st.session_state.oqc_status, 
                                         "비고": st.session_state.remarks
@@ -1244,11 +1230,12 @@ elif st.session_state.current_page == "input":
                                         updated_row_list = ["nan" if pd.isna(target_row.get(col, "")) else "" if str(target_row.get(col, "")).strip().lower() in ["nan", "none"] else str(target_row.get(col, "")).strip() for col in EXCEL_COLUMNS]
                                         sheet.update(f'A{sheet_row}', [updated_row_list])
                                         
-                                        st.success("데이터가 성공적으로 마감되었습니다!")
+                                        # 💡 가시성 높은 알림창으로 교체
+                                        st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
                                         st.cache_data.clear()
                                         for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
                                             if k in default_state: st.session_state[k] = default_state[k]
-                                        time.sleep(1)
+                                        time.sleep(1.5)
                                         st.session_state.step = 1
                                         st.rerun()
 
@@ -1265,7 +1252,13 @@ elif st.session_state.current_page == "input":
                 recent_20 = df_history.iloc[::-1].head(20).copy()
                 display_df = recent_20.drop(columns=['orig_index'])
                 
-                edited_df = st.data_editor(display_df, use_container_width=True, hide_index=True)
+                # 💡 LOT NO 컬럼은 문자형(TextColumn)으로 명시적으로 선언하여 숫자로 추론되는 버그 차단
+                edited_df = st.data_editor(
+                    display_df, 
+                    use_container_width=True, 
+                    hide_index=True,
+                    column_config={"LOT NO.": st.column_config.TextColumn("LOT NO.")}
+                )
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("Data 수정 적용", type="primary", use_container_width=True):
@@ -1281,9 +1274,9 @@ elif st.session_state.current_page == "input":
                                 changed = True
                     
                     if changed:
-                        st.success("✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!")
+                        st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!</div>", unsafe_allow_html=True)
                         st.cache_data.clear()
-                        time.sleep(1)
+                        time.sleep(1.5)
                         st.rerun()
                     else:
                         st.info("수정된 항목이 없습니다.")
