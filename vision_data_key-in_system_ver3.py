@@ -61,9 +61,9 @@ default_state = {
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
     "painting_order": "", "painting_line": "A Line", 
-    "clip_val": "", "clip_k": False,
-    "base_val": "", "base_k": False,
-    "cover_val": "", "cover_k": False,
+    "clip_val": "1", "clip_k": False,
+    "base_val": "1", "base_k": False,
+    "cover_val": "1", "cover_k": False,
     "assembler_val": "1호기",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
@@ -161,12 +161,9 @@ if not st.session_state.unlocked:
         </script>
         """
         components.html(slider_html, height=90)
-    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
+    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# ----------------------------------------------------
-# 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
-# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -363,7 +360,6 @@ components.html(
                     btn.style.setProperty('box-shadow', 'none', 'important');
                 }
                 
-                // 💡 높이 동기화 (70px)
                 if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
                     btn.style.setProperty('height', '70px', 'important'); 
                     btn.style.setProperty('max-height', '70px', 'important');
@@ -371,15 +367,16 @@ components.html(
                     btn.style.setProperty('margin-top', '0px', 'important');
                 }
 
-                if (text.trim() === 'Administrator') { 
+                if (text.trim() === 'ADMINISTRATOR') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
-                    btn.style.color = '#ffffff';
+                    btn.style.color = '#FFC000';
                     btn.style.border = '1px solid #0f172a';
-                    btn.style.setProperty('height', '8rem', 'important');
-                    btn.style.setProperty('min-height', '8rem', 'important');
-                    btn.style.setProperty('max-height', '8rem', 'important');
-                    btn.style.setProperty('font-size', '1.6rem', 'important');
+                    btn.style.setProperty('height', '6.4rem', 'important');
+                    btn.style.setProperty('min-height', '6.4rem', 'important');
+                    btn.style.setProperty('max-height', '6.4rem', 'important');
+                    btn.style.setProperty('font-size', '1.3rem', 'important');
+                    btn.style.setProperty('font-weight', '900', 'important');
                 }
             });
         };
@@ -565,6 +562,11 @@ def parse_scanned_data():
         st.session_state.lot_input_field = raw_val
     st.session_state.scanned_raw_data = "" 
 
+def on_scan_apply():
+    parse_scanned_data()
+    time.sleep(1)
+    st.session_state.step = 2
+
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
     if digit == "C": st.session_state.numpad_buffer = ""
@@ -631,6 +633,20 @@ def show_sbl_warning(defect_type, rate):
     st.error(f"현재 1차검사 공정의 {defect_type}율이 **{rate:.1f}%** 로 기준치(5.0%)를 초과하였습니다.")
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
+
+def render_nav_buttons(step_num, max_step):
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_nav = st.columns(6)
+    with c_nav[4]:
+        if step_num > 1:
+            if st.button("⬅️ 이전", use_container_width=True):
+                st.session_state.step -= 1
+                st.rerun()
+    with c_nav[5]:
+        if step_num < max_step:
+            if st.button("다음 ➡️", use_container_width=True):
+                st.session_state.step += 1
+                st.rerun()
 
 # ==========================================
 # Administrator (분석) 프로세스
@@ -733,16 +749,16 @@ elif st.session_state.current_page == "input":
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 20px;'>" if logo_s_data else ""
+        img_html = f"<img src='{logo_s_data}' style='height: 96px; margin-right: 20px;'>" if logo_s_data else ""
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 8rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
+            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6.4rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
-            f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 2.2rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
+            f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 1.8rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
             unsafe_allow_html=True
         )
     with top_c2:
-        if st.button("Administrator", use_container_width=True, type="primary"):
+        if st.button("ADMINISTRATOR", use_container_width=True, type="primary"):
             st.session_state.current_page = "analysis"
             st.rerun()
 
@@ -784,7 +800,7 @@ elif st.session_state.current_page == "input":
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align: center; color: #94a3b8; font-size: 14px; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #FFC000; font-size: 14px; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
 
     step = st.session_state.step
 
@@ -806,8 +822,8 @@ elif st.session_state.current_page == "input":
                     st.markdown("**교대**")
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
-                    st.markdown("**작업자**")
-                    st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(st.session_state.worker) if st.session_state.worker in worker_list else 0, label_visibility="collapsed")
+                    st.markdown("**작업자 (복수 선택)**")
+                    st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4>", unsafe_allow_html=True)
@@ -898,7 +914,7 @@ elif st.session_state.current_page == "input":
                     st.write("")
                 with c2: 
                     st.markdown("**CLIP**")
-                    c2_1, c2_2 = st.columns([0.7, 0.3])
+                    c2_1, c2_2 = st.columns([0.45, 0.55])
                     with c2_1:
                         if st.button(str(st.session_state.clip_val) if st.session_state.clip_val != "" else "입력", key="btn_clip", use_container_width=True):
                             st.session_state.numpad_buffer = ""
@@ -907,7 +923,7 @@ elif st.session_state.current_page == "input":
                         st.session_state.clip_k = st.checkbox("K", value=st.session_state.clip_k, key="chk_clip")
                 with c3: 
                     st.markdown("**BASE**")
-                    c3_1, c3_2 = st.columns([0.7, 0.3])
+                    c3_1, c3_2 = st.columns([0.45, 0.55])
                     with c3_1:
                         if st.button(str(st.session_state.base_val) if st.session_state.base_val != "" else "입력", key="btn_base", use_container_width=True):
                             st.session_state.numpad_buffer = ""
@@ -916,7 +932,7 @@ elif st.session_state.current_page == "input":
                         st.session_state.base_k = st.checkbox("K", value=st.session_state.base_k, key="chk_base")
                 with c4: 
                     st.markdown("**COVER**")
-                    c4_1, c4_2 = st.columns([0.7, 0.3])
+                    c4_1, c4_2 = st.columns([0.45, 0.55])
                     with c4_1:
                         if st.button(str(st.session_state.cover_val) if st.session_state.cover_val != "" else "입력", key="btn_cover", use_container_width=True):
                             st.session_state.numpad_buffer = ""
@@ -932,7 +948,7 @@ elif st.session_state.current_page == "input":
             c_nav = st.columns(6)
             with c_nav[4]:
                 if st.button("⬅️ 이전", use_container_width=True):
-                    st.session_state.step = 2
+                    st.session_state.step -= 2
                     st.rerun()
             with c_nav[5]:
                 if st.button("작업시작 등록", type="primary", use_container_width=True):
@@ -946,9 +962,8 @@ elif st.session_state.current_page == "input":
                             fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
                             fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
                             fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
-                            fmt_worker = st.session_state.worker
+                            fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
                             
-                            # 💡 단일 체크박스 K 논리 조합 적용
                             fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k and st.session_state.clip_val != "" else str(st.session_state.clip_val)
                             fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k and st.session_state.base_val != "" else str(st.session_state.base_val)
                             fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k and st.session_state.cover_val != "" else str(st.session_state.cover_val)
@@ -972,7 +987,12 @@ elif st.session_state.current_page == "input":
                             
                             if save_data_append(new_data):
                                 st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
-                                st.session_state.unique_id = ""
+                                
+                                # 💡 모든 입력창 초기화 로직
+                                for k, v in default_state.items():
+                                    if k not in ["app_mode", "current_page", "step", "unlocked"]:
+                                        st.session_state[k] = v
+
                                 time.sleep(1.5) 
                                 st.cache_data.clear() 
                                 st.session_state.app_mode = "END"
@@ -993,7 +1013,6 @@ elif st.session_state.current_page == "input":
                     st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
                     target_row = None
                 else:
-                    # 💡 모델명과 마감할 LOT 선택을 1x2 배열로 통합
                     sel_col1, sel_col2 = st.columns(2)
                     with sel_col1:
                         models_in_progress = in_progress_df['모델명(MI)'].unique().tolist()
@@ -1067,7 +1086,6 @@ elif st.session_state.current_page == "input":
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4>", unsafe_allow_html=True)
-                # 💡 OQC를 1x4 배열에 포함
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
                     st.markdown("**검사 수량 (자동)**")
@@ -1087,7 +1105,6 @@ elif st.session_state.current_page == "input":
             
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 불량 세부 내역</h4>", unsafe_allow_html=True)
-                # 💡 1x6 배열 적용
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 with c1: 
                     st.markdown("**완전불량**")
@@ -1196,12 +1213,12 @@ elif st.session_state.current_page == "input":
                     st.session_state.remarks = st.text_area("비고", value=st.session_state.remarks, label_visibility="collapsed")
                     
                 with nav_col1:
-                    st.markdown("**&nbsp;**") # 높이 맞추기
+                    st.markdown("**&nbsp;**") 
                     if st.button("⬅️ 이전", use_container_width=True):
                         st.session_state.step -= 1
                         st.rerun()
                 with nav_col2:
-                    st.markdown("**&nbsp;**") # 높이 맞추기
+                    st.markdown("**&nbsp;**") 
                     if st.button("Data 최종 저장", type="primary", use_container_width=True):
                         if total_qty == 0: st.warning("입력된 수량 데이터가 없습니다.")
                         elif not st.session_state.target_unique_id: st.warning("1단계에서 마감할 Lot를 선택해주세요.")
@@ -1267,8 +1284,12 @@ elif st.session_state.current_page == "input":
                                         
                                         st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
                                         st.cache_data.clear()
-                                        for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
-                                            if k in default_state: st.session_state[k] = default_state[k]
+                                        
+                                        # 💡 모든 입력창 초기화 로직
+                                        for k, v in default_state.items():
+                                            if k not in ["app_mode", "current_page", "step", "unlocked"]:
+                                                st.session_state[k] = v
+                                                
                                         time.sleep(1.5)
                                         st.session_state.app_mode = "EDIT"
                                         st.session_state.step = 1
@@ -1279,7 +1300,7 @@ elif st.session_state.current_page == "input":
     # ==========================================
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
-            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List (직접 수정 가능)</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4>", unsafe_allow_html=True)
             df_history = load_data().copy()
             
             if not df_history.empty:
