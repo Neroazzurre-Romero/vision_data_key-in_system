@@ -60,8 +60,11 @@ default_state = {
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
-    "painting_order": 1, "painting_line": "A Line", "assembly_type": "일반", "clip_val": "1",
-    "base_val": "1", "cover_val": "1", "assembler_val": "선택안함",
+    "painting_order": "", "painting_line": "A Line", 
+    "clip_val": "", "clip_k": False,
+    "base_val": "", "base_k": False,
+    "cover_val": "", "cover_k": False,
+    "assembler_val": "1호기",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
     "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
@@ -97,7 +100,6 @@ if not st.session_state.unlocked:
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
             st.rerun()
-
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
             <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
@@ -109,24 +111,19 @@ if not st.session_state.unlocked:
             const thumb = document.getElementById('slider-thumb');
             const fill = document.getElementById('slider-fill');
             const text = document.getElementById('slider-text');
-
             const unlockSystem = () => {
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
             };
-
             const btns = window.parent.document.querySelectorAll('button');
             for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
-
             let isDragging = false;
             let startX, currentX = 0;
-
             function startDrag(e) {
                 isDragging = true;
                 let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
                 startX = clientX - currentX;
             }
-
             function drag(e) {
                 if (!isDragging) return;
                 if(e.cancelable) e.preventDefault();
@@ -145,7 +142,6 @@ if not st.session_state.unlocked:
                     setTimeout(() => { unlockSystem(); }, 200);
                 }
             }
-
             function endDrag(e) {
                 if (!isDragging) return;
                 isDragging = false;
@@ -160,13 +156,11 @@ if not st.session_state.unlocked:
                     setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
                 }
             }
-
             thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
         components.html(slider_html, height=90)
-            
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -181,7 +175,6 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
 
-/* 배경 및 카드 레이아웃 */
 [data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; }
 [data-testid="stVerticalBlockBorderWrapper"] {
     background-color: #ffffff !important;
@@ -194,7 +187,7 @@ body { overscroll-behavior-y: none !important; }
 
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
-/* 공통 높이(2.6rem) 설정 */
+/* 공통 높이(2.6rem - 2/3 사이즈) */
 div[data-testid="stButton"] button { 
     height: 2.6rem !important; 
     min-height: 2.6rem !important; 
@@ -209,11 +202,13 @@ div[data-testid="stButton"] button {
     transition: all 0.2s ease;
 }
 
-/* 입력창 테마 (배경 #E7E6E6, 텍스트 검정) */
+/* 입력창 기본 테마 (배경 #E7E6E6, 텍스트 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
+    height: 2.6rem !important;
     min-height: 2.6rem !important;
+    max-height: 2.6rem !important;
     border-radius: 8px !important;
     background-color: #E7E6E6 !important;
     border: 1px solid #cbd5e1 !important;
@@ -224,16 +219,17 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     transition: all 0.2s ease;
 }
 
-/* 다중선택 텍스트박스 내부 태그 스타일 */
-span[data-baseweb="tag"] {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-}
+/* 다중선택 태그 보완 */
+span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
 
+/* 텍스트 색상 (기본 검정) */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
+    height: 2.6rem !important;
     min-height: 2.6rem !important;
+    max-height: 2.6rem !important;
+    line-height: 2.6rem !important;
     font-size: 1.1rem !important;
     font-weight: bold !important;
     text-align: center !important;
@@ -249,6 +245,7 @@ div[data-testid="stTextInput"] input {
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
     display: flex !important;
     align-items: center !important;
+    height: 2.6rem !important;
 }
 
 /* 비고란 (Textarea) */
@@ -272,29 +269,26 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
     background-color: #1e293b !important;
     border-color: #1e293b !important;
 }
-
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input {
     color: #ffffff !important;
 }
-
 div[data-baseweb="textarea"]:focus-within textarea {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border-color: #1e293b !important;
 }
-
 div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
     caret-color: transparent !important;
     cursor: pointer !important;
 }
 
-/* 스캐너 Placeholder */
+/* 스캐너 Placeholder 강제 스타일 */
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
-/* Secondary 버튼 */
+/* 일반 버튼(Secondary) 단색 스타일 */
 div[data-testid="stButton"] button[kind="secondary"] {
     background-color: #E7E6E6 !important;
     color: #000000 !important;
@@ -309,7 +303,7 @@ div[data-testid="stButton"] button[kind="secondary"]:active {
     border-color: #1e293b !important;
 }
 
-/* Primary 버튼 */
+/* Primary 버튼 단색 스타일 (차콜 네이비) */
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
@@ -320,27 +314,29 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #0f172a !important;
 }
 
-/* 사이드바 메뉴 디자인 */
+/* 사이드바 메뉴 단색 디자인 (고정 크기 최적화) */
 [data-testid="stSidebar"] { background-color: #0f172a !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
 [data-testid="stSidebar"] .stButton > button { 
-    height: 70px !important; 
-    max-height: 70px !important;
+    height: 48px !important; 
+    max-height: 48px !important;
     justify-content: flex-start !important; 
     padding-left: 15px !important; 
-    margin-bottom: 10px !important; 
+    margin-bottom: 5px !important; 
     border-radius: 6px !important; 
     background-color: transparent !important;
     box-shadow: none !important;
 }
-[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 15px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 
+/* 선택된 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { 
     background-color: #1e293b !important; 
     color: #FFFFFF !important; 
     border: none !important; 
     border-left: 4px solid #FFC000 !important;
 }
+/* 미선택 사이드바 버튼 */
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
     background-color: transparent !important; 
     color: #8B9CB6 !important; 
@@ -350,6 +346,14 @@ div[data-testid="stButton"] button[kind="primary"]:hover {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid transparent !important;
+}
+
+/* K 체크박스 정렬을 위한 CSS */
+div[data-testid="stCheckbox"] {
+    display: flex;
+    align-items: center;
+    height: 2.6rem;
+    padding-left: 10px;
 }
 </style>
 """
@@ -381,39 +385,35 @@ components.html(
                     btn.style.border = '1px solid #15803d'; 
                     btn.style.setProperty('height', '65px', 'important'); 
                 }
-                if (text.includes('Data 최종 저장')) { 
-                    btn.style.backgroundColor = '#0369a1';
+                
+                // 💡 주요 액션 버튼 색상 커스텀 (#305496)
+                if (text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용') { 
+                    btn.style.backgroundColor = '#305496';
                     btn.style.background = 'none';
-                    btn.style.border = '1px solid #0c4a6e';
+                    btn.style.border = '1px solid #203864';
                     btn.style.color = '#ffffff';
+                    btn.style.boxShadow = 'none';
+                }
+                if (text.includes('Data 최종 저장')) {
                     btn.style.setProperty('height', '150px', 'important');
                     btn.style.setProperty('max-height', '150px', 'important');
-                    btn.style.setProperty('margin-top', '0px', 'important'); 
                     btn.style.setProperty('font-size', '20px', 'important');
-                    btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
+                if (text.includes('작업시작 등록')) {
+                    btn.style.setProperty('height', '65px', 'important');
+                    btn.style.setProperty('font-size', '1.2rem', 'important');
+                    btn.style.setProperty('margin-top', '10px', 'important');
+                }
+
                 if (text.trim() === 'Administrator') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
                     btn.style.color = '#ffffff';
                     btn.style.border = '1px solid #0f172a';
-                    btn.style.boxShadow = 'none';
                     btn.style.setProperty('height', '8rem', 'important');
                     btn.style.setProperty('min-height', '8rem', 'important');
                     btn.style.setProperty('max-height', '8rem', 'important');
                     btn.style.setProperty('font-size', '1.6rem', 'important');
-                    btn.style.setProperty('margin-top', '0px', 'important');
-                }
-                // 💡 작업시작 등록 색상 변경 (#305496)
-                if (text.includes('작업시작 등록')) { 
-                    btn.style.backgroundColor = '#305496';
-                    btn.style.background = 'none';
-                    btn.style.color = '#ffffff';
-                    btn.style.border = '1px solid #203864';
-                    btn.style.boxShadow = 'none';
-                    btn.style.setProperty('height', '65px', 'important');
-                    btn.style.setProperty('font-size', '1.2rem', 'important');
-                    btn.style.setProperty('margin-top', '10px', 'important');
                 }
             });
         };
@@ -435,7 +435,6 @@ components.html(
                         el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
                         el.addEventListener('blur', () => { el.removeAttribute('data-focused'); });
                     }
-                    
                     if (el.getAttribute('data-focused')) {
                         el.style.setProperty('color', '#ffffff', 'important');
                         if (parentDiv) parentDiv.style.setProperty('background-color', '#1e293b', 'important');
@@ -461,12 +460,9 @@ components.html(
                 if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
                     ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
                     isDropdown || isDatepicker) {
-                    
                     el.setAttribute('inputmode', 'none');
                     el.setAttribute('readonly', 'readonly');
-                    el.addEventListener('focus', function(e) {
-                        e.target.blur();
-                    });
+                    el.addEventListener('focus', function(e) { e.target.blur(); });
                 }
             });
         };
@@ -557,33 +553,32 @@ def save_data_append(df):
         for _, row in df.iterrows():
             records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
         sheet.append_rows(records, value_input_option='USER_ENTERED')
-        load_data.clear() 
+        st.cache_data.clear() 
         return True
     except Exception as e:
         st.error(f"데이터 저장 오류: {e}")
         return False
 
-@st.dialog("📷 바코드/QR 스캐너")
-def scanner_dialog():
-    st.markdown("<div style='text-align:center; font-size:1.2rem; font-weight:bold; color:#155724; padding:15px; background:#fef08a; border-radius:10px; margin-bottom:15px; border:2px solid #eab308;'>아래 입력창을 터치하여 스캐너 앱을 띄운 후 스캔하세요.</div>", unsafe_allow_html=True)
-    raw_scan = st.text_input("바코드 데이터", key="dialog_scan_input", label_visibility="collapsed", placeholder="SCAN APP")
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("적용 (Enter)", type="primary", use_container_width=True):
-        if raw_scan:
-            st.session_state.unique_id = raw_scan
-            parts = [p for p in raw_scan.split('$') if p]
-            if len(parts) >= 5:
-                plating_code = parts[2]
-                if plating_code == 'S110': st.session_state.plating_type = 'A'
-                elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                date_str = parts[3]
-                if len(date_str) == 8 and date_str.isdigit():
-                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                    except ValueError: pass
-                st.session_state.lot_input_field = parts[4]
-            else:
-                st.session_state.lot_input_field = parts[-1] if '$' in raw_scan else raw_scan
-        st.rerun()
+def parse_scanned_data():
+    raw_val = st.session_state.scanned_raw_data
+    if not raw_val: return
+    st.session_state.unique_id = raw_val
+    if '$' in raw_val:
+        parts = [p for p in raw_val.split('$') if p]
+        if len(parts) >= 5:
+            plating_code = parts[2]
+            if plating_code == 'S110': st.session_state.plating_type = 'A'
+            elif plating_code == 'S112': st.session_state.plating_type = 'B'
+            date_str = parts[3]
+            if len(date_str) == 8 and date_str.isdigit():
+                try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
+                except ValueError: pass
+            st.session_state.lot_input_field = parts[4]
+        else:
+            st.session_state.lot_input_field = parts[-1]
+    else:
+        st.session_state.lot_input_field = raw_val
+    st.session_state.scanned_raw_data = "" 
 
 def pad_callback(digit):
     c_val = st.session_state.numpad_buffer
@@ -595,7 +590,7 @@ def pad_callback(digit):
 @st.dialog("🔢 수량 입력 패드")
 def numpad_dialog(field_key, display_name):
     c_val = st.session_state.numpad_buffer
-    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem;'>{int(c_val) if c_val else 0:,}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:1.8rem; font-weight:bold; color:#1e293b; padding:15px; background:#f8fafc; border-radius:10px; margin-bottom:15px; border:1px solid #cbd5e1;'>{display_name}<br><span style='color:#1e293b; font-size:2.5rem;'>{c_val if c_val else '0'}</span></div>", unsafe_allow_html=True)
     pad_rows = [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["C", "0", "⬅"]]
     for r in pad_rows:
         cols = st.columns(3)
@@ -604,7 +599,10 @@ def numpad_dialog(field_key, display_name):
                 st.button(val, key=f"pad_{field_key}_{val}", use_container_width=True, on_click=pad_callback, args=(val,))
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("적용 (Enter)", type="primary", use_container_width=True):
-        st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
+        if field_key in ["painting_order", "clip_val", "base_val", "cover_val"]:
+            st.session_state[field_key] = str(st.session_state.numpad_buffer)
+        else:
+            st.session_state[field_key] = int(st.session_state.numpad_buffer) if st.session_state.numpad_buffer else 0
         st.session_state.numpad_buffer = "" 
         st.rerun()
 
@@ -804,27 +802,6 @@ elif st.session_state.current_page == "input":
 
     step = st.session_state.step
 
-    def parse_scanned_data():
-        raw_val = st.session_state.scanned_raw_data
-        if not raw_val: return
-        st.session_state.unique_id = raw_val
-        if '$' in raw_val:
-            parts = [p for p in raw_val.split('$') if p]
-            if len(parts) >= 5:
-                plating_code = parts[2]
-                if plating_code == 'S110': st.session_state.plating_type = 'A'
-                elif plating_code == 'S112': st.session_state.plating_type = 'B'
-                date_str = parts[3]
-                if len(date_str) == 8 and date_str.isdigit():
-                    try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                    except ValueError: pass
-                st.session_state.lot_input_field = parts[4]
-            else:
-                st.session_state.lot_input_field = parts[-1]
-        else:
-            st.session_state.lot_input_field = raw_val
-        st.session_state.scanned_raw_data = "" 
-
     # ==========================================
     # 💡 1. [작업 시작] 모드 
     # ==========================================
@@ -841,9 +818,9 @@ elif st.session_state.current_page == "input":
                     st.session_state.model_name = st.selectbox("모델명", model_list, index=model_list.index(st.session_state.model_name) if st.session_state.model_name in model_list else 0, label_visibility="collapsed")
                 with c3:
                     st.markdown("**교대**")
-                    st.session_state.shift_type = st.selectbox("교대", ["주간", "야간"], index=["주간", "야간"].index(st.session_state.shift_type), label_visibility="collapsed")
+                    render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
-                    st.markdown("**작업자 (복수 선택 가능)**")
+                    st.markdown("**작업자 (복수 선택)**")
                     st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
 
             with st.container(border=True):
@@ -857,7 +834,11 @@ elif st.session_state.current_page == "input":
                     st.text_input("고유 ID", value=st.session_state.unique_id, disabled=True, label_visibility="collapsed")
                 with sc3:
                     st.markdown("**&nbsp;**")
-                    st.button("적용", type="primary", use_container_width=True, on_click=parse_scanned_data)
+                    if st.button("적용", type="primary", use_container_width=True):
+                        parse_scanned_data()
+                        time.sleep(1) # 1초 뒤 2단계 진입
+                        st.session_state.step = 2
+                        st.rerun()
                 with sc4:
                     st.markdown("**LOT (적용됨)**")
                     st.text_input("LOT", value=st.session_state.lot_input_field, disabled=True, label_visibility="collapsed")
@@ -866,7 +847,7 @@ elif st.session_state.current_page == "input":
                     st.date_input("입고일", value=st.session_state.in_date_field, disabled=True, label_visibility="collapsed")
                 with sc6:
                     st.markdown("**도금구분**")
-                    st.session_state.plating_type = st.selectbox("도금구분", ["A", "B"], index=["A", "B"].index(st.session_state.plating_type), label_visibility="collapsed")
+                    render_grid_buttons(["A", "B"], "plating_type", 2, use_width=True)
 
         elif step == 2:
             with st.container(border=True):
@@ -879,7 +860,7 @@ elif st.session_state.current_page == "input":
                     st.markdown("**시작시간**")
                     time_str = st.session_state.start_time.strftime("%H:%M")
                     if st.button(time_str, key="btn_start_time", use_container_width=True):
-                        st.session_state.timepad_buffer = st.session_state.start_time.strftime("%H%M")
+                        st.session_state.timepad_buffer = "" # 💡 클리어 상태 Default
                         timepad_dialog("start_time", "시작시간")
                 with c3: st.write("")
                 with c4: st.write("")
@@ -890,7 +871,8 @@ elif st.session_state.current_page == "input":
             
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 검사 구분</h4>", unsafe_allow_html=True)
-                render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "개발품", "완불재검"], "category", 7)
+                # 💡 개발품 제외
+                render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
         elif step == 3:
             with st.container(border=True):
@@ -904,27 +886,46 @@ elif st.session_state.current_page == "input":
                     st.session_state.painting_line = st.selectbox("도장라인", ["A Line", "B Line", "C Line"], index=["A Line", "B Line", "C Line"].index(st.session_state.painting_line), label_visibility="collapsed")
                 with c3: 
                     st.markdown("**도장순서**")
-                    if st.button(f"{st.session_state.painting_order:,}", key="btn_paint_order", use_container_width=True):
-                        st.session_state.numpad_buffer = str(st.session_state.painting_order) if st.session_state.painting_order != 0 else ""
+                    # 💡 도장순서 클리어 상태 Default
+                    display_val = str(st.session_state.painting_order) if st.session_state.painting_order != "" else "입력"
+                    if st.button(display_val, key="btn_paint_order", use_container_width=True):
+                        st.session_state.numpad_buffer = ""
                         numpad_dialog("painting_order", "도장순서")
                 with c4: st.write("")
         
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;2) 조립 정보</h4>", unsafe_allow_html=True)
-                num_options = [str(i) for i in range(1, 11)]
+                # 💡 숫자패드 + 라디오(체크박스 K) 적용
                 c1, c2, c3, c4 = st.columns(4)
-                with c1:
-                    st.markdown("**구분**")
-                    st.session_state.assembly_type = st.selectbox("조립구분", ["일반", "K"], index=["일반", "K"].index(st.session_state.assembly_type), label_visibility="collapsed")
+                with c1: 
+                    st.write("")
                 with c2: 
                     st.markdown("**CLIP**")
-                    st.session_state.clip_val = st.selectbox("CLIP", num_options, index=num_options.index(st.session_state.clip_val) if st.session_state.clip_val in num_options else 0, label_visibility="collapsed")
+                    c2_1, c2_2 = st.columns([0.7, 0.3])
+                    with c2_1:
+                        if st.button(str(st.session_state.clip_val) if st.session_state.clip_val != "" else "입력", key="btn_clip", use_container_width=True):
+                            st.session_state.numpad_buffer = ""
+                            numpad_dialog("clip_val", "CLIP")
+                    with c2_2:
+                        st.session_state.clip_k = st.checkbox("K", value=st.session_state.clip_k, key="chk_clip")
                 with c3: 
                     st.markdown("**BASE**")
-                    st.session_state.base_val = st.selectbox("BASE", num_options, index=num_options.index(st.session_state.base_val) if st.session_state.base_val in num_options else 0, label_visibility="collapsed")
+                    c3_1, c3_2 = st.columns([0.7, 0.3])
+                    with c3_1:
+                        if st.button(str(st.session_state.base_val) if st.session_state.base_val != "" else "입력", key="btn_base", use_container_width=True):
+                            st.session_state.numpad_buffer = ""
+                            numpad_dialog("base_val", "BASE")
+                    with c3_2:
+                        st.session_state.base_k = st.checkbox("K", value=st.session_state.base_k, key="chk_base")
                 with c4: 
                     st.markdown("**COVER**")
-                    st.session_state.cover_val = st.selectbox("COVER", num_options, index=num_options.index(st.session_state.cover_val) if st.session_state.cover_val in num_options else 0, label_visibility="collapsed")
+                    c4_1, c4_2 = st.columns([0.7, 0.3])
+                    with c4_1:
+                        if st.button(str(st.session_state.cover_val) if st.session_state.cover_val != "" else "입력", key="btn_cover", use_container_width=True):
+                            st.session_state.numpad_buffer = ""
+                            numpad_dialog("cover_val", "COVER")
+                    with c4_2:
+                        st.session_state.cover_k = st.checkbox("K", value=st.session_state.cover_k, key="chk_cover")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;3) 조립기 정보</h4>", unsafe_allow_html=True)
@@ -941,8 +942,13 @@ elif st.session_state.current_page == "input":
                         fmt_paint_date = f"{st.session_state.painting_date.month}/{st.session_state.painting_date.day}" 
                         fmt_in_date = st.session_state.in_date_field.strftime("%Y-%m-%d") 
                         fmt_paint_line = st.session_state.painting_line.replace(" Line", "") if st.session_state.painting_line != "선택안함" else ""
-                        fmt_assembler = f"{st.session_state.assembly_type} - {st.session_state.assembler_val.replace('호기', '')}" if st.session_state.assembler_val != "선택안함" else ""
+                        fmt_assembler = st.session_state.assembler_val.replace("호기", "") if st.session_state.assembler_val != "선택안함" else ""
                         fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
+                        
+                        # 💡 K 라디오버튼 조합 DB 저장
+                        fmt_clip = f"K{st.session_state.clip_val}" if st.session_state.clip_k and st.session_state.clip_val != "" else str(st.session_state.clip_val)
+                        fmt_base = f"K{st.session_state.base_val}" if st.session_state.base_k and st.session_state.base_val != "" else str(st.session_state.base_val)
+                        fmt_cover = f"K{st.session_state.cover_val}" if st.session_state.cover_k and st.session_state.cover_val != "" else str(st.session_state.cover_val)
 
                         new_data = pd.DataFrame([{
                             "고유 ID": st.session_state.unique_id, "상태": "진행중",
@@ -955,16 +961,15 @@ elif st.session_state.current_page == "input":
                             "완전불량": "", "전면불량": "", "배면불량": "", "옵셋불량": "", "수량부족": "", "기타": "", "OQC": "", "비고": "", 
                             "도장라인": fmt_paint_line, "도장일": fmt_paint_date, "도장순서": st.session_state.painting_order, 
                             "입고일": fmt_in_date, "LOT NO.": st.session_state.lot_input_field, 
-                            "CLIP": "" if st.session_state.clip_val == "선택안함" else st.session_state.clip_val, 
-                            "BASE": "" if st.session_state.base_val == "선택안함" else st.session_state.base_val, 
-                            "COVER": "" if st.session_state.cover_val == "선택안함" else st.session_state.cover_val, 
+                            "CLIP": fmt_clip, "BASE": fmt_base, "COVER": fmt_cover, 
                             "조립기": fmt_assembler, "월": f"{st.session_state.work_date.month}월", "작업자": fmt_worker
                         }])
                         
                         if save_data_append(new_data):
                             st.success("새로운 작업이 진행중 상태로 등록되었습니다!")
                             st.session_state.unique_id = ""
-                            time.sleep(1.5)
+                            time.sleep(1.5) # 💡 구글 시트 연동을 위한 대기시간 추가
+                            st.cache_data.clear() # 확실한 데이터 갱신
                             st.session_state.app_mode = "END"
                             st.session_state.step = 1
                             st.rerun()
@@ -1004,7 +1009,7 @@ elif st.session_state.current_page == "input":
                     st.markdown("**종료시간**")
                     time_str = st.session_state.end_time.strftime("%H:%M")
                     if st.button(time_str, key="btn_end_time", use_container_width=True):
-                        st.session_state.timepad_buffer = st.session_state.end_time.strftime("%H%M")
+                        st.session_state.timepad_buffer = "" # 💡 클리어 상태 Default
                         timepad_dialog("end_time", "종료시간")
                 with c3: 
                     st.markdown("**휴동시간 (분)**")
@@ -1232,7 +1237,7 @@ elif st.session_state.current_page == "input":
                                         sheet.update(f'A{sheet_row}', [updated_row_list])
                                         
                                         st.success("데이터가 성공적으로 마감되었습니다!")
-                                        load_data.clear()
+                                        st.cache_data.clear()
                                         for k in ["good_qty", "comp_def", "front_def", "rear_def", "offset_def", "shortage_qty", "etc_def", "remarks"]:
                                             if k in default_state: st.session_state[k] = default_state[k]
                                         time.sleep(1)
@@ -1269,7 +1274,7 @@ elif st.session_state.current_page == "input":
                     
                     if changed:
                         st.success("✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!")
-                        load_data.clear()
+                        st.cache_data.clear()
                         time.sleep(1)
                         st.rerun()
                     else:
