@@ -92,7 +92,7 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
@@ -304,6 +304,7 @@ div[data-testid="stButton"] button[kind="secondary"] {
     border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
 }
+/* 포커스/호버 시 적용버튼 색상으로 변경 */
 div[data-testid="stButton"] button[kind="secondary"]:hover,
 div[data-testid="stButton"] button[kind="secondary"]:focus,
 div[data-testid="stButton"] button[kind="secondary"]:active {
@@ -400,15 +401,16 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
-                if (text.trim() === 'Data Analysis') { 
+                // 💡 Administrator 버튼 높이를 메인 헤더박스와 동일하게(8rem)
+                if (text.trim() === 'Administrator') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
                     btn.style.color = '#ffffff';
                     btn.style.border = '1px solid #0f172a';
                     btn.style.boxShadow = 'none';
-                    btn.style.setProperty('height', '6rem', 'important');
-                    btn.style.setProperty('min-height', '6rem', 'important');
-                    btn.style.setProperty('max-height', '6rem', 'important');
+                    btn.style.setProperty('height', '8rem', 'important');
+                    btn.style.setProperty('min-height', '8rem', 'important');
+                    btn.style.setProperty('max-height', '8rem', 'important');
                     btn.style.setProperty('font-size', '1.6rem', 'important');
                     btn.style.setProperty('margin-top', '0px', 'important');
                 }
@@ -680,7 +682,7 @@ def show_sbl_warning(defect_type, rate):
 # ==========================================
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
-    img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
+    img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
     st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([0.8, 0.2])
@@ -720,27 +722,29 @@ elif st.session_state.current_page == "input":
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        img_html = f"<img src='{logo_s_data}' style='height: 60px; margin-right: 20px;'>" if logo_s_data else ""
+        # 💡 로고 크기 2배(120px)
+        img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 20px;'>" if logo_s_data else ""
         
+        # 💡 헤더 박스 높이를 8rem으로 확장 및 메인 타이틀 중앙 정렬
         st.markdown(
-            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 6rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
+            f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 8rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
             f"<h3 style='color: #1e293b; margin: 0; font-weight: 900; font-size: 2.2rem; letter-spacing: 1px;'>VISION DATA KEY-IN SYSTEM</h3>"
             f"</div>", 
             unsafe_allow_html=True
         )
     with top_c2:
-        if st.button("Data Analysis", use_container_width=True, type="primary"):
+        if st.button("Administrator", use_container_width=True, type="primary"):
             st.session_state.current_page = "analysis"
             st.rerun()
 
     with st.sidebar:
-        # 💡 현재 시간 사이드바 고정 및 KST(UTC+9) 설정
+        # 💡 현재 시간 사이드바 고정 및 폰트 축소/검정색 텍스트/메인페이지 배경색상
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
-        st.markdown(f"<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 0.95rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; color: #000000; background-color: #f1f5f9; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
         steps_titles = [
             "생산 등록", "작업 정보", "Assemble & Coating", 
