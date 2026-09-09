@@ -92,7 +92,8 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            # 💡 스플래시 화면 메인 로고 2배 키움 (180px -> 360px)
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
@@ -172,6 +173,9 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #94a3b8; font-weight: bold;'>Create by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
+# ----------------------------------------------------
+# 💡 단색(Flat) 테마 & 입력창/버튼 동적 색상 변경 CSS
+# ----------------------------------------------------
 hide_streamlit_style = """
 <style>
 footer { display: none !important; } 
@@ -398,6 +402,7 @@ components.html(
                     btn.style.setProperty('font-size', '20px', 'important');
                     btn.style.setProperty('white-space', 'pre-wrap', 'important');
                 }
+                // 💡 Administrator 버튼 높이를 메인 헤더박스와 동일하게(8rem)
                 if (text.trim() === 'Administrator') { 
                     btn.style.backgroundColor = '#1e293b';
                     btn.style.background = 'none';
@@ -695,31 +700,87 @@ if st.session_state.current_page == "analysis":
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
 
+        # 💡 분석 기준(모델별, 날짜별, 시간별, 검사 기준별) 다차원 필터링 복구
         with st.container(border=True):
-            g_col1, g_col2 = st.columns(2)
-            with g_col1:
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;일자별 양/불량 현황</h4>", unsafe_allow_html=True)
-                df_date = df.groupby('날짜')[['양품수량', '불량수량']].sum().reset_index()
-                fig1 = px.bar(df_date, x='날짜', y=['양품수량', '불량수량'], barmode='group', 
-                              color_discrete_sequence=['#10B981', '#EF4444'])
-                fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
-                st.plotly_chart(fig1, use_container_width=True)
-                
-            with g_col2:
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;주요 불량 유형 비율</h4>", unsafe_allow_html=True)
-                defect_sums = df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
-                fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
-                              color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
-                fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
-                st.plotly_chart(fig2, use_container_width=True)
+            st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;상세 분석 조건 필터</h4>", unsafe_allow_html=True)
+            f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+            with f_col1:
+                dates = df['날짜'].unique().tolist()
+                selected_dates = st.multiselect("📅 날짜", dates, default=dates)
+            with f_col2:
+                models = df['모델명(MI)'].unique().tolist()
+                selected_models = st.multiselect("🏷️ 모델명", models, default=models)
+            with f_col3:
+                shifts = df['교대'].unique().tolist()
+                selected_shifts = st.multiselect("⏰ 교대/시간", shifts, default=shifts)
+            with f_col4:
+                categories = df['구분'].unique().tolist()
+                selected_categories = st.multiselect("🛠️ 검사 기준", categories, default=categories)
+
+            filtered_df = df[
+                (df['날짜'].isin(selected_dates) if selected_dates else True) &
+                (df['모델명(MI)'].isin(selected_models) if selected_models else True) &
+                (df['교대'].isin(selected_shifts) if selected_shifts else True) &
+                (df['구분'].isin(selected_categories) if selected_categories else True)
+            ]
+
+        if filtered_df.empty:
+            st.info("선택한 조건에 맞는 데이터가 없습니다.")
+        else:
+            total_insp = filtered_df['검사 수량'].sum()
+            total_good = filtered_df['양품수량'].sum()
+            total_bad = filtered_df['불량수량'].sum()
+            yield_rate = (total_good / total_insp * 100) if total_insp > 0 else 0
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("총 검사 수량", f"{int(total_insp):,} 개")
+            c2.metric("총 양품 수량", f"{int(total_good):,} 개")
+            c3.metric("총 불량 수량", f"{int(total_bad):,} 개")
+            c4.metric("평균 양품률", f"{yield_rate:.1f} %")
+
+            with st.container(border=True):
+                g_col1, g_col2 = st.columns(2)
+                with g_col1:
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;조건별 양/불량 생산 현황</h4>", unsafe_allow_html=True)
+                    group_col = '날짜'
+                    if len(selected_dates) == 1 and len(selected_models) > 1:
+                        group_col = '모델명(MI)'
+                        
+                    df_group = filtered_df.groupby(group_col)[['양품수량', '불량수량']].sum().reset_index()
+                    fig1 = px.bar(df_group, x=group_col, y=['양품수량', '불량수량'], barmode='group', 
+                                  color_discrete_sequence=['#10B981', '#EF4444'])
+                    fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
+                    st.plotly_chart(fig1, use_container_width=True)
+                    
+                with g_col2:
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;주요 불량 유형 비율 (도넛형)</h4>", unsafe_allow_html=True)
+                    defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
+                    fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
+                                  color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
+                    fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
+                    st.plotly_chart(fig2, use_container_width=True)
+                    
+            with st.container(border=True):
+                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;조건별 수율 분석 요약표</h4>", unsafe_allow_html=True)
+                pivot_df = filtered_df.groupby(['날짜', '교대', '모델명(MI)', '구분']).agg({
+                    '검사 수량': 'sum',
+                    '양품수량': 'sum',
+                    '불량수량': 'sum'
+                }).reset_index()
+                pivot_df['양품률(%)'] = (pivot_df['양품수량'] / pivot_df['검사 수량'] * 100).round(1).astype(str) + '%'
+                pivot_df['불량률(%)'] = (pivot_df['불량수량'] / pivot_df['검사 수량'] * 100).round(1).astype(str) + '%'
+                st.dataframe(pivot_df, use_container_width=True, hide_index=True)
+                # 💡 원시 데이터 리스트(st.dataframe(df))는 요청에 따라 제거됨
 
 elif st.session_state.current_page == "input":
     
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
         logo_s_data = get_image_base64("at")
-        img_html = f"<img src='{logo_s_data}' style='height: 60px; margin-right: 20px;'>" if logo_s_data else ""
+        # 💡 로고 크기 2배 유지
+        img_html = f"<img src='{logo_s_data}' style='height: 120px; margin-right: 20px;'>" if logo_s_data else ""
         
+        # 💡 중앙 정렬 적용
         st.markdown(
             f"<div style='background: #ffffff; padding: 0 30px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; height: 8rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); box-sizing: border-box;'>"
             f"{img_html}"
@@ -733,7 +794,7 @@ elif st.session_state.current_page == "input":
             st.rerun()
 
     with st.sidebar:
-        # 💡 강제 폰트 색상을 !important로 주입하여 무조건 검정색으로 보이도록 보강
+        # 💡 사이드바 상단 KST 시간 및 날짜 표시 (아이콘 제거, 폰트 축소, 검정색, 배경색 일치)
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
@@ -1125,6 +1186,7 @@ elif st.session_state.current_page == "input":
                                 st.session_state.comp_warned = st.session_state.front_warned = st.session_state.rear_warned = st.session_state.offset_warned = False
                                 st.rerun()
 
+    # 💡 웹 상에서 직접 표 데이터를 수정하고 구글 시트에 즉시 반영하는 기능 
     elif step == 5:
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■&nbsp;&nbsp;최근 저장 Data List</h4>", unsafe_allow_html=True)
