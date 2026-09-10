@@ -166,7 +166,7 @@ if not st.session_state.unlocked:
 
 
 # ==============================================================================
-# 💡 페이지별 CSS 분리 적용 (Light Theme for Input / Dark Theme for Analysis)
+# 💡 페이지별 CSS 분리 적용
 # ==============================================================================
 
 input_theme_css = """
@@ -290,6 +290,7 @@ input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-we
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
 div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
 </style>
@@ -520,7 +521,6 @@ def load_analysis_data():
     if doc is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
     
     worksheets = doc.worksheets()
-    
     q_sheets = [ws for ws in worksheets if "Q" in ws.title.upper()]
     q_sheets.sort(key=lambda x: x.title, reverse=True)
     
@@ -741,6 +741,20 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
+def render_nav_buttons(step_num, max_step):
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_nav = st.columns(6)
+    with c_nav[4]:
+        if step_num > 1:
+            if st.button("⬅️ 이전", use_container_width=True):
+                st.session_state.step -= 1
+                st.rerun()
+    with c_nav[5]:
+        if step_num < max_step:
+            if st.button("다음 ➡️", use_container_width=True):
+                st.session_state.step += 1
+                st.rerun()
+
 
 # ==========================================
 # 💡 Administrator (LIVE YIELD COMMAND CENTER)
@@ -762,7 +776,6 @@ if st.session_state.current_page == "analysis":
             
     df = load_analysis_data().copy()
 
-    # 💡 껍데기만 있는 DataFrame일 경우 KeyError 방지
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("No valid telemetry data retrieved from the database.")
     else:
@@ -772,13 +785,14 @@ if st.session_state.current_page == "analysis":
                 return float(str(x).replace('%', '').replace(',', '').strip())
             except: return 0.0
 
+        # S, T, U, V, W 열 매핑
         df['Yield_1'] = df['양품율'].apply(pct_to_float)
         df['Yield_2'] = df['양품율(전/배 포함)'].apply(pct_to_float)
         df['Def_Comp'] = df['완전불량율'].apply(pct_to_float)
         df['Def_Front'] = df['전면불량율'].apply(pct_to_float)
         df['Def_Rear'] = df['배면불량율'].apply(pct_to_float)
-        df['Insp_Qty'] = pd.to_numeric(df['검사 수량'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
+        # 날짜(C열) + 시작시간(E열) 조합으로 Sorting용 시계열 생성
         def parse_dt(r):
             try:
                 d_str = str(r.get('날짜', '')).strip()
@@ -796,7 +810,7 @@ if st.session_state.current_page == "analysis":
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 테스트 환경 기준점 변경: '어제' 날짜를 기준으로 -2일전 (총 3일간) 데이터 필터링
+        # 어제 기준 과거 2일 전 필터링 (D-2)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
         yesterday = (now_kst - timedelta(days=1)).date()
         start_date = yesterday - timedelta(days=2)
@@ -804,14 +818,11 @@ if st.session_state.current_page == "analysis":
         df['DateOnly'] = df['DateTime'].dt.date
         df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= yesterday)].sort_values('DateTime').copy()
         
-        # 만약 필터링 결과가 비어있다면 에러가 나지 않도록 원래 컬럼 구조 유지
         if df_target.empty:
             df_target = pd.DataFrame(columns=df.columns)
             
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
-            
-            # 모델명 추출 시 빈 리스트 방어
             models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             
             if not models_available:
@@ -823,38 +834,46 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data for the selected model.")
                 else:
-                    model_df['DisplayX'] = model_df['DateTime'].dt.strftime('%m-%d %H:%M')
-                    model_df['HoverText'] = "LOT: " + model_df['LOT NO.'].astype(str)
+                    # 💡 X축을 LOT NO. 흐름 기준으로 변경
+                    model_df['LOT NO.'] = model_df['LOT NO.'].fillna('UNKNOWN').astype(str)
+                    
+                    # Hover 정보에 상세 시간 내역 구성
+                    def make_hover_text(row):
+                        time_str = row['DateTime'].strftime('%m-%d %H:%M')
+                        dur_str = str(row.get('소요시간', '0'))
+                        return f"시간: {time_str} | 소요: {dur_str}분"
+                    
+                    model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
                     def get_dark_layout(title_text, y_title):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
                             plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
                             font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(type='category', showgrid=True, gridcolor='#1E293B', linecolor='#334155'),
+                            xaxis=dict(type='category', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                            margin=dict(l=40, r=40, t=50, b=40),
+                            margin=dict(l=40, r=40, t=50, b=60), # 여백 추가 (LOT 번호 기울임 대비)
                             hovermode='x unified',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                         )
 
-                    # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
+                    # 💡 Graph 1: 1차 수율 (S열) vs 전/배포함 수율 (T열)
                     with st.container(border=True):
                         fig1 = go.Figure()
                         fig1.add_trace(go.Scatter(
-                            x=model_df['DisplayX'], y=model_df['Yield_1'], name="1차 양품율", 
+                            x=model_df['LOT NO.'], y=model_df['Yield_1'], name="1차 양품율", 
                             mode='lines+markers', line=dict(color='#00E5FF', width=3), 
                             marker=dict(size=8, color='#00E5FF'),
                             hovertext=model_df['HoverText']
                         ))
                         fig1.add_trace(go.Scatter(
-                            x=model_df['DisplayX'], y=model_df['Yield_2'], name="1차 양품율 (전/배포함)", 
+                            x=model_df['LOT NO.'], y=model_df['Yield_2'], name="1차 양품율 (전/배포함)", 
                             mode='lines+markers', line=dict(color='#FF00FF', width=3, dash='dot'), 
                             marker=dict(size=6, symbol='x', color='#FF00FF'),
                             hovertext=model_df['HoverText']
                         ))
                         
-                        last_x = model_df['DisplayX'].iloc[-1]
+                        last_x = model_df['LOT NO.'].iloc[-1]
                         last_y = model_df['Yield_1'].iloc[-1]
                         fig1.add_trace(go.Scatter(
                             x=[last_x], y=[last_y], mode='markers', name='Live',
@@ -865,11 +884,11 @@ if st.session_state.current_page == "analysis":
                         fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=350)
                         st.plotly_chart(fig1, use_container_width=True)
 
-                    # 💡 Graph 2: 완전불량율
+                    # 💡 Graph 2: 완전불량율 (U열)
                     with st.container(border=True):
                         fig2 = go.Figure()
                         fig2.add_trace(go.Scatter(
-                            x=model_df['DisplayX'], y=model_df['Def_Comp'], name="완전불량율", 
+                            x=model_df['LOT NO.'], y=model_df['Def_Comp'], name="완전불량율", 
                             mode='lines+markers', line=dict(color='#FF3366', width=3), 
                             fill='tozeroy', fillcolor='rgba(255, 51, 102, 0.1)',
                             marker=dict(size=8, color='#FF3366'),
@@ -886,17 +905,17 @@ if st.session_state.current_page == "analysis":
                         fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=300)
                         st.plotly_chart(fig2, use_container_width=True)
 
-                    # 💡 Graph 3: 전면불량율 vs 배면불량율
+                    # 💡 Graph 3: 전면불량율 (V열) vs 배면불량율 (W열)
                     with st.container(border=True):
                         fig3 = go.Figure()
                         fig3.add_trace(go.Scatter(
-                            x=model_df['DisplayX'], y=model_df['Def_Front'], name="전면불량율", 
+                            x=model_df['LOT NO.'], y=model_df['Def_Front'], name="전면불량율", 
                             mode='lines+markers', line=dict(color='#FFFF00', width=3), 
                             marker=dict(size=8, color='#FFFF00'),
                             hovertext=model_df['HoverText']
                         ))
                         fig3.add_trace(go.Scatter(
-                            x=model_df['DisplayX'], y=model_df['Def_Rear'], name="배면불량율", 
+                            x=model_df['LOT NO.'], y=model_df['Def_Rear'], name="배면불량율", 
                             mode='lines+markers', line=dict(color='#00FF00', width=3, dash='dash'), 
                             marker=dict(size=8, symbol='triangle-up', color='#00FF00'),
                             hovertext=model_df['HoverText']
