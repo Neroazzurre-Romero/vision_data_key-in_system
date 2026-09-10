@@ -495,7 +495,13 @@ def get_spreadsheet_doc():
                 continue
             return None
 
-# 💡 사용 가능한 모든 시트 이름 가져오기
+def get_sheet():
+    doc = get_spreadsheet_doc()
+    if doc:
+        try: return doc.worksheet(TAB_NAME)
+        except: return doc.sheet1
+    return None
+
 @st.cache_data(ttl=300)
 def get_available_sheets():
     doc = get_spreadsheet_doc()
@@ -505,14 +511,6 @@ def get_available_sheets():
         except: pass
     return []
 
-def get_sheet():
-    doc = get_spreadsheet_doc()
-    if doc:
-        try: return doc.worksheet(TAB_NAME)
-        except: return doc.sheet1
-    return None
-
-# 💡 선택된 시트들만 병합하여 불러오는 로더 (속도 및 에러 최적화)
 @st.cache_data(ttl=15) 
 def load_analysis_data(sheet_names):
     doc = get_spreadsheet_doc()
@@ -531,7 +529,6 @@ def load_analysis_data(sheet_names):
             header_idx = -1
             for i, row in enumerate(raw_data[:15]):
                 row_str = "".join(str(c).replace(" ", "") for c in row)
-                # 💡 과거 엑셀의 다양한 헤더 포맷 완벽 호환 ("일자", "상태" 추가)
                 if any(k in row_str for k in ["날짜", "일자", "교대", "모델", "고유ID", "구분", "상태"]):
                     header_idx = i; break
                     
@@ -749,7 +746,7 @@ def render_nav_buttons(step_num, max_step):
 
 
 # ==========================================
-# 💡 Administrator (Live 분석 대시보드) 프로세스
+# Administrator (분석) 프로세스
 # ==========================================
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
@@ -767,7 +764,6 @@ if st.session_state.current_page == "analysis":
             st.session_state.current_page = "input"
             st.rerun()
             
-    # 💡 데이터 소스 선택 기능 UI
     available_sheets = get_available_sheets()
     selected_sheets = []
     
@@ -995,8 +991,10 @@ elif st.session_state.current_page == "input":
                     st.markdown("**교대**")
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
-                    st.markdown("**작업자 (복수 선택)**")
-                    st.session_state.workers = st.multiselect("작업자", worker_list, default=st.session_state.workers, label_visibility="collapsed")
+                    st.markdown("**작업자**")
+                    # 💡 workers 다중 선택 -> worker 단일 선택 버그 수정
+                    w_val = st.session_state.get("worker", worker_list[0])
+                    st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(w_val) if w_val in worker_list else 0, label_visibility="collapsed")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4><br>", unsafe_allow_html=True)
@@ -1142,7 +1140,7 @@ elif st.session_state.current_page == "input":
                             fmt_paint_line = p_line.replace(" Line", "") if p_line != "선택안함" else ""
                             a_val = st.session_state.get("assembler_val", "")
                             fmt_assembler = a_val.replace("호기", "") if a_val != "선택안함" else ""
-                            fmt_worker = ", ".join(st.session_state.workers) if st.session_state.workers else ""
+                            fmt_worker = st.session_state.get("worker", "")
                             
                             c_val = st.session_state.get("clip_val", "")
                             b_val = st.session_state.get("base_val", "")
