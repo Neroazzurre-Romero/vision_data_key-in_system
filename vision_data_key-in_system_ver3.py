@@ -168,7 +168,6 @@ if not st.session_state.unlocked:
 # ==============================================================================
 # 💡 페이지별 CSS 분리 적용
 # ==============================================================================
-
 input_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -741,20 +740,6 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
-def render_nav_buttons(step_num, max_step):
-    st.markdown("<br>", unsafe_allow_html=True)
-    c_nav = st.columns(6)
-    with c_nav[4]:
-        if step_num > 1:
-            if st.button("⬅️ 이전", use_container_width=True):
-                st.session_state.step -= 1
-                st.rerun()
-    with c_nav[5]:
-        if step_num < max_step:
-            if st.button("다음 ➡️", use_container_width=True):
-                st.session_state.step += 1
-                st.rerun()
-
 
 # ==========================================
 # 💡 Administrator (LIVE YIELD COMMAND CENTER)
@@ -776,6 +761,7 @@ if st.session_state.current_page == "analysis":
             
     df = load_analysis_data().copy()
 
+    # 빈 데이터 및 에러 방어 로직 (KeyError 원천 차단)
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("No valid telemetry data retrieved from the database.")
     else:
@@ -785,48 +771,63 @@ if st.session_state.current_page == "analysis":
                 return float(str(x).replace('%', '').replace(',', '').strip())
             except: return 0.0
 
-        # S, T, U, V, W 열 매핑
-        df['Yield_1'] = df['양품율'].apply(pct_to_float)
-        df['Yield_2'] = df['양품율(전/배 포함)'].apply(pct_to_float)
-        df['Def_Comp'] = df['완전불량율'].apply(pct_to_float)
-        df['Def_Front'] = df['전면불량율'].apply(pct_to_float)
-        df['Def_Rear'] = df['배면불량율'].apply(pct_to_float)
+        # 데이터 매핑 (에러를 방지하기 위해 get 사용 및 없으면 0.0)
+        df['Yield_1'] = df.get('양품율', pd.Series([0]*len(df))).apply(pct_to_float)
+        df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([0]*len(df))).apply(pct_to_float)
+        df['Def_Comp'] = df.get('완전불량율', pd.Series([0]*len(df))).apply(pct_to_float)
+        df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
+        df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
-        # 날짜(C열) + 시작시간(E열) 조합으로 Sorting용 시계열 생성
+        # 💡 극강의 안정성을 가진 날짜/시간 파싱 로직
         def parse_dt(r):
             try:
-                d_str = str(r.get('날짜', '')).strip()
+                d_val = r.get('날짜', '')
                 t_str = str(r.get('시작시간', '')).strip()
                 if not t_str or t_str == 'nan': t_str = "00:00"
-                if "-" in d_str and len(d_str.split("-")) == 3:
+                
+                if isinstance(d_val, pd.Timestamp) or isinstance(d_val, datetime):
+                    d_str = d_val.strftime('%Y-%m-%d')
                     return pd.to_datetime(f"{d_str} {t_str}")
+                    
+                d_str = str(d_val).strip().split()[0]
+                
+                if "-" in d_str:
+                    parts = d_str.split("-")
+                    if len(parts) == 3: return pd.to_datetime(f"{d_str} {t_str}")
+                    elif len(parts) == 2: 
+                        y = r.get('_year', datetime.now().year)
+                        return pd.to_datetime(f"{y}-{parts[0]}-{parts[1]} {t_str}")
                 elif "/" in d_str:
-                    m, d = d_str.split('/')
-                    y = r.get('_year', datetime.now().year)
-                    return pd.to_datetime(f"{y}-{m}-{d} {t_str}")
+                    parts = d_str.split("/")
+                    if len(parts) == 3: return pd.to_datetime(f"{parts[0]}-{parts[1]}-{parts[2]} {t_str}")
+                    elif len(parts) == 2:
+                        y = r.get('_year', datetime.now().year)
+                        return pd.to_datetime(f"{y}-{parts[0]}-{parts[1]} {t_str}")
             except: pass
             return pd.NaT
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 어제 기준 과거 2일 전 필터링 (D-2)
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        yesterday = (now_kst - timedelta(days=1)).date()
-        start_date = yesterday - timedelta(days=2)
-        
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= yesterday)].sort_values('DateTime').copy()
-        
-        if df_target.empty:
+        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 찾아서 그 날 기준 과거 2일전 데이터 필터링
+        if not df['DateTime'].empty:
+            latest_date = df['DateTime'].max().date()
+            start_date = latest_date - timedelta(days=2)
+            
+            df['DateOnly'] = df['DateTime'].dt.date
+            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= latest_date)].copy()
+        else:
             df_target = pd.DataFrame(columns=df.columns)
+            start_date = datetime.now().date()
+            latest_date = datetime.now().date()
             
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
+            
             models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {yesterday.strftime('%Y-%m-%d')}).")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {latest_date.strftime('%Y-%m-%d')}).")
             else:
                 selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
@@ -834,10 +835,11 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data for the selected model.")
                 else:
-                    # 💡 X축을 LOT NO. 흐름 기준으로 변경
-                    model_df['LOT NO.'] = model_df['LOT NO.'].fillna('UNKNOWN').astype(str)
+                    # 💡 X축을 LOT NO. 흐름 기준으로 정렬
+                    model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
+                    model_df = model_df.sort_values(['DateTime', 'LOT NO.']) # 시간 + LOT 순서대로 확실히 정렬
                     
-                    # Hover 정보에 상세 시간 내역 구성
+                    # Hover 툴팁 텍스트 구성 (날짜, 시작시간, 소요시간)
                     def make_hover_text(row):
                         time_str = row['DateTime'].strftime('%m-%d %H:%M')
                         dur_str = str(row.get('소요시간', '0'))
@@ -852,12 +854,12 @@ if st.session_state.current_page == "analysis":
                             font=dict(color='#94A3B8', family='monospace'),
                             xaxis=dict(type='category', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                            margin=dict(l=40, r=40, t=50, b=60), # 여백 추가 (LOT 번호 기울임 대비)
+                            margin=dict(l=40, r=40, t=50, b=60), 
                             hovermode='x unified',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                         )
 
-                    # 💡 Graph 1: 1차 수율 (S열) vs 전/배포함 수율 (T열)
+                    # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
                     with st.container(border=True):
                         fig1 = go.Figure()
                         fig1.add_trace(go.Scatter(
@@ -884,7 +886,7 @@ if st.session_state.current_page == "analysis":
                         fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=350)
                         st.plotly_chart(fig1, use_container_width=True)
 
-                    # 💡 Graph 2: 완전불량율 (U열)
+                    # 💡 Graph 2: 완전불량율
                     with st.container(border=True):
                         fig2 = go.Figure()
                         fig2.add_trace(go.Scatter(
@@ -905,7 +907,7 @@ if st.session_state.current_page == "analysis":
                         fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=300)
                         st.plotly_chart(fig2, use_container_width=True)
 
-                    # 💡 Graph 3: 전면불량율 (V열) vs 배면불량율 (W열)
+                    # 💡 Graph 3: 전면불량율 vs 배면불량율
                     with st.container(border=True):
                         fig3 = go.Figure()
                         fig3.add_trace(go.Scatter(
