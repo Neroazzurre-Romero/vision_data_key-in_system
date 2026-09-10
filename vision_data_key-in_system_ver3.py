@@ -761,7 +761,6 @@ if st.session_state.current_page == "analysis":
             
     df = load_analysis_data().copy()
 
-    # 빈 데이터 및 에러 방어 로직 (KeyError 원천 차단)
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("No valid telemetry data retrieved from the database.")
     else:
@@ -771,7 +770,7 @@ if st.session_state.current_page == "analysis":
                 return float(str(x).replace('%', '').replace(',', '').strip())
             except: return 0.0
 
-        # 데이터 매핑 (에러를 방지하기 위해 get 사용 및 없으면 0.0)
+        # 데이터 매핑 (에러 원천 차단)
         df['Yield_1'] = df.get('양품율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Comp'] = df.get('완전불량율', pd.Series([0]*len(df))).apply(pct_to_float)
@@ -781,35 +780,48 @@ if st.session_state.current_page == "analysis":
         # 💡 극강의 안정성을 가진 날짜/시간 파싱 로직
         def parse_dt(r):
             try:
-                d_val = r.get('날짜', '')
-                t_str = str(r.get('시작시간', '')).strip()
-                if not t_str or t_str == 'nan': t_str = "00:00"
+                d_val = str(r.get('날짜', '')).strip()
+                t_val = str(r.get('시작시간', '')).strip()
                 
-                if isinstance(d_val, pd.Timestamp) or isinstance(d_val, datetime):
-                    d_str = d_val.strftime('%Y-%m-%d')
-                    return pd.to_datetime(f"{d_str} {t_str}")
+                if not t_val or t_val.lower() in ['nan', 'none', '']: 
+                    t_val = "00:00"
                     
-                d_str = str(d_val).strip().split()[0]
+                t_clean = re.sub(r'[^\d]', '', t_val)
+                if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
+                elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
+                else: t_str = "00:00"
+                    
+                if not d_val or d_val.lower() in ['nan', 'none', '']: return pd.NaT
+
+                y = str(r.get('_year', datetime.now().year))
                 
-                if "-" in d_str:
-                    parts = d_str.split("-")
-                    if len(parts) == 3: return pd.to_datetime(f"{d_str} {t_str}")
-                    elif len(parts) == 2: 
-                        y = r.get('_year', datetime.now().year)
-                        return pd.to_datetime(f"{y}-{parts[0]}-{parts[1]} {t_str}")
-                elif "/" in d_str:
-                    parts = d_str.split("/")
-                    if len(parts) == 3: return pd.to_datetime(f"{parts[0]}-{parts[1]}-{parts[2]} {t_str}")
-                    elif len(parts) == 2:
-                        y = r.get('_year', datetime.now().year)
-                        return pd.to_datetime(f"{y}-{parts[0]}-{parts[1]} {t_str}")
+                if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
+                    base_date = datetime(1899, 12, 30)
+                    target_date = base_date + timedelta(days=int(d_val))
+                    return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
+
+                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
+                
+                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                if m: return pd.to_datetime(f"{y}-{m.group(1)}-{m.group(2)} {t_str}")
+                
+                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_val)
+                if m: return pd.to_datetime(f"{y}-{m.group(1)}-{m.group(2)} {t_str}")
+
             except: pass
             return pd.NaT
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
-        df = df.dropna(subset=['DateTime'])
         
-        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 찾아서 그 날 기준 과거 2일전 데이터 필터링
+        # 💡 복구 로직: 날짜를 아예 못 찾았더라도 순차적으로 가짜 시간을 부여하여 무조건 차트를 보여줌
+        if df['DateTime'].isna().all():
+            df['DateTime'] = pd.date_range(end=datetime.now(), periods=len(df), freq='H')
+            st.info("⚠️ Could not parse actual dates from DB. Displaying raw sequence instead.")
+        else:
+            df = df.dropna(subset=['DateTime'])
+        
+        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 찾아서 그 날 기준 과거 2일전(어제, 그제) 데이터 필터링
         if not df['DateTime'].empty:
             latest_date = df['DateTime'].max().date()
             start_date = latest_date - timedelta(days=2)
@@ -821,13 +833,18 @@ if st.session_state.current_page == "analysis":
             start_date = datetime.now().date()
             latest_date = datetime.now().date()
             
+        # 범위 내에 데이터가 없을 경우 가장 최근 100개 LOT라도 보여주기 위한 방어 코드
+        if df_target.empty and not df.empty:
+            df_target = df.sort_values('DateTime').tail(100).copy()
+            st.info("⚠️ Displaying the 100 most recent LOTs due to no exact match in the target window.")
+            
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
             
             models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {latest_date.strftime('%Y-%m-%d')}).")
+                st.info("NO TELEMETRY DATA AVAILABLE FOR RENDERING.")
             else:
                 selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
@@ -836,10 +853,12 @@ if st.session_state.current_page == "analysis":
                     st.info("No data for the selected model.")
                 else:
                     # 💡 X축을 LOT NO. 흐름 기준으로 정렬
-                    model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
-                    model_df = model_df.sort_values(['DateTime', 'LOT NO.']) # 시간 + LOT 순서대로 확실히 정렬
+                    model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
+                    model_df = model_df.sort_values('DateTime') # 시간 순서대로 정렬
                     
-                    # Hover 툴팁 텍스트 구성 (날짜, 시작시간, 소요시간)
+                    cat_array = model_df['LOT NO.'].tolist() # Plotly X축 순서 고정용
+                    
+                    # Hover 정보에 상세 시간 내역 구성
                     def make_hover_text(row):
                         time_str = row['DateTime'].strftime('%m-%d %H:%M')
                         dur_str = str(row.get('소요시간', '0'))
@@ -847,12 +866,12 @@ if st.session_state.current_page == "analysis":
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    def get_dark_layout(title_text, y_title):
+                    def get_dark_layout(title_text, y_title, cat_arr):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
                             plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
                             font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(type='category', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45),
+                            xaxis=dict(type='category', categoryorder='array', categoryarray=cat_arr, showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
                             margin=dict(l=40, r=40, t=50, b=60), 
                             hovermode='x unified',
@@ -883,7 +902,7 @@ if st.session_state.current_page == "analysis":
                             showlegend=False, hoverinfo='skip'
                         ))
                         
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=350)
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", cat_array), height=350)
                         st.plotly_chart(fig1, use_container_width=True)
 
                     # 💡 Graph 2: 완전불량율
@@ -904,7 +923,7 @@ if st.session_state.current_page == "analysis":
                             showlegend=False, hoverinfo='skip'
                         ))
                         
-                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=300)
+                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
                         st.plotly_chart(fig2, use_container_width=True)
 
                     # 💡 Graph 3: 전면불량율 vs 배면불량율
@@ -930,7 +949,7 @@ if st.session_state.current_page == "analysis":
                             showlegend=False, hoverinfo='skip'
                         ))
                         
-                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)"), height=300)
+                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
                         st.plotly_chart(fig3, use_container_width=True)
 
     if auto_refresh:
