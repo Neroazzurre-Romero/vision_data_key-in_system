@@ -290,7 +290,6 @@ input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-we
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
 div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
 </style>
@@ -742,20 +741,6 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
-def render_nav_buttons(step_num, max_step):
-    st.markdown("<br>", unsafe_allow_html=True)
-    c_nav = st.columns(6)
-    with c_nav[4]:
-        if step_num > 1:
-            if st.button("⬅️ 이전", use_container_width=True):
-                st.session_state.step -= 1
-                st.rerun()
-    with c_nav[5]:
-        if step_num < max_step:
-            if st.button("다음 ➡️", use_container_width=True):
-                st.session_state.step += 1
-                st.rerun()
-
 
 # ==========================================
 # 💡 Administrator (LIVE YIELD COMMAND CENTER)
@@ -810,18 +795,21 @@ if st.session_state.current_page == "analysis":
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 오늘 기준 과거 2일 전(D-2) 자정부터 필터링
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        start_date = (now_kst - timedelta(days=2)).date()
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_target = df[df['DateOnly'] >= start_date].sort_values('DateTime')
+        # 💡 동적 기준점 설정: 시스템의 현재 시간이 아닌, DB 내 '가장 최신 날짜'를 기준으로 D-2 필터링
+        if not df.empty and not df['DateTime'].dropna().empty:
+            latest_date = df['DateTime'].dropna().max().date()
+            start_date = latest_date - timedelta(days=2)
+            df['DateOnly'] = df['DateTime'].dt.date
+            df_target = df[df['DateOnly'] >= start_date].sort_values('DateTime')
+        else:
+            df_target = pd.DataFrame()
         
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
             models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist())
             
             if not models_available:
-                st.info("NO TELEMETRY DATA FOUND IN THE LAST 3 DAYS (-2D TO TODAY).")
+                st.info("NO TELEMETRY DATA FOUND IN THE DATABASE.")
             else:
                 selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
@@ -829,7 +817,6 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data for the selected model.")
                 else:
-                    # Discrete X-axis formatting for seamless flow
                     model_df['DisplayX'] = model_df['DateTime'].dt.strftime('%m-%d %H:%M')
                     model_df['HoverText'] = "LOT: " + model_df['LOT NO.'].astype(str)
 
@@ -861,7 +848,6 @@ if st.session_state.current_page == "analysis":
                             hovertext=model_df['HoverText']
                         ))
                         
-                        # Live 점멸 마커
                         last_x = model_df['DisplayX'].iloc[-1]
                         last_y = model_df['Yield_1'].iloc[-1]
                         fig1.add_trace(go.Scatter(
