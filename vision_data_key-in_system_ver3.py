@@ -770,14 +770,12 @@ if st.session_state.current_page == "analysis":
                 return float(str(x).replace('%', '').replace(',', '').strip())
             except: return 0.0
 
-        # 데이터 매핑 (에러 원천 차단)
         df['Yield_1'] = df.get('양품율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Comp'] = df.get('완전불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
-        # 💡 극강의 안정성을 가진 날짜/시간 파싱 로직
         def parse_dt(r):
             try:
                 d_val = str(r.get('날짜', '')).strip()
@@ -804,39 +802,36 @@ if st.session_state.current_page == "analysis":
                 if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
                 
                 m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1)}-{m.group(2)} {t_str}")
+                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
                 
                 m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1)}-{m.group(2)} {t_str}")
+                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
 
             except: pass
             return pd.NaT
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 💡 복구 로직: 날짜를 아예 못 찾았더라도 순차적으로 가짜 시간을 부여하여 무조건 차트를 보여줌
+        # 💡 에러 방어 시계열 복구 로직 (ValueError 완전 차단)
         if df['DateTime'].isna().all():
-            df['DateTime'] = pd.date_range(end=datetime.now(), periods=len(df), freq='H')
-            st.info("⚠️ Could not parse actual dates from DB. Displaying raw sequence instead.")
+            now_t = datetime.now()
+            # pandas.date_range 의존성 제거, 순수 파이썬 리스트 컴프리헨션 사용
+            df['DateTime'] = [now_t - timedelta(hours=i) for i in range(len(df)-1, -1, -1)]
+            st.info("⚠️ Could not parse actual dates from DB. Displaying auto-generated sequence.")
         else:
             df = df.dropna(subset=['DateTime'])
         
-        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 찾아서 그 날 기준 과거 2일전(어제, 그제) 데이터 필터링
-        if not df['DateTime'].empty:
-            latest_date = df['DateTime'].max().date()
-            start_date = latest_date - timedelta(days=2)
-            
-            df['DateOnly'] = df['DateTime'].dt.date
-            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= latest_date)].copy()
-        else:
+        # 💡 어제 날짜를 기준으로 -2일전 (어제 포함 총 3일간) 데이터 필터링
+        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        yesterday_date = (now_kst - timedelta(days=1)).date()
+        start_date = yesterday_date - timedelta(days=2)
+        
+        df['DateOnly'] = df['DateTime'].dt.date
+        df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= yesterday_date)].copy()
+        
+        # 데이터가 없을 경우 기본 구조 유지
+        if df_target.empty:
             df_target = pd.DataFrame(columns=df.columns)
-            start_date = datetime.now().date()
-            latest_date = datetime.now().date()
-            
-        # 범위 내에 데이터가 없을 경우 가장 최근 100개 LOT라도 보여주기 위한 방어 코드
-        if df_target.empty and not df.empty:
-            df_target = df.sort_values('DateTime').tail(100).copy()
-            st.info("⚠️ Displaying the 100 most recent LOTs due to no exact match in the target window.")
             
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
@@ -844,7 +839,7 @@ if st.session_state.current_page == "analysis":
             models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             
             if not models_available:
-                st.info("NO TELEMETRY DATA AVAILABLE FOR RENDERING.")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {yesterday_date.strftime('%Y-%m-%d')}).")
             else:
                 selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
@@ -852,13 +847,12 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data for the selected model.")
                 else:
-                    # 💡 X축을 LOT NO. 흐름 기준으로 정렬
+                    # 💡 X축을 시간순으로 나열된 LOT NO. 카테고리로 생성하여 연속성 부여
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
-                    model_df = model_df.sort_values('DateTime') # 시간 순서대로 정렬
+                    model_df = model_df.sort_values('DateTime') 
                     
-                    cat_array = model_df['LOT NO.'].tolist() # Plotly X축 순서 고정용
+                    cat_array = model_df['LOT NO.'].tolist()
                     
-                    # Hover 정보에 상세 시간 내역 구성
                     def make_hover_text(row):
                         time_str = row['DateTime'].strftime('%m-%d %H:%M')
                         dur_str = str(row.get('소요시간', '0'))
