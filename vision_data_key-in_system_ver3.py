@@ -290,7 +290,6 @@ input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-we
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
 div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
 </style>
@@ -505,74 +504,75 @@ def get_sheet():
         except: return doc.sheet1
     return None
 
-@st.cache_data(ttl=300)
-def get_available_sheets():
-    doc = get_spreadsheet_doc()
-    if doc:
-        try:
-            return [ws.title for ws in doc.worksheets()]
-        except: pass
-    return []
-
+# 💡 스마트 자동 로딩: 가장 최근 분기 시트 1개 + DB 시트만 불러와 API 부하를 원천 차단
 @st.cache_data(ttl=15) 
-def load_analysis_data(sheet_names):
+def load_analysis_data():
     doc = get_spreadsheet_doc()
-    if doc is None or not sheet_names: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    if doc is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
     
+    worksheets = doc.worksheets()
+    
+    # "Q"가 포함된 시트 중 가장 이름이 큰(최신) 시트 1개만 추출
+    q_sheets = [ws for ws in worksheets if "Q" in ws.title.upper()]
+    q_sheets.sort(key=lambda x: x.title, reverse=True)
+    
+    target_sheets = [ws for ws in worksheets if ws.title == TAB_NAME]
+    if q_sheets:
+        target_sheets.append(q_sheets[0])
+        
     all_data = []
-    for ws in doc.worksheets():
-        if ws.title in sheet_names:
-            raw_data = ws.get_all_values()
-            if len(raw_data) < 2: continue
-            
-            year_val = str(datetime.now().year)
-            match = re.search(r'(\d{4})', ws.title)
-            if match: year_val = match.group(1)
-            
-            header_idx = -1
-            for i, row in enumerate(raw_data[:15]):
-                row_str = "".join(str(c).replace(" ", "") for c in row)
-                if any(k in row_str for k in ["날짜", "일자", "교대", "모델", "고유ID", "구분", "상태"]):
-                    header_idx = i; break
-                    
-            if header_idx == -1: continue
-            
-            headers = [str(h).strip() for h in raw_data[header_idx]]
-            clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
-            
-            ws_data = []
-            for r_idx in range(header_idx + 1, len(raw_data)):
-                row = raw_data[r_idx]
-                if any(str(c).strip() for c in row):
-                    row_data = {"_year": year_val}
-                    for col in EXCEL_COLUMNS:
-                        col_key = col.replace(" ", "").replace("률", "율").upper()
-                        if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
-                        elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
-                        else: aliases = []
-                        
-                        matched_header = None
-                        if col_key in clean_headers:
-                            matched_header = clean_headers[col_key]
-                        else:
-                            for alias in aliases:
-                                if alias in clean_headers:
-                                    matched_header = clean_headers[alias]
-                                    break
-                                    
-                        if matched_header:
-                            try:
-                                c_idx = headers.index(matched_header)
-                                row_data[col] = row[c_idx] if c_idx < len(row) else ""
-                            except:
-                                row_data[col] = ""
-                        else:
-                            row_data[col] = "" 
-                    ws_data.append(row_data)
-            
-            if ws_data:
-                all_data.append(pd.DataFrame(ws_data))
+    for ws in target_sheets:
+        raw_data = ws.get_all_values()
+        if len(raw_data) < 2: continue
+        
+        year_val = str(datetime.now().year)
+        match = re.search(r'(\d{4})', ws.title)
+        if match: year_val = match.group(1)
+        
+        header_idx = -1
+        for i, row in enumerate(raw_data[:15]):
+            row_str = "".join(str(c).replace(" ", "") for c in row)
+            if any(k in row_str for k in ["날짜", "일자", "교대", "모델", "고유ID", "구분", "상태"]):
+                header_idx = i; break
                 
+        if header_idx == -1: continue
+        
+        headers = [str(h).strip() for h in raw_data[header_idx]]
+        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
+        
+        ws_data = []
+        for r_idx in range(header_idx + 1, len(raw_data)):
+            row = raw_data[r_idx]
+            if any(str(c).strip() for c in row):
+                row_data = {"_year": year_val}
+                for col in EXCEL_COLUMNS:
+                    col_key = col.replace(" ", "").replace("률", "율").upper()
+                    if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
+                    elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
+                    else: aliases = []
+                    
+                    matched_header = None
+                    if col_key in clean_headers:
+                        matched_header = clean_headers[col_key]
+                    else:
+                        for alias in aliases:
+                            if alias in clean_headers:
+                                matched_header = clean_headers[alias]
+                                break
+                                
+                    if matched_header:
+                        try:
+                            c_idx = headers.index(matched_header)
+                            row_data[col] = row[c_idx] if c_idx < len(row) else ""
+                        except:
+                            row_data[col] = ""
+                    else:
+                        row_data[col] = "" 
+                ws_data.append(row_data)
+        
+        if ws_data:
+            all_data.append(pd.DataFrame(ws_data))
+            
     if not all_data: return pd.DataFrame(columns=EXCEL_COLUMNS)
     
     result_df = pd.concat(all_data, ignore_index=True)
@@ -733,6 +733,20 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
+def render_nav_buttons(step_num, max_step):
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_nav = st.columns(6)
+    with c_nav[4]:
+        if step_num > 1:
+            if st.button("⬅️ 이전", use_container_width=True):
+                st.session_state.step -= 1
+                st.rerun()
+    with c_nav[5]:
+        if step_num < max_step:
+            if st.button("다음 ➡️", use_container_width=True):
+                st.session_state.step += 1
+                st.rerun()
+
 
 # ==========================================
 # 💡 Administrator (72H Live Command Center)
@@ -750,122 +764,109 @@ if st.session_state.current_page == "analysis":
             st.session_state.current_page = "input"
             st.rerun()
             
-    available_sheets = get_available_sheets()
-    selected_sheets = []
-    
-    with st.container(border=True):
-        st.markdown("<div class='metric-label'>■ DATA SOURCE SELECTION (DB & ARCHIVE)</div>", unsafe_allow_html=True)
-        if not available_sheets:
-            st.error("No connection to database.")
-        else:
-            default_s = [s for s in available_sheets if "Q" in s.upper() or s == TAB_NAME]
-            selected_sheets = st.multiselect("Active Nodes", available_sheets, default=default_s, label_visibility="collapsed")
+    # 💡 수동 시트 선택 제거 및 자동 로딩 함수 호출
+    df = load_analysis_data().copy()
 
-    if not selected_sheets:
-        st.warning("Select at least one data source node.")
+    if df.empty: 
+        st.warning("No data retrieved from selected nodes.")
     else:
-        df = load_analysis_data(tuple(selected_sheets)).copy()
+        def pct_to_float(x):
+            try:
+                if pd.isna(x) or str(x).strip() == '': return 0.0
+                return float(str(x).replace('%', '').replace(',', '').strip())
+            except: return 0.0
 
-        if df.empty: 
-            st.warning("No data retrieved from selected nodes.")
+        df['Yield_1'] = df['양품율'].apply(pct_to_float)
+        df['Yield_2'] = df['양품율(전/배 포함)'].apply(pct_to_float)
+        df['Def_Comp'] = df['완전불량율'].apply(pct_to_float)
+        df['Def_Front'] = df['전면불량율'].apply(pct_to_float)
+        df['Def_Rear'] = df['배면불량율'].apply(pct_to_float)
+        df['Insp_Qty'] = pd.to_numeric(df['검사 수량'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        
+        def parse_dt(r):
+            try:
+                d_str = str(r.get('날짜', '')).strip()
+                t_str = str(r.get('시작시간', '')).strip()
+                if not t_str or t_str == 'nan': t_str = "00:00"
+                if "-" in d_str and len(d_str.split("-")) == 3:
+                    return pd.to_datetime(f"{d_str} {t_str}")
+                elif "/" in d_str:
+                    m, d = d_str.split('/')
+                    y = r.get('_year', datetime.now().year)
+                    return pd.to_datetime(f"{y}-{m}-{d} {t_str}")
+            except: pass
+            return pd.NaT
+            
+        df['DateTime'] = df.apply(parse_dt, axis=1)
+        df = df.dropna(subset=['DateTime'])
+        
+        # 💡 72H Filtering (정확히 오늘 기준 2일 전 포함, 총 3일간의 시계열 슬라이싱)
+        now_ts = pd.Timestamp.now()
+        df_72 = df[df['DateTime'] >= (now_ts - pd.Timedelta(hours=72))].sort_values('DateTime')
+        
+        if df_72.empty:
+            st.info("NO TELEMETRY DATA FOUND IN THE LAST 72 HOURS.")
         else:
-            def pct_to_float(x):
-                try:
-                    if pd.isna(x) or str(x).strip() == '': return 0.0
-                    return float(str(x).replace('%', '').replace(',', '').strip())
-                except: return 0.0
-
-            df['Yield_1'] = df['양품율'].apply(pct_to_float)
-            df['Yield_2'] = df['양품율(전/배 포함)'].apply(pct_to_float)
-            df['Def_Comp'] = df['완전불량율'].apply(pct_to_float)
-            df['Def_Front'] = df['전면불량율'].apply(pct_to_float)
-            df['Def_Rear'] = df['배면불량율'].apply(pct_to_float)
-            df['Insp_Qty'] = pd.to_numeric(df['검사 수량'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            total_insp = df_72['Insp_Qty'].sum()
+            models_active = len(df_72['모델명(MI)'].unique())
+            avg_yield = df_72['Yield_1'].mean() if len(df_72) > 0 else 0
             
-            def parse_dt(r):
-                try:
-                    d_str = str(r.get('날짜', '')).strip()
-                    t_str = str(r.get('시작시간', '')).strip()
-                    if not t_str or t_str == 'nan': t_str = "00:00"
-                    if "-" in d_str and len(d_str.split("-")) == 3:
-                        return pd.to_datetime(f"{d_str} {t_str}")
-                    elif "/" in d_str:
-                        m, d = d_str.split('/')
-                        y = r.get('_year', datetime.now().year)
-                        return pd.to_datetime(f"{y}-{m}-{d} {t_str}")
-                except: pass
-                return pd.NaT
+            m1, m2, m3, m4 = st.columns(4)
+            m1.markdown(f"<div class='metric-label'>72H TOTAL INSP</div><div class='metric-value'>{int(total_insp):,}</div>", unsafe_allow_html=True)
+            m2.markdown(f"<div class='metric-label'>ACTIVE MODELS</div><div class='metric-value'>{models_active}</div>", unsafe_allow_html=True)
+            m3.markdown(f"<div class='metric-label'>72H AVG YIELD</div><div class='metric-value' style='color: #10B981 !important;'>{avg_yield:.1f}%</div>", unsafe_allow_html=True)
+            m4.markdown(f"<div class='metric-label'>STATUS</div><div class='metric-value neon-text'>ONLINE</div>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            models = sorted(df_72['모델명(MI)'].unique().tolist())
+            neon_colors = ['#00E5FF', '#FF00FF', '#FFFF00', '#00FF00', '#FF3366', '#FF9900', '#9D00FF', '#00BFFF']
+
+            def get_dark_layout(title_text):
+                return dict(
+                    title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
+                    plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
+                    font=dict(color='#94A3B8', family='monospace'),
+                    xaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
+                    yaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
+                    margin=dict(l=40, r=40, t=50, b=40),
+                    hovermode='x unified',
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
+                )
+
+            # 💡 Graph 1: 1차 검사 수율 vs 전/배포함 수율
+            with st.container(border=True):
+                fig1 = go.Figure()
+                for i, model in enumerate(models):
+                    mdf = df_72[df_72['모델명(MI)'] == model]
+                    c = neon_colors[i % len(neon_colors)]
+                    fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_1'], name=f"[{model}] 1차", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=6, color=c)))
+                    fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_2'], name=f"[{model}] 전/배포함", mode='lines+markers', line=dict(color=c, width=2, dash='dot'), marker=dict(size=4, symbol='x', color=c)))
                 
-            df['DateTime'] = df.apply(parse_dt, axis=1)
-            df = df.dropna(subset=['DateTime'])
-            
-            # 💡 72H Filtering
-            now_ts = pd.Timestamp.now()
-            df_72 = df[df['DateTime'] >= (now_ts - pd.Timedelta(hours=72))].sort_values('DateTime')
-            
-            if df_72.empty:
-                st.info("NO TELEMETRY DATA FOUND IN THE LAST 72 HOURS.")
-            else:
-                total_insp = df_72['Insp_Qty'].sum()
-                models_active = len(df_72['모델명(MI)'].unique())
-                avg_yield = df_72['Yield_1'].mean() if len(df_72) > 0 else 0
+                fig1.update_layout(**get_dark_layout("72H YIELD TREND (1ST vs INCL. F/R)"), height=350, yaxis_title="YIELD (%)")
+                st.plotly_chart(fig1, use_container_width=True)
+
+            # 💡 Graph 2: 완전불량율
+            with st.container(border=True):
+                fig2 = go.Figure()
+                for i, model in enumerate(models):
+                    mdf = df_72[df_72['모델명(MI)'] == model]
+                    c = neon_colors[i % len(neon_colors)]
+                    fig2.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Comp'], name=f"[{model}] 완전불량", mode='lines', line=dict(color=c, width=2), fill='tozeroy', fillcolor=c.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c else None))
                 
-                m1, m2, m3, m4 = st.columns(4)
-                m1.markdown(f"<div class='metric-label'>72H TOTAL INSP</div><div class='metric-value'>{int(total_insp):,}</div>", unsafe_allow_html=True)
-                m2.markdown(f"<div class='metric-label'>ACTIVE MODELS</div><div class='metric-value'>{models_active}</div>", unsafe_allow_html=True)
-                m3.markdown(f"<div class='metric-label'>72H AVG YIELD</div><div class='metric-value' style='color: #10B981 !important;'>{avg_yield:.1f}%</div>", unsafe_allow_html=True)
-                m4.markdown(f"<div class='metric-label'>STATUS</div><div class='metric-value neon-text'>ONLINE</div>", unsafe_allow_html=True)
-                st.markdown("<br>", unsafe_allow_html=True)
+                fig2.update_layout(**get_dark_layout("72H COMPLETE DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
+                st.plotly_chart(fig2, use_container_width=True)
 
-                models = sorted(df_72['모델명(MI)'].unique().tolist())
-                neon_colors = ['#00E5FF', '#FF00FF', '#FFFF00', '#00FF00', '#FF3366', '#FF9900', '#9D00FF', '#00BFFF']
-
-                def get_dark_layout(title_text):
-                    return dict(
-                        title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
-                        plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
-                        font=dict(color='#94A3B8', family='monospace'),
-                        xaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
-                        yaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                        margin=dict(l=40, r=40, t=50, b=40),
-                        hovermode='x unified',
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
-                    )
-
-                # 💡 Graph 1: 1차 검사 수율 vs 전/배포함 수율
-                with st.container(border=True):
-                    fig1 = go.Figure()
-                    for i, model in enumerate(models):
-                        mdf = df_72[df_72['모델명(MI)'] == model]
-                        c = neon_colors[i % len(neon_colors)]
-                        fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_1'], name=f"[{model}] 1차", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=6, color=c)))
-                        fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_2'], name=f"[{model}] 전/배포함", mode='lines+markers', line=dict(color=c, width=2, dash='dot'), marker=dict(size=4, symbol='x', color=c)))
-                    
-                    fig1.update_layout(**get_dark_layout("72H YIELD TREND (1ST vs INCL. F/R)"), height=350, yaxis_title="YIELD (%)")
-                    st.plotly_chart(fig1, use_container_width=True)
-
-                # 💡 Graph 2: 완전불량율
-                with st.container(border=True):
-                    fig2 = go.Figure()
-                    for i, model in enumerate(models):
-                        mdf = df_72[df_72['모델명(MI)'] == model]
-                        c = neon_colors[i % len(neon_colors)]
-                        fig2.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Comp'], name=f"[{model}] 완전불량", mode='lines', line=dict(color=c, width=2), fill='tozeroy', fillcolor=c.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c else None))
-                    
-                    fig2.update_layout(**get_dark_layout("72H COMPLETE DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
-                    st.plotly_chart(fig2, use_container_width=True)
-
-                # 💡 Graph 3: 전면불량율 vs 배면불량율
-                with st.container(border=True):
-                    fig3 = go.Figure()
-                    for i, model in enumerate(models):
-                        mdf = df_72[df_72['모델명(MI)'] == model]
-                        c = neon_colors[i % len(neon_colors)]
-                        fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Front'], name=f"[{model}] 전면불량", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=5)))
-                        fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Rear'], name=f"[{model}] 배면불량", mode='lines+markers', line=dict(color=c, width=2, dash='dash'), marker=dict(size=5, symbol='triangle-up')))
-                    
-                    fig3.update_layout(**get_dark_layout("72H FRONT & REAR DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
-                    st.plotly_chart(fig3, use_container_width=True)
+            # 💡 Graph 3: 전면불량율 vs 배면불량율
+            with st.container(border=True):
+                fig3 = go.Figure()
+                for i, model in enumerate(models):
+                    mdf = df_72[df_72['모델명(MI)'] == model]
+                    c = neon_colors[i % len(neon_colors)]
+                    fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Front'], name=f"[{model}] 전면불량", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=5)))
+                    fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Rear'], name=f"[{model}] 배면불량", mode='lines+markers', line=dict(color=c, width=2, dash='dash'), marker=dict(size=5, symbol='triangle-up')))
+                
+                fig3.update_layout(**get_dark_layout("72H FRONT & REAR DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
+                st.plotly_chart(fig3, use_container_width=True)
 
     if auto_refresh:
         time.sleep(10)
