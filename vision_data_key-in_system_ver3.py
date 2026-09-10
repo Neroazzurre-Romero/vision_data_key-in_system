@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import os
+import re
 from datetime import datetime, time as dt_time, timedelta, timezone
 import time
 from io import BytesIO
@@ -328,6 +329,23 @@ div[data-testid="stCheckbox"] {
     height: 2.6rem;
     padding-left: 10px;
 }
+
+/* 💡 Live Blinking Dot Effect for Title */
+@keyframes blink {
+    0% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
+    50% { opacity: 0.3; box-shadow: 0 0 2px #EF4444; }
+    100% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
+}
+.live-dot {
+    height: 16px;
+    width: 16px;
+    background-color: #EF4444;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 12px;
+    vertical-align: middle;
+    animation: blink 1.2s ease-in-out infinite;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -479,8 +497,8 @@ def get_sheet():
         except: return doc.sheet1
     return None
 
-# 💡 분석을 위해 "Q"가 들어간 모든 시트와 DB시트를 불러오고 컬럼을 자동 매핑하는 로직
-@st.cache_data(ttl=60)
+# 💡 분기별 탭(Q) 자동 인식 및 데이터프레임 병합 로더
+@st.cache_data(ttl=15) # 라이브 느낌을 위해 캐시 만료 15초 단축
 def load_analysis_data():
     doc = get_spreadsheet_doc()
     if doc is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
@@ -490,6 +508,11 @@ def load_analysis_data():
         if "Q" in ws.title.upper() or ws.title == TAB_NAME:
             raw_data = ws.get_all_values()
             if len(raw_data) < 2: continue
+            
+            # 연도 추출 (예: 2025년 2Q -> 2025)
+            year_val = str(datetime.now().year)
+            match = re.search(r'(\d{4})', ws.title)
+            if match: year_val = match.group(1)
             
             header_idx = -1
             for i, row in enumerate(raw_data[:15]):
@@ -506,10 +529,9 @@ def load_analysis_data():
             for r_idx in range(header_idx + 1, len(raw_data)):
                 row = raw_data[r_idx]
                 if any(str(c).strip() for c in row):
-                    row_data = {}
+                    row_data = {"_year": year_val}
                     for col in EXCEL_COLUMNS:
                         col_key = col.replace(" ", "").replace("률", "율").upper()
-                        # 과거 데이터의 변형된 이름들 스마트 매핑
                         if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
                         elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
                         else: aliases = []
@@ -530,7 +552,7 @@ def load_analysis_data():
                             except:
                                 row_data[col] = ""
                         else:
-                            row_data[col] = "" # 과거에 없던 컬럼은 빈칸 처리
+                            row_data[col] = "" 
                     ws_data.append(row_data)
             
             if ws_data:
@@ -543,7 +565,6 @@ def load_analysis_data():
         result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
     return result_df
 
-# 편집 및 저장을 위한 단일 시트 로드
 @st.cache_data(ttl=60)
 def load_data():
     sheet = get_sheet()
@@ -627,8 +648,6 @@ def parse_scanned_data():
 
 def on_scan_apply():
     parse_scanned_data()
-    time.sleep(1)
-    st.session_state.step = 2
 
 def pad_callback(digit):
     c_val = st.session_state.get("numpad_buffer", "")
@@ -713,52 +732,78 @@ def render_nav_buttons(step_num, max_step):
                 st.session_state.step += 1
                 st.rerun()
 
+
 # ==========================================
-# Administrator (분석) 프로세스
+# 💡 Administrator (Live 분석 대시보드) 프로세스
 # ==========================================
 if st.session_state.current_page == "analysis":
     logo_s_data = get_image_base64("at")
     img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
-    st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b;'>{img_html} 종합 생산 데이터 분석 📊</h2>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns([0.8, 0.2])
+    col1, col2, col3 = st.columns([0.6, 0.25, 0.15])
+    with col1:
+        # 💡 Live 깜빡임 효과 적용된 타이틀
+        st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b; margin:0;'><span class='live-dot'></span> {img_html} 종합 생산 데이터 라이브 분석</h2>", unsafe_allow_html=True)
     with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        auto_refresh = st.checkbox("🔄 실시간 자동 새로고침 (10초)", value=False)
+    with col3:
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("돌아가기 (데이터 입력)", type="primary", use_container_width=True):
             st.session_state.current_page = "input"
             st.rerun()
             
-    # 💡 분석 페이지는 load_analysis_data()를 사용하여 여러 분기(Q) 탭을 모두 병합해 가져옴
     df = load_analysis_data().copy()
     if df.empty: 
         st.warning("저장된 데이터가 없습니다.")
     else:
+        # 데이터 클리닝 및 날짜/시간 생성 (시계열 차트용)
         numeric_cols = ["검사 수량", "양품수량", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+                
+        def parse_dt(r):
+            try:
+                d_str = str(r.get('날짜', '')).strip()
+                t_str = str(r.get('시작시간', '')).strip()
+                if not t_str or t_str == 'nan': t_str = "00:00"
+                if "-" in d_str and len(d_str.split("-")) == 3:
+                    return pd.to_datetime(f"{d_str} {t_str}")
+                elif "/" in d_str:
+                    m, d = d_str.split('/')
+                    y = r.get('_year', datetime.now().year)
+                    return pd.to_datetime(f"{y}-{m}-{d} {t_str}")
+            except: pass
+            return pd.NaT
+            
+        df['DateTime'] = df.apply(parse_dt, axis=1)
+        df = df.dropna(subset=['DateTime'])
 
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 상세 분석 조건 필터</h4><br>", unsafe_allow_html=True)
-            f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.15, 0.25, 0.2, 0.2, 0.2])
             with f_col1:
-                dates = df['날짜'].unique().tolist()
-                selected_dates = st.multiselect("📅 날짜", dates, default=dates)
+                agg_period = st.radio("⏱️ 시간 단위", ["시간별", "일별", "주간별", "월별"], index=1)
             with f_col2:
-                models = df['모델명(MI)'].unique().tolist()
-                selected_models = st.multiselect("🏷️ 모델명", models, default=models)
+                dates = sorted(df['날짜'].unique().tolist())
+                selected_dates = st.multiselect("📅 날짜 (미선택 시 전체)", dates, default=[])
             with f_col3:
-                shifts = df['교대'].unique().tolist()
-                selected_shifts = st.multiselect("⏰ 교대/시간", shifts, default=shifts)
+                models = sorted(df['모델명(MI)'].unique().tolist())
+                selected_models = st.multiselect("🏷️ 모델명", models, default=[])
             with f_col4:
+                shifts = df['교대'].unique().tolist()
+                selected_shifts = st.multiselect("⏰ 교대/시간", shifts, default=[])
+            with f_col5:
                 categories = df['구분'].unique().tolist()
-                selected_categories = st.multiselect("🛠️ 검사 기준", categories, default=categories)
+                selected_categories = st.multiselect("🛠️ 검사 기준", categories, default=[])
 
-            filtered_df = df[
-                (df['날짜'].isin(selected_dates) if selected_dates else True) &
-                (df['모델명(MI)'].isin(selected_models) if selected_models else True) &
-                (df['교대'].isin(selected_shifts) if selected_shifts else True) &
-                (df['구분'].isin(selected_categories) if selected_categories else True)
-            ]
+            # 필터 적용
+            filtered_df = df.copy()
+            if selected_dates: filtered_df = filtered_df[filtered_df['날짜'].isin(selected_dates)]
+            if selected_models: filtered_df = filtered_df[filtered_df['모델명(MI)'].isin(selected_models)]
+            if selected_shifts: filtered_df = filtered_df[filtered_df['교대'].isin(selected_shifts)]
+            if selected_categories: filtered_df = filtered_df[filtered_df['구분'].isin(selected_categories)]
 
         if filtered_df.empty:
             st.info("선택한 조건에 맞는 데이터가 없습니다.")
@@ -774,38 +819,74 @@ if st.session_state.current_page == "analysis":
             c3.metric("총 불량 수량", f"{int(total_bad):,} 개")
             c4.metric("평균 양품률", f"{yield_rate:.1f} %")
 
+            # 💡 시계열 그룹화 (주식창 스타일 차트)
+            period_map = {"시간별": '%m-%d %H:00', "일별": '%Y-%m-%d', "주간별": '%Y-%W주차', "월별": '%Y-%m'}
+            filtered_df['Period'] = filtered_df['DateTime'].dt.strftime(period_map[agg_period])
+            
+            trend_df = filtered_df.groupby('Period').agg(
+                Good=('양품수량', 'sum'),
+                Bad=('불량수량', 'sum'),
+                Insp=('검사 수량', 'sum')
+            ).reset_index().sort_values('Period')
+            trend_df['Yield'] = (trend_df['Good'] / trend_df['Insp'] * 100).fillna(0)
+
+            with st.container(border=True):
+                st.markdown(f"<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 생산 트렌드 ({agg_period})</h4>", unsafe_allow_html=True)
+                
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Bar(x=trend_df['Period'], y=trend_df['Good'], name='양품수량', marker_color='#10B981', yaxis='y1'))
+                fig_trend.add_trace(go.Bar(x=trend_df['Period'], y=trend_df['Bad'], name='불량수량', marker_color='#EF4444', yaxis='y1'))
+                
+                # 수율 라인 차트
+                fig_trend.add_trace(go.Scatter(
+                    x=trend_df['Period'], y=trend_df['Yield'], name='양품률(%)', mode='lines+markers',
+                    line=dict(color='#FFC000', width=4), marker=dict(size=8, color='#FFC000'), yaxis='y2'
+                ))
+                
+                # 💡 끝점 입체감 라이브 마커 (Stock-like)
+                if len(trend_df) > 0:
+                    last_x = trend_df['Period'].iloc[-1]
+                    last_y = trend_df['Yield'].iloc[-1]
+                    fig_trend.add_trace(go.Scatter(
+                        x=[last_x], y=[last_y], mode='markers', name='Live',
+                        marker=dict(size=24, color='#FFC000', line=dict(width=10, color='rgba(255, 192, 0, 0.3)')),
+                        yaxis='y2', showlegend=False, hoverinfo='skip'
+                    ))
+
+                fig_trend.update_layout(
+                    barmode='stack', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', height=400,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    yaxis=dict(title='생산 수량 (개)', side='left', showgrid=True, gridcolor='#f1f5f9'),
+                    yaxis2=dict(title='양품률 (%)', side='right', overlaying='y', range=[min(trend_df['Yield'].min()-5, 80), 105], showgrid=False),
+                    margin=dict(l=0, r=0, t=40, b=0)
+                )
+                st.plotly_chart(fig_trend, use_container_width=True)
+
+            # 하단 서브 차트 및 표
             with st.container(border=True):
                 g_col1, g_col2 = st.columns(2)
                 with g_col1:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 양/불량 생산 현황</h4><br>", unsafe_allow_html=True)
-                    group_col = '날짜'
-                    if len(selected_dates) == 1 and len(selected_models) > 1:
-                        group_col = '모델명(MI)'
-                        
-                    df_group = filtered_df.groupby(group_col)[['양품수량', '불량수량']].sum().reset_index()
-                    fig1 = px.bar(df_group, x=group_col, y=['양품수량', '불량수량'], barmode='group', 
-                                  color_discrete_sequence=['#10B981', '#EF4444'])
-                    fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
-                    st.plotly_chart(fig1, use_container_width=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 점유율</h4><br>", unsafe_allow_html=True)
+                    defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
+                    fig_pie = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
+                    fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'), height=300, margin=dict(l=0, r=0, t=10, b=10))
+                    st.plotly_chart(fig_pie, use_container_width=True)
                     
                 with g_col2:
-                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 비율 (도넛형)</h4><br>", unsafe_allow_html=True)
-                    defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
-                    fig2 = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, 
-                                  color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
-                    fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
-                    st.plotly_chart(fig2, use_container_width=True)
+                    st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 모델별 수율 비교</h4><br>", unsafe_allow_html=True)
+                    model_df = filtered_df.groupby('모델명(MI)').agg(Insp=('검사 수량', 'sum'), Good=('양품수량', 'sum')).reset_index()
+                    model_df['Yield'] = (model_df['Good'] / model_df['Insp'] * 100).fillna(0)
+                    model_df = model_df.sort_values('Yield', ascending=True)
                     
-            with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조건별 수율 분석 요약표</h4><br>", unsafe_allow_html=True)
-                pivot_df = filtered_df.groupby(['날짜', '교대', '모델명(MI)', '구분']).agg({
-                    '검사 수량': 'sum',
-                    '양품수량': 'sum',
-                    '불량수량': 'sum'
-                }).reset_index()
-                pivot_df['양품률(%)'] = (pivot_df['양품수량'] / pivot_df['검사 수량'] * 100).round(1).astype(str) + '%'
-                pivot_df['불량률(%)'] = (pivot_df['불량수량'] / pivot_df['검사 수량'] * 100).round(1).astype(str) + '%'
-                st.dataframe(pivot_df, use_container_width=True, hide_index=True)
+                    fig_bar = go.Figure()
+                    fig_bar.add_trace(go.Bar(x=model_df['Yield'], y=model_df['모델명(MI)'], orientation='h', marker_color='#305496', text=model_df['Yield'].apply(lambda x: f"{x:.1f}%"), textposition='outside'))
+                    fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(l=0, r=0, t=10, b=10), xaxis=dict(range=[min(model_df['Yield'].min()-10, 50), 110], showgrid=True, gridcolor='#f1f5f9'))
+                    st.plotly_chart(fig_bar, use_container_width=True)
+
+    # 💡 실시간 리플레시 루프 (Streamlit 특성상 맨 마지막에 배치)
+    if auto_refresh:
+        time.sleep(10)
+        st.rerun()
 
 # ==========================================
 # Main Input App
