@@ -78,7 +78,7 @@ for key, value in default_state.items():
         st.session_state[key] = value
 
 if not st.session_state.unlocked:
-    hide_sidebar_style = """
+    st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
@@ -86,8 +86,7 @@ if not st.session_state.unlocked:
         footer { display: none !important; }
         [data-testid="stAppViewContainer"] { background-color: #ffffff !important; }
     </style>
-    """
-    st.markdown(hide_sidebar_style, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -165,7 +164,12 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-hide_streamlit_style = """
+
+# ==============================================================================
+# 💡 페이지별 CSS 분리 적용 (Light Theme for Input / Dark Theme for Analysis)
+# ==============================================================================
+
+input_theme_css = """
 <style>
 footer { display: none !important; } 
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
@@ -182,7 +186,6 @@ body { overscroll-behavior-y: none !important; }
     padding: 1.5rem !important;
     margin-bottom: 0.5rem !important;
 }
-
 div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
 
 div[data-testid="stButton"] button { 
@@ -202,24 +205,18 @@ div[data-testid="stButton"] button {
     box-shadow: none !important;
     transition: all 0.2s ease;
 }
-
-div[data-testid="stButton"] button:hover,
-div[data-testid="stButton"] button:focus,
-div[data-testid="stButton"] button:active {
+div[data-testid="stButton"] button:hover, div[data-testid="stButton"] button:focus, div[data-testid="stButton"] button:active {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border-color: #1e293b !important;
 }
-
 div[data-testid="stButton"] button[kind="primary"] {
     background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid #0f172a !important;
     box-shadow: none !important;
 }
-div[data-testid="stButton"] button[kind="primary"]:hover {
-    background-color: #0f172a !important;
-}
+div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
@@ -234,9 +231,7 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
     box-sizing: border-box !important;
     transition: all 0.2s ease;
 }
-
 span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
-
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTextInput"] input {
@@ -252,12 +247,7 @@ div[data-testid="stTextInput"] input {
     box-sizing: border-box !important;
     transition: color 0.2s ease;
 }
-
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child {
-    display: flex !important;
-    align-items: center !important;
-}
-
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child { display: flex !important; align-items: center !important; }
 div[data-baseweb="textarea"] textarea { 
     font-size: 1.1rem !important; 
     height: 70px !important;
@@ -270,7 +260,6 @@ div[data-baseweb="textarea"] textarea {
     padding: 15px !important;
     transition: all 0.2s ease;
 }
-
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
 div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
@@ -279,19 +268,9 @@ div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
 }
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div,
 div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input {
-    color: #ffffff !important;
-}
-div[data-baseweb="textarea"]:focus-within textarea {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border-color: #1e293b !important;
-}
-div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input {
-    caret-color: transparent !important;
-    cursor: pointer !important;
-}
-
+div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input { color: #ffffff !important; }
+div[data-baseweb="textarea"]:focus-within textarea { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
+div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input { caret-color: transparent !important; cursor: pointer !important; }
 input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
 input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
 
@@ -310,148 +289,172 @@ input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-we
     box-shadow: none !important;
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
+div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
+</style>
+"""
 
-[data-testid="stSidebar"] .stButton > button[kind="primary"] { 
-    background-color: #1e293b !important; 
-    color: #FFFFFF !important; 
-    border: none !important; 
-    border-left: 4px solid #FFC000 !important;
-}
-[data-testid="stSidebar"] .stButton > button[kind="secondary"] { 
-    background-color: transparent !important; 
-    color: #8B9CB6 !important; 
-    border: 1px solid transparent !important; 
-}
-[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border: 1px solid transparent !important;
+# 💡 미래지향적 Command Center Dark Theme CSS
+analysis_theme_css = """
+<style>
+footer { display: none !important; } 
+[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
+body { overscroll-behavior-y: none !important; } 
+::-webkit-scrollbar { display: none; }
+.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
+
+/* Dark Background */
+[data-testid="stAppViewContainer"] { background-color: #050814 !important; color: #E2E8F0 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
+[data-testid="stSidebar"] { background-color: #030508 !important; }
+[data-testid="stSidebar"] * { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
+
+/* Dashboard Cards */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #0B101E !important;
+    border: 1px solid #1E293B !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8) !important;
+    padding: 1rem !important;
+    margin-bottom: 0.5rem !important;
 }
 
-div[data-testid="stCheckbox"] {
-    display: flex;
-    align-items: center;
-    height: 2.6rem;
-    padding-left: 10px;
-}
+h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
 
-/* 💡 Live Blinking Dot Effect for Title */
+/* Custom Neon Titles */
+.command-header { color: #38BDF8 !important; font-weight: 900 !important; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 0 5px rgba(56, 189, 248, 0.5); }
+.metric-value { color: #E2E8F0 !important; font-size: 2rem !important; font-weight: bold !important; text-shadow: 0 0 8px rgba(255,255,255,0.3); }
+.metric-label { color: #38BDF8 !important; font-size: 0.9rem !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+
+/* Live Blinking Dot Effect */
 @keyframes blink {
     0% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
     50% { opacity: 0.3; box-shadow: 0 0 2px #EF4444; }
     100% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
 }
 .live-dot {
-    height: 16px;
-    width: 16px;
-    background-color: #EF4444;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 12px;
-    vertical-align: middle;
+    height: 12px; width: 12px; background-color: #EF4444; border-radius: 50%;
+    display: inline-block; margin-right: 10px; margin-bottom: 2px;
     animation: blink 1.2s ease-in-out infinite;
 }
+
+/* Buttons in Dark Mode */
+div[data-testid="stButton"] button {
+    background-color: #0F172A !important;
+    color: #38BDF8 !important;
+    border: 1px solid #1E293B !important;
+    border-radius: 4px !important;
+    font-family: 'Consolas', 'Courier New', monospace !important;
+    transition: all 0.2s ease;
+}
+div[data-testid="stButton"] button:hover {
+    background-color: #1E293B !important;
+    border-color: #38BDF8 !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+}
+
+/* Sidebar Custom Buttons */
+[data-testid="stSidebar"] .stButton > button { 
+    height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 4px !important; background-color: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
+}
+[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #0F172A !important; color: #38BDF8 !important; border-left: 4px solid #38BDF8 !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #0F172A !important; color: #E2E8F0 !important; }
 </style>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-components.html(
-    """
-    <script>
-    if (window.parent && !window.parent.appPluginLoadedFull) {
-        window.parent.appPluginLoadedFull = true;
-        
-        const formatNavButtons = () => {
-            if (!window.parent.document) return;
-            const buttons = window.parent.document.querySelectorAll('button');
-            buttons.forEach(btn => {
-                const text = btn.innerText || "";
-                
-                if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
-                    btn.style.setProperty('background', '#305496', 'important');
-                    btn.style.setProperty('background-color', '#305496', 'important');
-                    btn.style.setProperty('border', '1px solid #203864', 'important');
-                    btn.style.setProperty('color', '#ffffff', 'important');
-                    btn.style.setProperty('box-shadow', 'none', 'important');
-                }
-                
-                if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
-                    btn.style.setProperty('height', '70px', 'important'); 
-                    btn.style.setProperty('max-height', '70px', 'important');
-                    btn.style.setProperty('font-size', '1.2rem', 'important');
-                    btn.style.setProperty('margin-top', '0px', 'important');
-                }
+if st.session_state.current_page == "input":
+    st.markdown(input_theme_css, unsafe_allow_html=True)
+    components.html(
+        """
+        <script>
+        if (window.parent && !window.parent.appPluginLoadedFull) {
+            window.parent.appPluginLoadedFull = true;
+            const formatNavButtons = () => {
+                if (!window.parent.document) return;
+                const buttons = window.parent.document.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    const text = btn.innerText || "";
+                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
+                        btn.style.setProperty('background', '#305496', 'important');
+                        btn.style.setProperty('background-color', '#305496', 'important');
+                        btn.style.setProperty('border', '1px solid #203864', 'important');
+                        btn.style.setProperty('color', '#ffffff', 'important');
+                        btn.style.setProperty('box-shadow', 'none', 'important');
+                    }
+                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
+                        btn.style.setProperty('height', '70px', 'important'); 
+                        btn.style.setProperty('max-height', '70px', 'important');
+                        btn.style.setProperty('font-size', '1.2rem', 'important');
+                        btn.style.setProperty('margin-top', '0px', 'important');
+                    }
+                    if (text.trim() === 'ADMINISTRATOR') { 
+                        btn.style.setProperty('background', '#1e293b', 'important');
+                        btn.style.setProperty('background-color', '#1e293b', 'important');
+                        btn.style.setProperty('color', '#FFC000', 'important');
+                        btn.style.setProperty('border', '1px solid #0f172a', 'important');
+                        btn.style.setProperty('height', '7.2rem', 'important');
+                        btn.style.setProperty('min-height', '7.2rem', 'important');
+                        btn.style.setProperty('max-height', '7.2rem', 'important');
+                        btn.style.setProperty('font-size', '1.4rem', 'important');
+                        btn.style.setProperty('font-weight', '900', 'important');
+                    }
+                });
+            };
+            const styleScanner = () => {
+                if (!window.parent.document) return;
+                window.parent.document.querySelectorAll('input').forEach(el => {
+                    if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
+                        el.style.setProperty('font-size', '1.2rem', 'important');
+                        el.style.setProperty('font-weight', '900', 'important');
+                        let parentDiv = el.parentElement;
+                        let grandParent = el.closest('div[data-baseweb="input"]');
+                        if (parentDiv) parentDiv.style.setProperty('border', 'none', 'important');
+                        if (grandParent) grandParent.style.setProperty('border', '2px solid #eab308', 'important');
+                        if (!el.getAttribute('data-scanner-listener')) {
+                            el.setAttribute('data-scanner-listener', 'true');
+                            el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
+                            el.addEventListener('blur', () => { el.removeAttribute('data-focused'); });
+                        }
+                        if (el.getAttribute('data-focused')) {
+                            el.style.setProperty('color', '#ffffff', 'important');
+                            if (parentDiv) parentDiv.style.setProperty('background-color', '#1e293b', 'important');
+                            if (grandParent) grandParent.style.setProperty('background-color', '#1e293b', 'important');
+                        } else {
+                            el.style.setProperty('color', '#000000', 'important');
+                            if (parentDiv) parentDiv.style.setProperty('background-color', '#fef08a', 'important');
+                            if (grandParent) grandParent.style.setProperty('background-color', '#fef08a', 'important');
+                        }
+                    }
+                });
+            };
+            const disableKeyboard = () => {
+                if (!window.parent.document) return;
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(el => {
+                    const placeholder = el.getAttribute('placeholder') || '';
+                    const ariaLabel = el.getAttribute('aria-label') || '';
+                    const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
+                    const isDatepicker = el.closest('div[data-baseweb="datepicker"]') !== null;
+                    if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
+                        ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
+                        isDropdown || isDatepicker) {
+                        el.setAttribute('inputmode', 'none');
+                        el.setAttribute('readonly', 'readonly');
+                        el.addEventListener('focus', function(e) { e.target.blur(); });
+                    }
+                });
+            };
+            const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
+            if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
+            disableKeyboard(); formatNavButtons(); styleScanner();
+        }
+        </script>
+        """, height=0, width=0
+    )
+else:
+    st.markdown(analysis_theme_css, unsafe_allow_html=True)
 
-                if (text.trim() === 'ADMINISTRATOR') { 
-                    btn.style.setProperty('background', '#1e293b', 'important');
-                    btn.style.setProperty('background-color', '#1e293b', 'important');
-                    btn.style.setProperty('color', '#FFC000', 'important');
-                    btn.style.setProperty('border', '1px solid #0f172a', 'important');
-                    btn.style.setProperty('height', '7.2rem', 'important');
-                    btn.style.setProperty('min-height', '7.2rem', 'important');
-                    btn.style.setProperty('max-height', '7.2rem', 'important');
-                    btn.style.setProperty('font-size', '1.4rem', 'important');
-                    btn.style.setProperty('font-weight', '900', 'important');
-                }
-            });
-        };
-        
-        const styleScanner = () => {
-            if (!window.parent.document) return;
-            window.parent.document.querySelectorAll('input').forEach(el => {
-                if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
-                    el.style.setProperty('font-size', '1.2rem', 'important');
-                    el.style.setProperty('font-weight', '900', 'important');
-                    
-                    let parentDiv = el.parentElement;
-                    let grandParent = el.closest('div[data-baseweb="input"]');
-                    if (parentDiv) parentDiv.style.setProperty('border', 'none', 'important');
-                    if (grandParent) grandParent.style.setProperty('border', '2px solid #eab308', 'important');
-                    
-                    if (!el.getAttribute('data-scanner-listener')) {
-                        el.setAttribute('data-scanner-listener', 'true');
-                        el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
-                        el.addEventListener('blur', () => { el.removeAttribute('data-focused'); });
-                    }
-                    if (el.getAttribute('data-focused')) {
-                        el.style.setProperty('color', '#ffffff', 'important');
-                        if (parentDiv) parentDiv.style.setProperty('background-color', '#1e293b', 'important');
-                        if (grandParent) grandParent.style.setProperty('background-color', '#1e293b', 'important');
-                    } else {
-                        el.style.setProperty('color', '#000000', 'important');
-                        if (parentDiv) parentDiv.style.setProperty('background-color', '#fef08a', 'important');
-                        if (grandParent) grandParent.style.setProperty('background-color', '#fef08a', 'important');
-                    }
-                }
-            });
-        };
-        
-        const disableKeyboard = () => {
-            if (!window.parent.document) return;
-            const inputs = window.parent.document.querySelectorAll('input');
-            inputs.forEach(el => {
-                const placeholder = el.getAttribute('placeholder') || '';
-                const ariaLabel = el.getAttribute('aria-label') || '';
-                const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
-                const isDatepicker = el.closest('div[data-baseweb="datepicker"]') !== null;
-                
-                if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
-                    ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
-                    isDropdown || isDatepicker) {
-                    el.setAttribute('inputmode', 'none');
-                    el.setAttribute('readonly', 'readonly');
-                    el.addEventListener('focus', function(e) { e.target.blur(); });
-                }
-            });
-        };
-        
-        const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
-        if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
-        disableKeyboard(); formatNavButtons(); styleScanner();
-    }
-    </script>
-    """, height=0, width=0
-)
 
 def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
@@ -730,37 +733,20 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
-def render_nav_buttons(step_num, max_step):
-    st.markdown("<br>", unsafe_allow_html=True)
-    c_nav = st.columns(6)
-    with c_nav[4]:
-        if step_num > 1:
-            if st.button("⬅️ 이전", use_container_width=True):
-                st.session_state.step -= 1
-                st.rerun()
-    with c_nav[5]:
-        if step_num < max_step:
-            if st.button("다음 ➡️", use_container_width=True):
-                st.session_state.step += 1
-                st.rerun()
-
 
 # ==========================================
-# Administrator (분석) 프로세스
+# 💡 Administrator (72H Live Command Center)
 # ==========================================
 if st.session_state.current_page == "analysis":
-    logo_s_data = get_image_base64("at")
-    img_html = f"<img src='{logo_s_data}' style='height: 40px; margin-right: 15px; vertical-align: middle;'>" if logo_s_data else ""
-    
-    col1, col2, col3 = st.columns([0.6, 0.25, 0.15])
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([0.6, 0.2, 0.2])
     with col1:
-        st.markdown(f"<h2 style='display: flex; align-items: center; color: #1e293b; margin:0;'><span class='live-dot'></span> {img_html} 종합 생산 데이터 라이브 분석</h2>", unsafe_allow_html=True)
+        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 10px;'><span class='live-dot'></span>SERVER-A LIVE COMMAND CENTER v7.2</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #64748B; font-size: 0.9rem; margin-bottom: 20px;'>Pipeline telemetry for 72H yield surveillance with auto-refresh heartbeat.</div>", unsafe_allow_html=True)
     with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        auto_refresh = st.checkbox("🔄 실시간 자동 새로고침 (10초)", value=False)
+        auto_refresh = st.checkbox("🔄 AUTO REFRESH (10s)", value=True)
     with col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("돌아가기 (데이터 입력)", type="primary", use_container_width=True):
+        if st.button("RETURN TO INPUT", type="primary", use_container_width=True):
             st.session_state.current_page = "input"
             st.rerun()
             
@@ -768,27 +754,34 @@ if st.session_state.current_page == "analysis":
     selected_sheets = []
     
     with st.container(border=True):
-        st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 📂 데이터 소스(Sheet) 선택</h4><br>", unsafe_allow_html=True)
+        st.markdown("<div class='metric-label'>■ DATA SOURCE SELECTION (DB & ARCHIVE)</div>", unsafe_allow_html=True)
         if not available_sheets:
-            st.error("스프레드시트에 연결할 수 없거나 시트를 불러오지 못했습니다.")
+            st.error("No connection to database.")
         else:
             default_s = [s for s in available_sheets if "Q" in s.upper() or s == TAB_NAME]
-            selected_sheets = st.multiselect("분석에 포함할 시트를 선택하세요 (다중 선택 가능)", available_sheets, default=default_s, label_visibility="collapsed")
+            selected_sheets = st.multiselect("Active Nodes", available_sheets, default=default_s, label_visibility="collapsed")
 
     if not selected_sheets:
-        st.warning("분석할 시트를 하나 이상 선택해주세요.")
+        st.warning("Select at least one data source node.")
     else:
-        with st.spinner("데이터를 불러오고 분석하는 중입니다..."):
-            df = load_analysis_data(tuple(selected_sheets)).copy()
+        df = load_analysis_data(tuple(selected_sheets)).copy()
 
         if df.empty: 
-            st.warning("선택된 시트에 저장된 데이터가 없습니다.")
+            st.warning("No data retrieved from selected nodes.")
         else:
-            numeric_cols = ["검사 수량", "양품수량", "불량수량", "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타"]
-            for col in numeric_cols:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-                    
+            def pct_to_float(x):
+                try:
+                    if pd.isna(x) or str(x).strip() == '': return 0.0
+                    return float(str(x).replace('%', '').replace(',', '').strip())
+                except: return 0.0
+
+            df['Yield_1'] = df['양품율'].apply(pct_to_float)
+            df['Yield_2'] = df['양품율(전/배 포함)'].apply(pct_to_float)
+            df['Def_Comp'] = df['완전불량율'].apply(pct_to_float)
+            df['Def_Front'] = df['전면불량율'].apply(pct_to_float)
+            df['Def_Rear'] = df['배면불량율'].apply(pct_to_float)
+            df['Insp_Qty'] = pd.to_numeric(df['검사 수량'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            
             def parse_dt(r):
                 try:
                     d_str = str(r.get('날짜', '')).strip()
@@ -805,104 +798,74 @@ if st.session_state.current_page == "analysis":
                 
             df['DateTime'] = df.apply(parse_dt, axis=1)
             df = df.dropna(subset=['DateTime'])
-
-            with st.container(border=True):
-                st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 상세 분석 조건 필터</h4><br>", unsafe_allow_html=True)
-                f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.15, 0.25, 0.2, 0.2, 0.2])
-                with f_col1:
-                    agg_period = st.radio("⏱️ 시간 단위", ["시간별", "일별", "주간별", "월별"], index=1)
-                with f_col2:
-                    dates = sorted(df['날짜'].unique().tolist())
-                    selected_dates = st.multiselect("📅 날짜 (미선택 시 전체)", dates, default=[])
-                with f_col3:
-                    models = sorted(df['모델명(MI)'].unique().tolist())
-                    selected_models = st.multiselect("🏷️ 모델명", models, default=[])
-                with f_col4:
-                    shifts = df['교대'].unique().tolist()
-                    selected_shifts = st.multiselect("⏰ 교대/시간", shifts, default=[])
-                with f_col5:
-                    categories = df['구분'].unique().tolist()
-                    selected_categories = st.multiselect("🛠️ 검사 기준", categories, default=[])
-
-                filtered_df = df.copy()
-                if selected_dates: filtered_df = filtered_df[filtered_df['날짜'].isin(selected_dates)]
-                if selected_models: filtered_df = filtered_df[filtered_df['모델명(MI)'].isin(selected_models)]
-                if selected_shifts: filtered_df = filtered_df[filtered_df['교대'].isin(selected_shifts)]
-                if selected_categories: filtered_df = filtered_df[filtered_df['구분'].isin(selected_categories)]
-
-            if filtered_df.empty:
-                st.info("선택한 조건에 맞는 데이터가 없습니다.")
+            
+            # 💡 72H Filtering
+            now_ts = pd.Timestamp.now()
+            df_72 = df[df['DateTime'] >= (now_ts - pd.Timedelta(hours=72))].sort_values('DateTime')
+            
+            if df_72.empty:
+                st.info("NO TELEMETRY DATA FOUND IN THE LAST 72 HOURS.")
             else:
-                total_insp = filtered_df['검사 수량'].sum()
-                total_good = filtered_df['양품수량'].sum()
-                total_bad = filtered_df['불량수량'].sum()
-                yield_rate = (total_good / total_insp * 100) if total_insp > 0 else 0
-
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("총 검사 수량", f"{int(total_insp):,} 개")
-                c2.metric("총 양품 수량", f"{int(total_good):,} 개")
-                c3.metric("총 불량 수량", f"{int(total_bad):,} 개")
-                c4.metric("평균 양품률", f"{yield_rate:.1f} %")
-
-                period_map = {"시간별": '%m-%d %H:00', "일별": '%Y-%m-%d', "주간별": '%Y-%W주차', "월별": '%Y-%m'}
-                filtered_df['Period'] = filtered_df['DateTime'].dt.strftime(period_map[agg_period])
+                total_insp = df_72['Insp_Qty'].sum()
+                models_active = len(df_72['모델명(MI)'].unique())
+                avg_yield = df_72['Yield_1'].mean() if len(df_72) > 0 else 0
                 
-                trend_df = filtered_df.groupby('Period').agg(
-                    Good=('양품수량', 'sum'),
-                    Bad=('불량수량', 'sum'),
-                    Insp=('검사 수량', 'sum')
-                ).reset_index().sort_values('Period')
-                trend_df['Yield'] = (trend_df['Good'] / trend_df['Insp'] * 100).fillna(0)
+                m1, m2, m3, m4 = st.columns(4)
+                m1.markdown(f"<div class='metric-label'>72H TOTAL INSP</div><div class='metric-value'>{int(total_insp):,}</div>", unsafe_allow_html=True)
+                m2.markdown(f"<div class='metric-label'>ACTIVE MODELS</div><div class='metric-value'>{models_active}</div>", unsafe_allow_html=True)
+                m3.markdown(f"<div class='metric-label'>72H AVG YIELD</div><div class='metric-value' style='color: #10B981 !important;'>{avg_yield:.1f}%</div>", unsafe_allow_html=True)
+                m4.markdown(f"<div class='metric-label'>STATUS</div><div class='metric-value neon-text'>ONLINE</div>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                with st.container(border=True):
-                    st.markdown(f"<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 실시간 생산 트렌드 ({agg_period})</h4>", unsafe_allow_html=True)
-                    
-                    fig_trend = go.Figure()
-                    fig_trend.add_trace(go.Bar(x=trend_df['Period'], y=trend_df['Good'], name='양품수량', marker_color='#10B981', yaxis='y1'))
-                    fig_trend.add_trace(go.Bar(x=trend_df['Period'], y=trend_df['Bad'], name='불량수량', marker_color='#EF4444', yaxis='y1'))
-                    
-                    fig_trend.add_trace(go.Scatter(
-                        x=trend_df['Period'], y=trend_df['Yield'], name='양품률(%)', mode='lines+markers',
-                        line=dict(color='#FFC000', width=4), marker=dict(size=8, color='#FFC000'), yaxis='y2'
-                    ))
-                    
-                    if len(trend_df) > 0:
-                        last_x = trend_df['Period'].iloc[-1]
-                        last_y = trend_df['Yield'].iloc[-1]
-                        fig_trend.add_trace(go.Scatter(
-                            x=[last_x], y=[last_y], mode='markers', name='Live',
-                            marker=dict(size=24, color='#FFC000', line=dict(width=10, color='rgba(255, 192, 0, 0.3)')),
-                            yaxis='y2', showlegend=False, hoverinfo='skip'
-                        ))
+                models = sorted(df_72['모델명(MI)'].unique().tolist())
+                neon_colors = ['#00E5FF', '#FF00FF', '#FFFF00', '#00FF00', '#FF3366', '#FF9900', '#9D00FF', '#00BFFF']
 
-                    fig_trend.update_layout(
-                        barmode='stack', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', height=400,
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                        yaxis=dict(title='생산 수량 (개)', side='left', showgrid=True, gridcolor='#f1f5f9'),
-                        yaxis2=dict(title='양품률 (%)', side='right', overlaying='y', range=[min(trend_df['Yield'].min()-5, 80), 105], showgrid=False),
-                        margin=dict(l=0, r=0, t=40, b=0)
+                def get_dark_layout(title_text):
+                    return dict(
+                        title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
+                        plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
+                        font=dict(color='#94A3B8', family='monospace'),
+                        xaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
+                        yaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
+                        margin=dict(l=40, r=40, t=50, b=40),
+                        hovermode='x unified',
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                     )
-                    st.plotly_chart(fig_trend, use_container_width=True)
 
+                # 💡 Graph 1: 1차 검사 수율 vs 전/배포함 수율
                 with st.container(border=True):
-                    g_col1, g_col2 = st.columns(2)
-                    with g_col1:
-                        st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 주요 불량 유형 점유율</h4><br>", unsafe_allow_html=True)
-                        defect_sums = filtered_df[['완전불량', '전면불량', '배면불량', '옵셋불량', '기타']].sum()
-                        fig_pie = px.pie(names=defect_sums.index, values=defect_sums.values, hole=0.5, color_discrete_sequence=['#EF4444', '#F59E0B', '#1e293b', '#8B5CF6', '#6B7280'])
-                        fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'), height=300, margin=dict(l=0, r=0, t=10, b=10))
-                        st.plotly_chart(fig_pie, use_container_width=True)
-                        
-                    with g_col2:
-                        st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 모델별 수율 비교</h4><br>", unsafe_allow_html=True)
-                        model_df = filtered_df.groupby('모델명(MI)').agg(Insp=('검사 수량', 'sum'), Good=('양품수량', 'sum')).reset_index()
-                        model_df['Yield'] = (model_df['Good'] / model_df['Insp'] * 100).fillna(0)
-                        model_df = model_df.sort_values('Yield', ascending=True)
-                        
-                        fig_bar = go.Figure()
-                        fig_bar.add_trace(go.Bar(x=model_df['Yield'], y=model_df['모델명(MI)'], orientation='h', marker_color='#305496', text=model_df['Yield'].apply(lambda x: f"{x:.1f}%"), textposition='outside'))
-                        fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(l=0, r=0, t=10, b=10), xaxis=dict(range=[min(model_df['Yield'].min()-10, 50), 110], showgrid=True, gridcolor='#f1f5f9'))
-                        st.plotly_chart(fig_bar, use_container_width=True)
+                    fig1 = go.Figure()
+                    for i, model in enumerate(models):
+                        mdf = df_72[df_72['모델명(MI)'] == model]
+                        c = neon_colors[i % len(neon_colors)]
+                        fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_1'], name=f"[{model}] 1차", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=6, color=c)))
+                        fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_2'], name=f"[{model}] 전/배포함", mode='lines+markers', line=dict(color=c, width=2, dash='dot'), marker=dict(size=4, symbol='x', color=c)))
+                    
+                    fig1.update_layout(**get_dark_layout("72H YIELD TREND (1ST vs INCL. F/R)"), height=350, yaxis_title="YIELD (%)")
+                    st.plotly_chart(fig1, use_container_width=True)
+
+                # 💡 Graph 2: 완전불량율
+                with st.container(border=True):
+                    fig2 = go.Figure()
+                    for i, model in enumerate(models):
+                        mdf = df_72[df_72['모델명(MI)'] == model]
+                        c = neon_colors[i % len(neon_colors)]
+                        fig2.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Comp'], name=f"[{model}] 완전불량", mode='lines', line=dict(color=c, width=2), fill='tozeroy', fillcolor=c.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c else None))
+                    
+                    fig2.update_layout(**get_dark_layout("72H COMPLETE DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
+                    st.plotly_chart(fig2, use_container_width=True)
+
+                # 💡 Graph 3: 전면불량율 vs 배면불량율
+                with st.container(border=True):
+                    fig3 = go.Figure()
+                    for i, model in enumerate(models):
+                        mdf = df_72[df_72['모델명(MI)'] == model]
+                        c = neon_colors[i % len(neon_colors)]
+                        fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Front'], name=f"[{model}] 전면불량", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=5)))
+                        fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Rear'], name=f"[{model}] 배면불량", mode='lines+markers', line=dict(color=c, width=2, dash='dash'), marker=dict(size=5, symbol='triangle-up')))
+                    
+                    fig3.update_layout(**get_dark_layout("72H FRONT & REAR DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
+                    st.plotly_chart(fig3, use_container_width=True)
 
     if auto_refresh:
         time.sleep(10)
@@ -992,7 +955,6 @@ elif st.session_state.current_page == "input":
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
                     st.markdown("**작업자**")
-                    # 💡 workers 다중 선택 -> worker 단일 선택 버그 수정
                     w_val = st.session_state.get("worker", worker_list[0])
                     st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(w_val) if w_val in worker_list else 0, label_visibility="collapsed")
 
