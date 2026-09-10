@@ -762,8 +762,9 @@ if st.session_state.current_page == "analysis":
             
     df = load_analysis_data().copy()
 
-    if df.empty: 
-        st.warning("No data retrieved from the database.")
+    # 💡 껍데기만 있는 DataFrame일 경우 KeyError 방지
+    if df.empty or '모델명(MI)' not in df.columns: 
+        st.warning("No valid telemetry data retrieved from the database.")
     else:
         def pct_to_float(x):
             try:
@@ -795,21 +796,26 @@ if st.session_state.current_page == "analysis":
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 동적 기준점 설정: 시스템의 현재 시간이 아닌, DB 내 '가장 최신 날짜'를 기준으로 D-2 필터링
-        if not df.empty and not df['DateTime'].dropna().empty:
-            latest_date = df['DateTime'].dropna().max().date()
-            start_date = latest_date - timedelta(days=2)
-            df['DateOnly'] = df['DateTime'].dt.date
-            df_target = df[df['DateOnly'] >= start_date].sort_values('DateTime')
-        else:
-            df_target = pd.DataFrame()
+        # 💡 테스트 환경 기준점 변경: '어제' 날짜를 기준으로 -2일전 (총 3일간) 데이터 필터링
+        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        yesterday = (now_kst - timedelta(days=1)).date()
+        start_date = yesterday - timedelta(days=2)
         
+        df['DateOnly'] = df['DateTime'].dt.date
+        df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= yesterday)].sort_values('DateTime').copy()
+        
+        # 만약 필터링 결과가 비어있다면 에러가 나지 않도록 원래 컬럼 구조 유지
+        if df_target.empty:
+            df_target = pd.DataFrame(columns=df.columns)
+            
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
-            models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist())
+            
+            # 모델명 추출 시 빈 리스트 방어
+            models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             
             if not models_available:
-                st.info("NO TELEMETRY DATA FOUND IN THE DATABASE.")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {yesterday.strftime('%Y-%m-%d')}).")
             else:
                 selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
