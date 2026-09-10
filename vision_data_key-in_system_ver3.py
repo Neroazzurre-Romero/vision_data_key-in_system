@@ -164,7 +164,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-
 # ==============================================================================
 # 💡 페이지별 CSS 분리 적용
 # ==============================================================================
@@ -554,8 +553,13 @@ def load_analysis_data():
                 row_data = {"_year": year_val}
                 for col in EXCEL_COLUMNS:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
+                    
+                    # 💡 완벽한 컬럼 매핑 (빈 데이터 에러 원천 차단)
                     if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
                     elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
+                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자"] # "일자" 오류 해결
+                    elif col_key == "시작시간": aliases = ["시간", "작업시간"]
+                    elif col_key == "구분": aliases = ["검사구분"]
                     else: aliases = []
                     
                     matched_header = None
@@ -776,10 +780,13 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
+        # 💡 극강의 안정성을 갖춘 날짜 파서 (모든 변형 대응)
         def parse_dt(r):
             try:
                 d_val = str(r.get('날짜', '')).strip()
                 t_val = str(r.get('시작시간', '')).strip()
+                
+                if not d_val or d_val.lower() in ['nan', 'none', '']: return pd.NaT
                 
                 if not t_val or t_val.lower() in ['nan', 'none', '']: 
                     t_val = "00:00"
@@ -787,9 +794,8 @@ if st.session_state.current_page == "analysis":
                 t_clean = re.sub(r'[^\d]', '', t_val)
                 if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
                 elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
+                elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
                 else: t_str = "00:00"
-                    
-                if not d_val or d_val.lower() in ['nan', 'none', '']: return pd.NaT
 
                 y = str(r.get('_year', datetime.now().year))
                 
@@ -798,56 +804,62 @@ if st.session_state.current_page == "analysis":
                     target_date = base_date + timedelta(days=int(d_val))
                     return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
 
-                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
-                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
-                
-                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
-                
-                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
-
+                nums = re.findall(r'\d+', d_val)
+                if len(nums) >= 3:
+                    if len(nums[0]) == 4:
+                        return pd.to_datetime(f"{nums[0]}-{nums[1].zfill(2)}-{nums[2].zfill(2)} {t_str}")
+                    else:
+                        return pd.to_datetime(f"20{nums[0].zfill(2)}-{nums[1].zfill(2)}-{nums[2].zfill(2)} {t_str}")
+                elif len(nums) == 2:
+                    return pd.to_datetime(f"{y}-{nums[0].zfill(2)}-{nums[1].zfill(2)} {t_str}")
             except: pass
             return pd.NaT
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
+        df = df.dropna(subset=['DateTime'])
         
-        # 💡 에러 방어 시계열 복구 로직 (ValueError 완전 차단)
-        if df['DateTime'].isna().all():
-            now_t = datetime.now()
-            # pandas.date_range 의존성 제거, 순수 파이썬 리스트 컴프리헨션 사용
-            df['DateTime'] = [now_t - timedelta(hours=i) for i in range(len(df)-1, -1, -1)]
-            st.info("⚠️ Could not parse actual dates from DB. Displaying auto-generated sequence.")
+        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 기준으로 과거 2일 전(총 3일간) 데이터 필터링
+        if not df['DateTime'].empty:
+            latest_date = df['DateTime'].max().date()
+            start_date = latest_date - timedelta(days=2)
+            
+            df['DateOnly'] = df['DateTime'].dt.date
+            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= latest_date)].copy()
         else:
-            df = df.dropna(subset=['DateTime'])
-        
-        # 💡 어제 날짜를 기준으로 -2일전 (어제 포함 총 3일간) 데이터 필터링
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        yesterday_date = (now_kst - timedelta(days=1)).date()
-        start_date = yesterday_date - timedelta(days=2)
-        
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= yesterday_date)].copy()
-        
-        # 데이터가 없을 경우 기본 구조 유지
-        if df_target.empty:
             df_target = pd.DataFrame(columns=df.columns)
+            start_date = datetime.now().date()
+            latest_date = datetime.now().date()
             
         with st.container(border=True):
-            st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
+                models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+                selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed") if models_available else None
             
-            models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
-            
+            with col_b:
+                st.markdown("<div class='metric-label'>■ INSPECTION CATEGORY</div>", unsafe_allow_html=True)
+                # 💡 1차 검사를 Default로 필터링
+                if '구분' in df_target.columns:
+                    df_target['구분'] = df_target['구분'].fillna('').astype(str).str.strip()
+                    unique_types = [str(x) for x in df_target['구분'].unique() if str(x) != '']
+                    default_types = [t for t in unique_types if '1차' in t]
+                    if not default_types and unique_types: default_types = unique_types
+                    selected_cats = st.multiselect("Category", unique_types, default=default_types, label_visibility="collapsed")
+                else:
+                    selected_cats = []
+
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {yesterday_date.strftime('%Y-%m-%d')}).")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {latest_date.strftime('%Y-%m-%d')}).")
             else:
-                selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
                 model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
+                if selected_cats and not model_df.empty:
+                    model_df = model_df[model_df['구분'].isin(selected_cats)]
                 
                 if model_df.empty:
-                    st.info("No data for the selected model.")
+                    st.info(f"No data for the selected model / category in this period.")
                 else:
-                    # 💡 X축을 시간순으로 나열된 LOT NO. 카테고리로 생성하여 연속성 부여
+                    # 💡 X축을 LOT NO. 카테고리로 생성하여 연속성 유지
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     model_df = model_df.sort_values('DateTime') 
                     
