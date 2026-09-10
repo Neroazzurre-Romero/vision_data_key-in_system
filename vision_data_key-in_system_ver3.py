@@ -290,19 +290,19 @@ input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-we
 }
 [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
 div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
 </style>
 """
 
-# 💡 미래지향적 Command Center Dark Theme CSS
 analysis_theme_css = """
 <style>
 footer { display: none !important; } 
 [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
+.block-container { padding-top: 2.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
 /* Dark Background */
 [data-testid="stAppViewContainer"] { background-color: #050814 !important; color: #E2E8F0 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
@@ -313,29 +313,40 @@ body { overscroll-behavior-y: none !important; }
 div[data-testid="stVerticalBlockBorderWrapper"] {
     background-color: #0B101E !important;
     border: 1px solid #1E293B !important;
-    border-radius: 4px !important;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8) !important;
-    padding: 1rem !important;
-    margin-bottom: 0.5rem !important;
+    border-radius: 6px !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6) !important;
+    padding: 1.2rem !important;
+    margin-bottom: 0.8rem !important;
 }
 
 h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
 
 /* Custom Neon Titles */
-.command-header { color: #38BDF8 !important; font-weight: 900 !important; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 0 5px rgba(56, 189, 248, 0.5); }
-.metric-value { color: #E2E8F0 !important; font-size: 2rem !important; font-weight: bold !important; text-shadow: 0 0 8px rgba(255,255,255,0.3); }
-.metric-label { color: #38BDF8 !important; font-size: 0.9rem !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+.command-header { color: #38BDF8 !important; font-weight: 900 !important; letter-spacing: 1.5px; text-shadow: 0 0 5px rgba(56, 189, 248, 0.4); }
+.metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; }
 
 /* Live Blinking Dot Effect */
 @keyframes blink {
-    0% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
-    50% { opacity: 0.3; box-shadow: 0 0 2px #EF4444; }
-    100% { opacity: 1; box-shadow: 0 0 10px #EF4444; }
+    0% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
+    50% { opacity: 0.3; box-shadow: 0 0 3px #EF4444; }
+    100% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
 }
 .live-dot {
-    height: 12px; width: 12px; background-color: #EF4444; border-radius: 50%;
-    display: inline-block; margin-right: 10px; margin-bottom: 2px;
+    height: 14px; width: 14px; background-color: #EF4444; border-radius: 50%;
+    display: inline-block; margin-right: 12px; margin-bottom: 2px;
     animation: blink 1.2s ease-in-out infinite;
+}
+
+/* Custom Selectbox for Dark Mode */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background-color: #0F172A !important;
+    border: 1px solid #1E293B !important;
+    color: #E2E8F0 !important;
+}
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
+    color: #E2E8F0 !important;
+    font-weight: bold !important;
+    font-size: 1.1rem !important;
 }
 
 /* Buttons in Dark Mode */
@@ -344,7 +355,7 @@ div[data-testid="stButton"] button {
     color: #38BDF8 !important;
     border: 1px solid #1E293B !important;
     border-radius: 4px !important;
-    font-family: 'Consolas', 'Courier New', monospace !important;
+    font-weight: bold !important;
     transition: all 0.2s ease;
 }
 div[data-testid="stButton"] button:hover {
@@ -504,7 +515,6 @@ def get_sheet():
         except: return doc.sheet1
     return None
 
-# 💡 스마트 자동 로딩: 가장 최근 분기 시트 1개 + DB 시트만 불러와 API 부하를 원천 차단
 @st.cache_data(ttl=15) 
 def load_analysis_data():
     doc = get_spreadsheet_doc()
@@ -512,7 +522,6 @@ def load_analysis_data():
     
     worksheets = doc.worksheets()
     
-    # "Q"가 포함된 시트 중 가장 이름이 큰(최신) 시트 1개만 추출
     q_sheets = [ws for ws in worksheets if "Q" in ws.title.upper()]
     q_sheets.sort(key=lambda x: x.title, reverse=True)
     
@@ -749,26 +758,27 @@ def render_nav_buttons(step_num, max_step):
 
 
 # ==========================================
-# 💡 Administrator (72H Live Command Center)
+# 💡 Administrator (LIVE YIELD COMMAND CENTER)
 # ==========================================
 if st.session_state.current_page == "analysis":
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([0.6, 0.2, 0.2])
+    
+    col1, col2, col3 = st.columns([0.65, 0.15, 0.2])
     with col1:
-        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 10px;'><span class='live-dot'></span>SERVER-A LIVE COMMAND CENTER v7.2</div>", unsafe_allow_html=True)
-        st.markdown("<div style='color: #64748B; font-size: 0.9rem; margin-bottom: 20px;'>Pipeline telemetry for 72H yield surveillance with auto-refresh heartbeat.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>LIVE YIELD COMMAND CENTER v1.0</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Real-time LOT surveillance pipeline. Auto-refresh enabled.</div>", unsafe_allow_html=True)
     with col2:
-        auto_refresh = st.checkbox("🔄 AUTO REFRESH (10s)", value=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        auto_refresh = st.checkbox("🔄 AUTO REFRESH", value=True)
     with col3:
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("RETURN TO INPUT", type="primary", use_container_width=True):
             st.session_state.current_page = "input"
             st.rerun()
             
-    # 💡 수동 시트 선택 제거 및 자동 로딩 함수 호출
     df = load_analysis_data().copy()
 
     if df.empty: 
-        st.warning("No data retrieved from selected nodes.")
+        st.warning("No data retrieved from the database.")
     else:
         def pct_to_float(x):
             try:
@@ -800,73 +810,115 @@ if st.session_state.current_page == "analysis":
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 72H Filtering (정확히 오늘 기준 2일 전 포함, 총 3일간의 시계열 슬라이싱)
-        now_ts = pd.Timestamp.now()
-        df_72 = df[df['DateTime'] >= (now_ts - pd.Timedelta(hours=72))].sort_values('DateTime')
+        # 💡 오늘 기준 과거 2일 전(D-2) 자정부터 필터링
+        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        start_date = (now_kst - timedelta(days=2)).date()
+        df['DateOnly'] = df['DateTime'].dt.date
+        df_target = df[df['DateOnly'] >= start_date].sort_values('DateTime')
         
-        if df_72.empty:
-            st.info("NO TELEMETRY DATA FOUND IN THE LAST 72 HOURS.")
-        else:
-            total_insp = df_72['Insp_Qty'].sum()
-            models_active = len(df_72['모델명(MI)'].unique())
-            avg_yield = df_72['Yield_1'].mean() if len(df_72) > 0 else 0
+        with st.container(border=True):
+            st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
+            models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist())
             
-            m1, m2, m3, m4 = st.columns(4)
-            m1.markdown(f"<div class='metric-label'>72H TOTAL INSP</div><div class='metric-value'>{int(total_insp):,}</div>", unsafe_allow_html=True)
-            m2.markdown(f"<div class='metric-label'>ACTIVE MODELS</div><div class='metric-value'>{models_active}</div>", unsafe_allow_html=True)
-            m3.markdown(f"<div class='metric-label'>72H AVG YIELD</div><div class='metric-value' style='color: #10B981 !important;'>{avg_yield:.1f}%</div>", unsafe_allow_html=True)
-            m4.markdown(f"<div class='metric-label'>STATUS</div><div class='metric-value neon-text'>ONLINE</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            models = sorted(df_72['모델명(MI)'].unique().tolist())
-            neon_colors = ['#00E5FF', '#FF00FF', '#FFFF00', '#00FF00', '#FF3366', '#FF9900', '#9D00FF', '#00BFFF']
-
-            def get_dark_layout(title_text):
-                return dict(
-                    title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
-                    plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
-                    font=dict(color='#94A3B8', family='monospace'),
-                    xaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
-                    yaxis=dict(showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                    margin=dict(l=40, r=40, t=50, b=40),
-                    hovermode='x unified',
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
-                )
-
-            # 💡 Graph 1: 1차 검사 수율 vs 전/배포함 수율
-            with st.container(border=True):
-                fig1 = go.Figure()
-                for i, model in enumerate(models):
-                    mdf = df_72[df_72['모델명(MI)'] == model]
-                    c = neon_colors[i % len(neon_colors)]
-                    fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_1'], name=f"[{model}] 1차", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=6, color=c)))
-                    fig1.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Yield_2'], name=f"[{model}] 전/배포함", mode='lines+markers', line=dict(color=c, width=2, dash='dot'), marker=dict(size=4, symbol='x', color=c)))
+            if not models_available:
+                st.info("NO TELEMETRY DATA FOUND IN THE LAST 3 DAYS (-2D TO TODAY).")
+            else:
+                selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed")
+                model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
                 
-                fig1.update_layout(**get_dark_layout("72H YIELD TREND (1ST vs INCL. F/R)"), height=350, yaxis_title="YIELD (%)")
-                st.plotly_chart(fig1, use_container_width=True)
+                if model_df.empty:
+                    st.info("No data for the selected model.")
+                else:
+                    # Discrete X-axis formatting for seamless flow
+                    model_df['DisplayX'] = model_df['DateTime'].dt.strftime('%m-%d %H:%M')
+                    model_df['HoverText'] = "LOT: " + model_df['LOT NO.'].astype(str)
 
-            # 💡 Graph 2: 완전불량율
-            with st.container(border=True):
-                fig2 = go.Figure()
-                for i, model in enumerate(models):
-                    mdf = df_72[df_72['모델명(MI)'] == model]
-                    c = neon_colors[i % len(neon_colors)]
-                    fig2.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Comp'], name=f"[{model}] 완전불량", mode='lines', line=dict(color=c, width=2), fill='tozeroy', fillcolor=c.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c else None))
-                
-                fig2.update_layout(**get_dark_layout("72H COMPLETE DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
-                st.plotly_chart(fig2, use_container_width=True)
+                    def get_dark_layout(title_text, y_title):
+                        return dict(
+                            title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
+                            plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
+                            font=dict(color='#94A3B8', family='monospace'),
+                            xaxis=dict(type='category', showgrid=True, gridcolor='#1E293B', linecolor='#334155'),
+                            yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
+                            margin=dict(l=40, r=40, t=50, b=40),
+                            hovermode='x unified',
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
+                        )
 
-            # 💡 Graph 3: 전면불량율 vs 배면불량율
-            with st.container(border=True):
-                fig3 = go.Figure()
-                for i, model in enumerate(models):
-                    mdf = df_72[df_72['모델명(MI)'] == model]
-                    c = neon_colors[i % len(neon_colors)]
-                    fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Front'], name=f"[{model}] 전면불량", mode='lines+markers', line=dict(color=c, width=2), marker=dict(size=5)))
-                    fig3.add_trace(go.Scatter(x=mdf['DateTime'], y=mdf['Def_Rear'], name=f"[{model}] 배면불량", mode='lines+markers', line=dict(color=c, width=2, dash='dash'), marker=dict(size=5, symbol='triangle-up')))
-                
-                fig3.update_layout(**get_dark_layout("72H FRONT & REAR DEFECT RATE TREND"), height=300, yaxis_title="DEFECT RATE (%)")
-                st.plotly_chart(fig3, use_container_width=True)
+                    # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
+                    with st.container(border=True):
+                        fig1 = go.Figure()
+                        fig1.add_trace(go.Scatter(
+                            x=model_df['DisplayX'], y=model_df['Yield_1'], name="1차 양품율", 
+                            mode='lines+markers', line=dict(color='#00E5FF', width=3), 
+                            marker=dict(size=8, color='#00E5FF'),
+                            hovertext=model_df['HoverText']
+                        ))
+                        fig1.add_trace(go.Scatter(
+                            x=model_df['DisplayX'], y=model_df['Yield_2'], name="1차 양품율 (전/배포함)", 
+                            mode='lines+markers', line=dict(color='#FF00FF', width=3, dash='dot'), 
+                            marker=dict(size=6, symbol='x', color='#FF00FF'),
+                            hovertext=model_df['HoverText']
+                        ))
+                        
+                        # Live 점멸 마커
+                        last_x = model_df['DisplayX'].iloc[-1]
+                        last_y = model_df['Yield_1'].iloc[-1]
+                        fig1.add_trace(go.Scatter(
+                            x=[last_x], y=[last_y], mode='markers', name='Live',
+                            marker=dict(size=24, color='#00E5FF', line=dict(width=10, color='rgba(0, 229, 255, 0.3)')),
+                            showlegend=False, hoverinfo='skip'
+                        ))
+                        
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=350)
+                        st.plotly_chart(fig1, use_container_width=True)
+
+                    # 💡 Graph 2: 완전불량율
+                    with st.container(border=True):
+                        fig2 = go.Figure()
+                        fig2.add_trace(go.Scatter(
+                            x=model_df['DisplayX'], y=model_df['Def_Comp'], name="완전불량율", 
+                            mode='lines+markers', line=dict(color='#FF3366', width=3), 
+                            fill='tozeroy', fillcolor='rgba(255, 51, 102, 0.1)',
+                            marker=dict(size=8, color='#FF3366'),
+                            hovertext=model_df['HoverText']
+                        ))
+                        
+                        last_y2 = model_df['Def_Comp'].iloc[-1]
+                        fig2.add_trace(go.Scatter(
+                            x=[last_x], y=[last_y2], mode='markers', name='Live',
+                            marker=dict(size=24, color='#FF3366', line=dict(width=10, color='rgba(255, 51, 102, 0.3)')),
+                            showlegend=False, hoverinfo='skip'
+                        ))
+                        
+                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=300)
+                        st.plotly_chart(fig2, use_container_width=True)
+
+                    # 💡 Graph 3: 전면불량율 vs 배면불량율
+                    with st.container(border=True):
+                        fig3 = go.Figure()
+                        fig3.add_trace(go.Scatter(
+                            x=model_df['DisplayX'], y=model_df['Def_Front'], name="전면불량율", 
+                            mode='lines+markers', line=dict(color='#FFFF00', width=3), 
+                            marker=dict(size=8, color='#FFFF00'),
+                            hovertext=model_df['HoverText']
+                        ))
+                        fig3.add_trace(go.Scatter(
+                            x=model_df['DisplayX'], y=model_df['Def_Rear'], name="배면불량율", 
+                            mode='lines+markers', line=dict(color='#00FF00', width=3, dash='dash'), 
+                            marker=dict(size=8, symbol='triangle-up', color='#00FF00'),
+                            hovertext=model_df['HoverText']
+                        ))
+                        
+                        last_y3 = model_df['Def_Front'].iloc[-1]
+                        fig3.add_trace(go.Scatter(
+                            x=[last_x], y=[last_y3], mode='markers', name='Live',
+                            marker=dict(size=24, color='#FFFF00', line=dict(width=10, color='rgba(255, 255, 0, 0.3)')),
+                            showlegend=False, hoverinfo='skip'
+                        ))
+                        
+                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)"), height=300)
+                        st.plotly_chart(fig3, use_container_width=True)
 
     if auto_refresh:
         time.sleep(10)
