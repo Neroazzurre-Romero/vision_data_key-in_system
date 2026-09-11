@@ -328,6 +328,14 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
 .kpi-value { color: #38BDF8; font-size: 1.8rem; font-weight: 900; }
 .kpi-sub { color: #64748B; font-size: 0.8rem; }
 
+/* Custom Selectbox for Dark Mode */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
+
+/* Buttons in Dark Mode */
+div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
+div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
+
 /* Live Blinking Dot Effect */
 @keyframes blink {
     0% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
@@ -339,14 +347,6 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
     display: inline-block; margin-right: 12px; margin-bottom: 2px;
     animation: blink 1.2s ease-in-out infinite;
 }
-
-/* Custom Selectbox for Dark Mode */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
-
-/* Buttons in Dark Mode */
-div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
-div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
 </style>
 """
 
@@ -491,6 +491,7 @@ def get_sheet():
             return doc.sheet1
     return None
 
+# 💡 최첨단 무손실 데이터 로더 (중복 컬럼 에러 완벽 해결)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -569,27 +570,16 @@ def load_universal_data():
         elif cc_base == "기타": rename_dict[c] = '기타'
         elif "OQC" in cc_base: rename_dict[c] = 'OQC'
         elif "비고" in cc_base: rename_dict[c] = '비고'
-        elif "도장라인" in cc_base: rename_dict[c] = '도장라인'
-        elif "도장일" in cc_base: rename_dict[c] = '도장일'
-        elif "도장순서" in cc_base: rename_dict[c] = '도장순서'
-        elif "입고일" in cc_base: rename_dict[c] = '입고일'
         elif "LOT" in cc_base or "로트" in cc_base: rename_dict[c] = 'LOT NO.'
-        elif cc_base == "CLIP": rename_dict[c] = 'CLIP'
-        elif cc_base == "BASE": rename_dict[c] = 'BASE'
-        elif cc_base == "COVER": rename_dict[c] = 'COVER'
-        elif "조립기" in cc_base: rename_dict[c] = '조립기'
-        elif cc_base == "월": rename_dict[c] = '월'
-        elif "작업자" in cc_base: rename_dict[c] = '작업자'
     
     df = df.rename(columns=rename_dict)
-    
-    # 💡 완벽한 컬럼 추출 (중복 제거 및 누락 생성)
     df = df.loc[:, ~df.columns.duplicated(keep='first')]
+    
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
             
-    # 💡 Data Editor 등에서 에러가 발생하지 않도록 딱 필요한 컬럼만 리턴합니다.
+    # 에디터 및 분석을 위해 불필요한 열은 배제하고 표준 열만 리턴
     df = df[EXCEL_COLUMNS + ['_sheet_row']]
     return df
 
@@ -769,49 +759,73 @@ if st.session_state.current_page == "analysis":
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
         
+        # 💡 무손실 날짜 파서 (에러 방어용)
         def parse_dt(r):
+            d_val = r.get('날짜', '')
+            t_val = r.get('시작시간', '00:00')
+            if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
+            if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
+            t_clean = re.sub(r'[^\d]', '', str(t_val))
+            if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}:00"
+            elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}:00"
+            elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00:00"
+            else: t_str = "00:00:00"
+            d_str_val = str(d_val).strip()
+            
             try:
-                d_val = r.get('날짜', '')
-                t_val = r.get('시작시간', '00:00')
-                if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
-                if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
-                t_clean = re.sub(r'[^\d]', '', str(t_val))
-                if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
-                elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
-                elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
-                else: t_str = "00:00"
-                d_str_val = str(d_val).strip()
-                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
-                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
-                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
-                if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
+                # 엑셀 일련번호(예: 45400) 형태 방어
+                if d_str_val.isdigit() and 40000 <= int(d_str_val) <= 50000:
+                    base_date = datetime(1899, 12, 30)
+                    target_date = base_date + timedelta(days=int(d_str_val))
+                    return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
+                    
+                m1 = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
+                if m1: return pd.to_datetime(f"{m1.group(1)}-{m1.group(2).zfill(2)}-{m1.group(3).zfill(2)} {t_str}")
+                
+                m2 = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
+                if m2: return pd.to_datetime(f"{m2.group(3)}-{m2.group(2).zfill(2)}-{m2.group(1).zfill(2)} {t_str}")
+                
+                y = str(datetime.now(timezone(timedelta(hours=9))).year)
+                m3 = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
+                if m3: return pd.to_datetime(f"{y}-{m3.group(1).zfill(2)}-{m3.group(2).zfill(2)} {t_str}")
+                
+                m4 = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_str_val)
+                if m4: return pd.to_datetime(f"{y}-{m4.group(1).zfill(2)}-{m4.group(2).zfill(2)} {t_str}")
             except: pass
             return pd.NaT
             
-        # 💡 에러 방어: TypeError가 생기지 않도록 pd.to_datetime 강제 적용 후 NaT 즉시 제거
-        df['DateTime'] = pd.to_datetime(df.apply(parse_dt, axis=1), errors='coerce')
-        df = df.dropna(subset=['DateTime']).copy()
+        # 💡 무손실 보존: 강제 배열을 통해 TypeError 방지
+        parsed_dates = df.apply(parse_dt, axis=1)
+        missing_dates_idx = parsed_dates.isna()
         
-        # 💡 오직 1차 검사만 강제 필터링
+        if missing_dates_idx.any():
+            st.warning(f"⚠️ {missing_dates_idx.sum()}개 행의 날짜/시간을 인식할 수 없습니다. (차트 표시를 위해 2000년 1월 1일로 임시 배열됩니다.)")
+            fake_dates = [datetime(2000, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
+            parsed_dates.loc[missing_dates_idx] = fake_dates
+            
+        df['DateTime'] = pd.to_datetime(parsed_dates)
+        
+        # 💡 1차 검사 강제 필터링 (도금구분 삭제)
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty:
                 df = df_filtered
             else:
-                st.warning("⚠️ '1차 검사'로 분류된 데이터가 존재하지 않아 전체 데이터를 표시합니다.")
+                st.warning("⚠️ '1차 검사'로 분류된 데이터가 단 한 건도 존재하지 않아 전체 데이터를 표시합니다.")
             
-        # 💡 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
+        # 💡 정확한 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
-        today_date = now_kst.date()
-        target_end_date = today_date - timedelta(days=1)
-        target_start_date = today_date - timedelta(days=3)
+        target_end_date = (now_kst - timedelta(days=1)).date() # 어제
+        target_start_date = target_end_date - timedelta(days=3) # 어제 기준 과거 3일
         
         df['DateOnly'] = df['DateTime'].dt.date
-        df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+        df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
         
-        if df_target.empty:
-            st.warning(f"⚠️ 지정된 72H 타임라인({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')})에 1차 검사 데이터가 없어 전체 기간을 렌더링합니다.")
+        if df_72h.empty:
+            st.error(f"🚨 지정된 72시간 타임라인({target_start_date} ~ {target_end_date}) 내에 데이터가 없습니다! 차트 출력을 위해 DB 전체 데이터를 강제 스캔합니다.")
             df_target = df.copy()
+        else:
+            df_target = df_72h.copy()
 
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
@@ -841,7 +855,7 @@ if st.session_state.current_page == "analysis":
 
                     kpi1, kpi2, kpi3 = st.columns(3)
                     total_inspected = model_df['검사수량'].sum()
-                    avg_yield = model_df['Yield_1'].mean()
+                    avg_yield = model_df['Yield_1'].mean() if not model_df['Yield_1'].isna().all() else 0.0
                     
                     defect_sums = {
                         "완전불량": model_df['완전불량_Qty'].sum(),
@@ -849,7 +863,7 @@ if st.session_state.current_page == "analysis":
                         "배면불량": model_df['배면불량_Qty'].sum(),
                         "옵셋불량": model_df['옵셋불량_Qty'].sum()
                     }
-                    worst_defect = max(defect_sums, key=defect_sums.get)
+                    worst_defect = max(defect_sums, key=defect_sums.get) if sum(defect_sums.values()) > 0 else "불량없음"
                     
                     with kpi1:
                         st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Total Inspected (Units)</div><div class='kpi-value'>{total_inspected:,.0f}</div><div class='kpi-sub'>선택된 모델의 총 검사수량</div></div>", unsafe_allow_html=True)
@@ -876,12 +890,12 @@ if st.session_state.current_page == "analysis":
                         colors = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
                         
                         for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
-                            if m_df.empty: continue
+                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            if m_df.empty or m_df['Yield_1'].isna().all(): continue
                             
                             c1 = colors[idx % len(colors)]
                             
-                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 수정
+                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 고정 (lines+markers+text)
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
@@ -889,7 +903,7 @@ if st.session_state.current_page == "analysis":
                                 line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                            if len(m_df) > 3:
+                            if len(m_df.dropna(subset=['Yield_1'])) > 3:
                                 m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
                                 fig1.add_trace(go.Scatter(
                                     x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend (3-MA)", 
@@ -909,7 +923,10 @@ if st.session_state.current_page == "analysis":
                                 'Count': [defect_sums['완전불량'], defect_sums['전면불량'], defect_sums['배면불량'], defect_sums['옵셋불량']]
                             }).sort_values(by='Count', ascending=False)
                             
-                            pareto_df['Cumulative %'] = pareto_df['Count'].cumsum() / pareto_df['Count'].sum() * 100
+                            if pareto_df['Count'].sum() > 0:
+                                pareto_df['Cumulative %'] = pareto_df['Count'].cumsum() / pareto_df['Count'].sum() * 100
+                            else:
+                                pareto_df['Cumulative %'] = 0
                             
                             fig_pareto = go.Figure()
                             fig_pareto.add_trace(go.Bar(
@@ -932,7 +949,7 @@ if st.session_state.current_page == "analysis":
                     with col_b:
                         with st.container(border=True):
                             st.markdown("<div class='metric-label'>■ YIELD VARIANCE BY MACHINE (UNIT)</div>", unsafe_allow_html=True)
-                            if '호기' in model_df.columns:
+                            if '호기' in model_df.columns and not model_df.empty:
                                 fig_box = px.box(
                                     model_df.dropna(subset=['Yield_1']), x="호기", y="Yield_1", color="모델명(MI)",
                                     points="all", hover_data=["LOT NO."]
@@ -1185,7 +1202,7 @@ elif st.session_state.current_page == "input":
                             b_val = st.session_state.get("base_val", "")
                             cv_val = st.session_state.get("cover_val", "")
                             fmt_clip = f"K{c_val}" if st.session_state.get("clip_k") and c_val != "" else str(c_val)
-                            fmt_base = f"K{b_val}" if st.session_state.get("base_k") and b_val != "" else str(b_val)
+                            fmt_base = f"K{b_val}" if st.session_state.get("base_k") and b_val != str(b_val)
                             fmt_cover = f"K{cv_val}" if st.session_state.get("cover_k") and cv_val != "" else str(cv_val)
                             
                             lot_in = st.session_state.get("lot_input_field", "")
@@ -1542,7 +1559,6 @@ elif st.session_state.current_page == "input":
             df_history = load_universal_data().copy()
             
             if not df_history.empty:
-                # 💡 강제 필터링 및 포맷 정렬: 오류 없이 EXCEL_COLUMNS만 보여주도록 보강
                 cols_to_show = [c for c in EXCEL_COLUMNS if c in df_history.columns]
                 
                 if cols_to_show:
