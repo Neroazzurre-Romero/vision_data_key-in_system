@@ -165,10 +165,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-
-# ==============================================================================
-# 💡 페이지별 CSS 분리 적용
-# ==============================================================================
 input_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -488,7 +484,6 @@ EXCEL_COLUMNS = [
     "조립기", "월", "작업자"
 ]
 SPREADSHEET_ID = "1DeMJJkuq7bYa4XNK_NbkqZ-vOJKqGhmYXIvHm3yJl8E"
-# 💡 핵심 수정: 사용자가 지정한 시트명으로 완전히 고정
 TAB_NAME = "2026년 3Q"
 
 @st.cache_resource(ttl=600)
@@ -1176,12 +1171,13 @@ elif st.session_state.current_page == "input":
                             if save_data_append(new_data):
                                 st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
                                 
-                                for k, v in default_state.items():
-                                    if k not in ["app_mode", "current_page", "step", "unlocked"]:
-                                        st.session_state[k] = v
+                                st.cache_data.clear() 
+                                # 💡 에러 원인 제거: 세션값을 직접 수정하지 않고 완전 삭제(초기화)
+                                for k in list(default_state.keys()):
+                                    if k in st.session_state:
+                                        del st.session_state[k]
 
                                 time.sleep(1.5) 
-                                st.cache_data.clear() 
                                 st.session_state.app_mode = "END"
                                 st.session_state.step = 1
                                 st.rerun()
@@ -1481,11 +1477,12 @@ elif st.session_state.current_page == "input":
                                         sheet.update(values=[updated_row_list], range_name=f'A{sheet_row}')
                                         
                                         st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
-                                        st.cache_data.clear()
                                         
-                                        for k, v in default_state.items():
-                                            if k not in ["app_mode", "current_page", "step", "unlocked"]:
-                                                st.session_state[k] = v
+                                        st.cache_data.clear()
+                                        # 💡 에러 원인 제거: 세션값을 직접 수정하지 않고 완전 삭제(초기화)
+                                        for k in list(default_state.keys()):
+                                            if k in st.session_state:
+                                                del st.session_state[k]
                                                 
                                         time.sleep(1.5)
                                         st.session_state.app_mode = "EDIT"
