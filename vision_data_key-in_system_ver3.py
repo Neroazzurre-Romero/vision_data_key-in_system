@@ -582,12 +582,15 @@ def load_universal_data():
         elif "작업자" in cc_base: rename_dict[c] = '작업자'
     
     df = df.rename(columns=rename_dict)
-    df = df.loc[:, ~df.columns.duplicated(keep='first')]
     
+    # 💡 완벽한 컬럼 추출 (중복 제거 및 누락 생성)
+    df = df.loc[:, ~df.columns.duplicated(keep='first')]
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
             
+    # 💡 Data Editor 등에서 에러가 발생하지 않도록 딱 필요한 컬럼만 리턴합니다.
+    df = df[EXCEL_COLUMNS + ['_sheet_row']]
     return df
 
 def save_data_append(df):
@@ -785,9 +788,11 @@ if st.session_state.current_page == "analysis":
             except: pass
             return pd.NaT
             
-        df['DateTime'] = df.apply(parse_dt, axis=1)
+        # 💡 에러 방어: TypeError가 생기지 않도록 pd.to_datetime 강제 적용 후 NaT 즉시 제거
+        df['DateTime'] = pd.to_datetime(df.apply(parse_dt, axis=1), errors='coerce')
+        df = df.dropna(subset=['DateTime']).copy()
         
-        # 💡 1차 검사 전용 필터링
+        # 💡 오직 1차 검사만 강제 필터링
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty:
@@ -795,22 +800,20 @@ if st.session_state.current_page == "analysis":
             else:
                 st.warning("⚠️ '1차 검사'로 분류된 데이터가 존재하지 않아 전체 데이터를 표시합니다.")
             
-        # 💡 어제 날짜 기준 과거 3일(72H) 타임라인 강제 스캔
+        # 💡 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
         today_date = now_kst.date()
-        target_end_date = today_date - timedelta(days=1)   # 어제
-        target_start_date = today_date - timedelta(days=3) # 어제 기준 과거 3일
+        target_end_date = today_date - timedelta(days=1)
+        target_start_date = today_date - timedelta(days=3)
         
         df['DateOnly'] = df['DateTime'].dt.date
         df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
         
-        # 테스트 환경 예외 처리 (데이터가 전혀 없을 경우 풀스캔)
         if df_target.empty:
-            st.warning(f"⚠️ 지정된 72H 타임라인({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')})에 '1차 검사' 데이터가 없습니다. 시트 내 전체 데이터를 표시합니다.")
+            st.warning(f"⚠️ 지정된 72H 타임라인({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')})에 1차 검사 데이터가 없어 전체 기간을 렌더링합니다.")
             df_target = df.copy()
 
         with st.container(border=True):
-            # 도금구분 필터 삭제 -> 모델 선택만 1열로 꽉 차게 배치
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
             models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
@@ -823,7 +826,6 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data available for the selected model.")
                 else:
-                    model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
                     model_df = model_df.sort_values(['DateTime'])
                     model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
@@ -832,7 +834,7 @@ if st.session_state.current_page == "analysis":
                         mod_str = str(row.get('모델명(MI)', ''))
                         dur_str = str(row.get('소요시간', '0'))
                         lot_str = str(row['LOT NO.'])
-                        d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M') if pd.notna(row['DateTime']) and row['DateTime'] != pd.Timestamp('1900-01-01') else "Unknown Time"
+                        d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
                         return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
@@ -879,7 +881,7 @@ if st.session_state.current_page == "analysis":
                             
                             c1 = colors[idx % len(colors)]
                             
-                            # 💡 차트 라인 위에 LOT NO 강제 표시 모드 활성화 (lines+markers+text)
+                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 수정
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
@@ -1540,36 +1542,41 @@ elif st.session_state.current_page == "input":
             df_history = load_universal_data().copy()
             
             if not df_history.empty:
-                df_history['orig_index'] = df_history['_sheet_row']
-                recent_20 = df_history.iloc[::-1].head(20).copy()
-                display_df = recent_20.drop(columns=['orig_index', '_sheet_row'], errors='ignore')
+                # 💡 강제 필터링 및 포맷 정렬: 오류 없이 EXCEL_COLUMNS만 보여주도록 보강
+                cols_to_show = [c for c in EXCEL_COLUMNS if c in df_history.columns]
                 
-                edited_df = st.data_editor(
-                    display_df, 
-                    use_container_width=True, 
-                    hide_index=True,
-                    column_config={"LOT NO.": st.column_config.TextColumn("LOT NO.")}
-                )
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Data 수정 적용", type="primary", use_container_width=True):
-                    sheet = get_sheet()
-                    changed = False
-                    with st.spinner("구글 시트 업데이트 중..."):
-                        for idx in edited_df.index:
-                            old_row = display_df.loc[idx].fillna("").astype(str).tolist()
-                            new_row = edited_df.loc[idx].fillna("").astype(str).tolist()
-                            if old_row != new_row:
-                                gspread_row = recent_20.loc[idx, 'orig_index']
-                                sheet.update(values=[new_row], range_name=f'A{gspread_row}')
-                                changed = True
+                if cols_to_show:
+                    display_df = df_history[cols_to_show].copy()
+                    display_df = display_df.iloc[::-1].head(20).copy()
                     
-                    if changed:
-                        st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!</div>", unsafe_allow_html=True)
-                        st.cache_data.clear()
-                        time.sleep(1.5)
-                        st.rerun()
-                    else:
-                        st.info("수정된 항목이 없습니다.")
+                    edited_df = st.data_editor(
+                        display_df, 
+                        use_container_width=True, 
+                        hide_index=True,
+                        column_config={"LOT NO.": st.column_config.TextColumn("LOT NO.")}
+                    )
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("Data 수정 적용", type="primary", use_container_width=True):
+                        sheet = get_sheet()
+                        changed = False
+                        with st.spinner("구글 시트 업데이트 중..."):
+                            for idx in edited_df.index:
+                                old_row = display_df.loc[idx].fillna("").astype(str).tolist()
+                                new_row = edited_df.loc[idx].fillna("").astype(str).tolist()
+                                if old_row != new_row:
+                                    gspread_row = df_history.loc[idx, '_sheet_row']
+                                    sheet.update(values=[new_row], range_name=f'A{gspread_row}')
+                                    changed = True
+                        
+                        if changed:
+                            st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 구글 시트에 수정 내용이 성공적으로 반영되었습니다!</div>", unsafe_allow_html=True)
+                            st.cache_data.clear()
+                            time.sleep(1.5)
+                            st.rerun()
+                        else:
+                            st.info("수정된 항목이 없습니다.")
+                else:
+                    st.caption("저장된 데이터 포맷과 일치하지 않습니다.")
             else:
                 st.caption("저장된 데이터가 없습니다.")
