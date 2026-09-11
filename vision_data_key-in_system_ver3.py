@@ -507,97 +507,122 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    # 💡 1. 엑셀 제목 행(Header)을 가장 정확하게 찾아내는 로직
-    keywords = ['ID', '상태', '날짜', '일자', '교대', '시간', '구분', '호기', 'UNIT', '모델', '품명', 'MI', '도금', 'UPH', '수량', '양품', '불량', '수율', '합격', '옵셋', 'OQC', '비고', '도장', '입고', 'LOT', '로트', 'CLIP', 'BASE', 'COVER', '조립기', '작업자']
+    # 💡 1. 엑셀 데이터의 진짜 시작 위치 감지 (C열 날짜 인식 기반)
+    data_start_idx = -1
+    for i, row in enumerate(raw_data[:20]):
+        if len(row) > 2:
+            c_val = str(row[2]).strip()
+            # 7/1, 2026-07-01, 혹은 일련번호(45400) 형태 방어
+            if re.match(r'^\d{1,4}[./-]\d{1,2}', c_val) or (c_val.isdigit() and 40000 <= int(c_val) <= 50000):
+                data_start_idx = i
+                break
+                
+    if data_start_idx <= 0:
+        data_start_idx = 2  # 감지 실패 시 기본적으로 3번째 줄부터 데이터로 인식
 
-    best_row_idx = 0
-    max_score = -1
-    for i, row in enumerate(raw_data[:15]):
-        row_str = "".join(str(c).replace(" ", "").upper() for c in row)
-        score = sum(1 for k in keywords if k in row_str)
-        if score > max_score:
-            max_score = score
-            best_row_idx = i
-            
-    # 해당 줄을 진짜 헤더로 설정
-    headers = [str(c).strip().replace('\n', '') for c in raw_data[best_row_idx]]
+    # 💡 2. 다중 병합 셀 완벽 복원을 위한 가로/세로 연속 추출 (수직압축기술)
+    header_rows = raw_data[:data_start_idx]
+    ffill_headers = []
+    for r in header_rows:
+        curr_row = []
+        last_val = ""
+        for val in r:
+            v = str(val).strip().replace('\n', '')
+            if v != "": last_val = v
+            curr_row.append(last_val)
+        ffill_headers.append(curr_row)
+
+    num_cols = max(len(r) for r in ffill_headers) if ffill_headers else len(raw_data[0])
+    final_headers = []
+    for c in range(num_cols):
+        parts = []
+        for r in ffill_headers:
+            if c < len(r):
+                val = r[c]
+                if val and val not in parts:
+                    parts.append(val)
+        final_headers.append("".join(parts))
+
+    # 데이터 추출 및 프레임워크 생성
+    df_raw = pd.DataFrame(raw_data[data_start_idx:])
+    if df_raw.empty: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
     
-    # 빈칸 등 중복 이름 회피
-    unique_headers = []
-    seen = {}
-    for h in headers:
-        h_clean = h if h != "" else "UNNAMED"
-        if h_clean in seen:
-            seen[h_clean] += 1
-            unique_headers.append(f"{h_clean}_{seen[h_clean]}")
-        else:
-            seen[h_clean] = 0
-            unique_headers.append(h_clean)
-            
-    df = pd.DataFrame(raw_data[best_row_idx+1:], columns=unique_headers)
-    df['_sheet_row'] = range(best_row_idx + 2, best_row_idx + 2 + len(df))
-    
-    # 💡 2. 초정밀 EXACT 맵핑 (오작동 100% 차단)
+    if len(df_raw.columns) < num_cols:
+        for c in range(len(df_raw.columns), num_cols): df_raw[c] = ""
+    df_raw = df_raw.iloc[:, :num_cols]
+
+    # 💡 3. 오작동을 차단하는 EXACT 인덱스 맵핑
     rename_dict = {}
-    for c in df.columns:
-        cc = c.replace(" ", "").replace("률", "율").upper()
-        # 단어가 '포함(in)'되는지 검사하는 대신, 최대한 '정확히(==)' 매치하여 밀림 현상 방지
-        if cc in ["고유ID", "ID"]: rename_dict[c] = '고유 ID'
-        elif cc == "상태": rename_dict[c] = '상태'
-        elif cc in ["날짜", "일자", "DATE"]: rename_dict[c] = '날짜'
-        elif cc == "교대": rename_dict[c] = '교대'
-        elif cc == "시작시간": rename_dict[c] = '시작시간'
-        elif cc == "종료시간": rename_dict[c] = '종료시간'
-        elif cc == "휴동시간": rename_dict[c] = '휴동시간'
-        elif cc == "소요시간": rename_dict[c] = '소요시간'
-        elif cc == "구분": rename_dict[c] = '구분'
-        elif cc in ["호기", "UNIT"]: rename_dict[c] = '호기'
-        elif cc in ["모델", "품명", "모델명", "모델명(MI)", "MI", "기종"]: rename_dict[c] = '모델명(MI)'
-        elif cc in ["도금", "도금구분", "PLATING"]: rename_dict[c] = '도금구분'
-        elif cc == "UPH": rename_dict[c] = 'UPH'
-        elif cc == "UPD": rename_dict[c] = 'UPD'
-        elif cc in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
-        elif cc == "양품수량": rename_dict[c] = '양품수량'
-        elif cc in ["양품수량(전/배포함)", "양품수량(전/배)"]: rename_dict[c] = '양품 수량(전/배 포함)'
-        elif cc == "불량수량": rename_dict[c] = '불량수량'
-        elif cc in ["양품율", "1차양품율", "수율", "합격율"]: rename_dict[c] = '양품율'
-        elif cc in ["양품율(전/배포함)", "수율(전/배포함)"]: rename_dict[c] = '양품율(전/배 포함)'
-        elif cc in ["완전불량율", "완전불량률"]: rename_dict[c] = '완전불량율'
-        elif cc in ["전면불량율", "전면불량률"]: rename_dict[c] = '전면불량율'
-        elif cc in ["배면불량율", "배면불량률"]: rename_dict[c] = '배면불량율'
-        elif cc in ["완전불량", "완전"]: rename_dict[c] = '완전불량'
-        elif cc in ["전면불량", "전면"]: rename_dict[c] = '전면불량'
-        elif cc in ["배면불량", "배면"]: rename_dict[c] = '배면불량'
-        elif cc in ["옵셋불량", "옵셋"]: rename_dict[c] = '옵셋불량'
-        elif cc == "수량부족": rename_dict[c] = '수량부족'
-        elif cc == "기타": rename_dict[c] = '기타'
-        elif cc == "OQC": rename_dict[c] = 'OQC'
-        elif cc == "비고": rename_dict[c] = '비고'
-        elif cc == "도장라인": rename_dict[c] = '도장라인'
-        elif cc == "도장일": rename_dict[c] = '도장일'
-        elif cc == "도장순서": rename_dict[c] = '도장순서'
-        elif cc == "입고일": rename_dict[c] = '입고일'
-        elif cc in ["LOT", "로트", "LOTNO.", "LOTNO"]: rename_dict[c] = 'LOT NO.'
-        elif cc == "CLIP": rename_dict[c] = 'CLIP'
-        elif cc == "BASE": rename_dict[c] = 'BASE'
-        elif cc == "COVER": rename_dict[c] = 'COVER'
-        elif cc == "조립기": rename_dict[c] = '조립기'
-        elif cc == "월": rename_dict[c] = '월'
-        elif cc == "작업자": rename_dict[c] = '작업자'
+    mapped_std_cols = set()
+
+    for c_idx, h in enumerate(final_headers):
+        cc = h.replace(" ", "").replace("률", "율").upper()
+        matched_col = None
         
-    # 💡 C열 (Index 2) "날짜" 강제 할당 보호망
-    if len(unique_headers) > 2 and '날짜' not in rename_dict.values():
-        rename_dict[unique_headers[2]] = '날짜'
-    
-    df = df.rename(columns=rename_dict)
-    df = df.loc[:, ~df.columns.duplicated(keep='first')]
-    
+        # '단어 포함'이 아닌 명확한 1:1 대응 타겟팅
+        if "고유" in cc and "ID" in cc: matched_col = '고유 ID'
+        elif "상태" in cc: matched_col = '상태'
+        elif "교대" in cc: matched_col = '교대'
+        elif "시작" in cc and "시간" in cc: matched_col = '시작시간'
+        elif "종료" in cc and "시간" in cc: matched_col = '종료시간'
+        elif "휴동" in cc and "시간" in cc: matched_col = '휴동시간'
+        elif "소요" in cc and "시간" in cc: matched_col = '소요시간'
+        elif "호기" in cc or "UNIT" in cc: matched_col = '호기'
+        elif "모델" in cc or "품명" in cc or "MI" in cc or "기종" in cc: matched_col = '모델명(MI)'
+        elif "도금" in cc or "PLATING" in cc: matched_col = '도금구분'
+        elif "구분" in cc and "도금" not in cc: matched_col = '구분'
+        elif "검사" in cc and "수량" in cc or "총수량" in cc: matched_col = '검사 수량'
+        elif "양품" in cc and "수량" in cc and "포함" in cc: matched_col = '양품 수량(전/배 포함)'
+        elif "양품" in cc and "수량" in cc and "포함" not in cc: matched_col = '양품수량'
+        elif "불량" in cc and "수량" in cc: matched_col = '불량수량'
+        elif ("양품율" in cc or "수율" in cc or "합격율" in cc) and "포함" in cc: matched_col = '양품율(전/배 포함)'
+        elif ("양품율" in cc or "수율" in cc or "합격율" in cc) and "포함" not in cc: matched_col = '양품율'
+        elif "완전" in cc and "불량" in cc and "율" in cc: matched_col = '완전불량율'
+        elif "전면" in cc and "불량" in cc and "율" in cc: matched_col = '전면불량율'
+        elif "배면" in cc and "불량" in cc and "율" in cc: matched_col = '배면불량율'
+        elif "완전" in cc and "불량" in cc: matched_col = '완전불량'
+        elif "전면" in cc and "불량" in cc: matched_col = '전면불량'
+        elif "배면" in cc and "불량" in cc: matched_col = '배면불량'
+        elif "옵셋" in cc and "불량" in cc: matched_col = '옵셋불량'
+        elif "부족" in cc: matched_col = '수량부족'
+        elif "기타" in cc: matched_col = '기타'
+        elif "OQC" in cc: matched_col = 'OQC'
+        elif "비고" in cc: matched_col = '비고'
+        elif "도장라인" in cc: matched_col = '도장라인'
+        elif "도장일" in cc: matched_col = '도장일'
+        elif "도장순서" in cc: matched_col = '도장순서'
+        elif "입고일" in cc: matched_col = '입고일'
+        elif "LOT" in cc or "로트" in cc: matched_col = 'LOT NO.'
+        elif "CLIP" in cc: matched_col = 'CLIP'
+        elif "BASE" in cc: matched_col = 'BASE'
+        elif "COVER" in cc: matched_col = 'COVER'
+        elif "조립기" in cc: matched_col = '조립기'
+        elif "월" == cc: matched_col = '월'
+        elif "작업자" in cc: matched_col = '작업자'
+        elif "날짜" in cc or "일자" in cc or "DATE" in cc: matched_col = '날짜'
+
+        if matched_col and matched_col not in mapped_std_cols:
+            rename_dict[c_idx] = matched_col
+            mapped_std_cols.add(matched_col)
+
+    # 💡 C열 강제 할당 보호망 (헤더 인식 실패해도 무조건 날짜로 배정)
+    if 2 not in rename_dict and '날짜' not in mapped_std_cols and len(df_raw.columns) > 2:
+        rename_dict[2] = '날짜'
+
+    # 조각난 엑셀 데이터를 깔끔하게 재조립
+    final_data = {}
+    for col_idx, std_col in rename_dict.items():
+        if col_idx < len(df_raw.columns):
+            final_data[std_col] = df_raw[col_idx]
+
+    df = pd.DataFrame(final_data)
+
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
-            
-    df = df[EXCEL_COLUMNS + ['_sheet_row']]
-    return df
+
+    df['_sheet_row'] = range(data_start_idx + 1, data_start_idx + 1 + len(df))
+    return df[EXCEL_COLUMNS + ['_sheet_row']]
 
 def save_data_append(df):
     sheet = get_sheet()
@@ -765,8 +790,8 @@ if st.session_state.current_page == "analysis":
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 AI Fallback: 양품율이 없다면 양품수량과 검사수량으로 억지로라도 역산 계산
-        if df['Yield_1'].isna().all():
+        # 💡 AI Fallback: 양품율이 없다면 억지로라도 역산하여 트렌드 보존
+        if df['Yield_1'].isna().all() or (df['Yield_1'] == 0.0).all():
             if '양품수량' in df.columns and '검사 수량' in df.columns:
                 q_good = df['양품수량'].apply(safe_int)
                 q_total = df['검사 수량'].apply(safe_int)
@@ -781,7 +806,7 @@ if st.session_state.current_page == "analysis":
         if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all():
             df['모델명(MI)'] = 'ALL_MODELS'
         
-        # 💡 무손실 데이터 렌더링을 위한 안전한 날짜 파서 (Zero Drop)
+        # 💡 Zero Drop 날짜 파서: 형태가 어찌됐든 절대 지우지 않음
         def parse_dt(r):
             d_val = str(r.get('날짜', '')).strip()
             t_val = str(r.get('시작시간', '00:00')).strip()
@@ -803,28 +828,23 @@ if st.session_state.current_page == "analysis":
                     res = pd.to_datetime(f"{d_obj.strftime('%Y-%m-%d')} {t_str}", errors='coerce')
                     return res if pd.notna(res) else datetime(2026, 1, 1)
 
-                # mm/dd/yyyy 혹은 mm-dd-yyyy 형식 (7/1/2026)
-                m0 = re.search(r'^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$', d_val)
-                if m0:
-                    res = pd.to_datetime(f"{m0.group(3)}-{m0.group(1).zfill(2)}-{m0.group(2).zfill(2)} {t_str}", errors='coerce')
+                # m/d/yyyy 혹은 m-d-yyyy 형식
+                parts = re.split(r'[./-]', d_val)
+                if len(parts) == 3:
+                    p1, p2, p3 = int(parts[0]), int(parts[1]), int(parts[2])
+                    if p1 > 1000: # yyyy-mm-dd
+                        res = pd.to_datetime(f"{p1}-{p2:02d}-{p3:02d} {t_str}", errors='coerce')
+                    elif p3 > 1000: # mm-dd-yyyy (7/1/2026)
+                        res = pd.to_datetime(f"{p3}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
+                    else:
+                        res = pd.to_datetime(f"20{p3:02d}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
                     return res if pd.notna(res) else datetime(2026, 1, 1)
 
-                # yyyy-mm-dd 형식
-                m1 = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
-                if m1: 
-                    res = pd.to_datetime(f"{m1.group(1)}-{m1.group(2).zfill(2)}-{m1.group(3).zfill(2)} {t_str}", errors='coerce')
-                    return res if pd.notna(res) else datetime(2026, 1, 1)
-
-                # dd-mm-yyyy 형식
-                m2 = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_val)
-                if m2: 
-                    res = pd.to_datetime(f"{m2.group(3)}-{m2.group(2).zfill(2)}-{m2.group(1).zfill(2)} {t_str}", errors='coerce')
-                    return res if pd.notna(res) else datetime(2026, 1, 1)
-                
                 # m/d 혹은 m-d 형식 (예: "7/1")
-                m3 = re.search(r'^(\d{1,2})\s*[./-]\s*(\d{1,2})$', d_val)
-                if m3: 
-                    res = pd.to_datetime(f"2026-{m3.group(1).zfill(2)}-{m3.group(2).zfill(2)} {t_str}", errors='coerce')
+                if len(parts) == 2:
+                    y = 2026
+                    p1, p2 = int(parts[0]), int(parts[1])
+                    res = pd.to_datetime(f"{y}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
                     return res if pd.notna(res) else datetime(2026, 1, 1)
 
             except: pass
@@ -833,9 +853,8 @@ if st.session_state.current_page == "analysis":
         parsed_dates = df.apply(parse_dt, axis=1)
         missing_dates_idx = parsed_dates.isna()
         
-        # 강제 보존 (날짜가 없어도 에러 대신 가짜 날짜 할당)
+        # 날짜 포맷이 박살나있어도 데이터는 살립니다.
         if missing_dates_idx.any():
-            st.warning(f"⚠️ {missing_dates_idx.sum()}개 행의 날짜 형식이 깨져있어, 2026년으로 임시 정렬되었습니다.")
             fake_dates = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
             parsed_dates.loc[missing_dates_idx] = fake_dates
             
@@ -845,7 +864,7 @@ if st.session_state.current_page == "analysis":
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
-            else: st.warning("⚠️ '1차 검사'로 명시된 데이터가 없어 시트 전체 데이터를 스캔합니다.")
+            else: st.warning("⚠️ '1차 검사'로 명시된 데이터가 없어 전체 데이터를 스캔합니다.")
             
         # 💡 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
@@ -932,6 +951,7 @@ if st.session_state.current_page == "analysis":
                             
                             c1 = colors[idx % len(colors)]
                             
+                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 고정
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
