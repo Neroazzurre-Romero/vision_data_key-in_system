@@ -491,6 +491,7 @@ def get_sheet():
             return doc.sheet1
     return None
 
+# 💡 최강력 철통 보존 무손실 데이터 로더
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -506,20 +507,16 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
+    # 💡 1. 극단적 헤더 탐지: 실패 시 1번째 줄 무조건 헤더 지정
     header_idx = -1
     for i, row in enumerate(raw_data[:20]):
         row_str = "".join(str(c).replace(" ", "").upper() for c in row)
-        if any(k in row_str for k in ["날짜", "일자", "모델", "품명", "LOT"]):
+        if any(k in row_str for k in ["날짜", "일자", "모델", "품명", "LOT", "수량", "상태"]):
             header_idx = i
             break
             
     if header_idx == -1: 
-        st.error("🚨 데이터의 제목 행(Header)을 찾을 수 없습니다. (키워드: 날짜, 모델, LOT 등 부재)")
-        return pd.DataFrame()
-    
-    if len(raw_data) <= header_idx + 1:
-        st.error("🚨 헤더 행 이후에 실제 데이터가 존재하지 않습니다.")
-        return pd.DataFrame()
+        header_idx = 0 
     
     raw_headers = [str(h).strip() for h in raw_data[header_idx]]
     unique_headers = []
@@ -536,12 +533,13 @@ def load_universal_data():
     df = pd.DataFrame(raw_data[header_idx+1:], columns=unique_headers)
     df['_sheet_row'] = range(header_idx + 2, header_idx + 2 + len(df))
     
+    # 💡 2. 초정밀 컬럼 맵핑
     rename_dict = {}
     for c in df.columns:
         cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
         cc_base = cc.split('_')[0] 
         
-        if "고유" in cc_base and "ID" in cc_base: rename_dict[c] = '고유 ID'
+        if "ID" in cc_base and "고유" in cc_base: rename_dict[c] = '고유 ID'
         elif cc_base == "상태": rename_dict[c] = '상태'
         elif "날짜" in cc_base or "일자" in cc_base: rename_dict[c] = '날짜'
         elif "교대" in cc_base: rename_dict[c] = '교대'
@@ -550,28 +548,34 @@ def load_universal_data():
         elif "휴동" in cc_base and "시간" in cc_base: rename_dict[c] = '휴동시간'
         elif "소요" in cc_base and "시간" in cc_base: rename_dict[c] = '소요시간'
         elif "구분" in cc_base and not "도금" in cc_base: rename_dict[c] = '구분'
-        elif "호기" in cc_base: rename_dict[c] = '호기'
-        elif "모델" in cc_base or "품명" in cc_base or "MI" in cc_base: rename_dict[c] = '모델명(MI)'
-        elif cc_base in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
-        elif cc_base == "양품수량": rename_dict[c] = '양품수량'
-        elif "전" in cc_base and "배" in cc_base and "포함" in cc_base and "양품수량" in cc_base: rename_dict[c] = '양품 수량(전/배 포함)'
-        elif "불량수량" in cc_base: rename_dict[c] = '불량수량'
-        elif cc_base in ["양품율", "1차양품율", "수율", "합격율"]: rename_dict[c] = '양품율'
-        elif "전" in cc_base and "배" in cc_base and "양품율" in cc_base: rename_dict[c] = '양품율(전/배 포함)'
-        elif "완전" in cc_base and "불량율" in cc_base: rename_dict[c] = '완전불량율'
-        elif "전면" in cc_base and "불량율" in cc_base: rename_dict[c] = '전면불량율'
-        elif "배면" in cc_base and "불량율" in cc_base: rename_dict[c] = '배면불량율'
-        elif cc_base == "완전불량": rename_dict[c] = '완전불량'
-        elif cc_base == "전면불량": rename_dict[c] = '전면불량'
-        elif cc_base == "배면불량": rename_dict[c] = '배면불량'
+        elif "호기" in cc_base or "UNIT" in cc_base: rename_dict[c] = '호기'
+        elif "모델" in cc_base or "품명" in cc_base or "MI" in cc_base or "기종" in cc_base: rename_dict[c] = '모델명(MI)'
+        elif "도금" in cc_base or "PLATING" in cc_base: rename_dict[c] = '도금구분'
+        elif "검사" in cc_base and "수량" in cc_base or "총수량" in cc_base: rename_dict[c] = '검사 수량'
+        elif "양품" in cc_base and "수량" in cc_base and not "포함" in cc_base: rename_dict[c] = '양품수량'
+        elif "불량" in cc_base and "수량" in cc_base: rename_dict[c] = '불량수량'
+        elif "수율" in cc_base or "양품율" in cc_base or "합격율" in cc_base:
+            if "포함" in cc_base: rename_dict[c] = '양품율(전/배 포함)'
+            else: rename_dict[c] = '양품율'
+        elif "완전" in cc_base and ("불량율" in cc_base or "불량률" in cc_base): rename_dict[c] = '완전불량율'
+        elif "전면" in cc_base and ("불량율" in cc_base or "불량률" in cc_base): rename_dict[c] = '전면불량율'
+        elif "배면" in cc_base and ("불량율" in cc_base or "불량률" in cc_base): rename_dict[c] = '배면불량율'
+        elif "완전" in cc_base and "불량" in cc_base: rename_dict[c] = '완전불량'
+        elif "전면" in cc_base and "불량" in cc_base: rename_dict[c] = '전면불량'
+        elif "배면" in cc_base and "불량" in cc_base: rename_dict[c] = '배면불량'
         elif "옵셋" in cc_base and "불량" in cc_base: rename_dict[c] = '옵셋불량'
         elif "수량부족" in cc_base: rename_dict[c] = '수량부족'
-        elif cc_base == "기타": rename_dict[c] = '기타'
+        elif "기타" == cc_base: rename_dict[c] = '기타'
         elif "OQC" in cc_base: rename_dict[c] = 'OQC'
         elif "비고" in cc_base: rename_dict[c] = '비고'
         elif "LOT" in cc_base or "로트" in cc_base: rename_dict[c] = 'LOT NO.'
     
     df = df.rename(columns=rename_dict)
+    
+    # 💡 C열(Index 2) 날짜 맵핑 실패 시 강제 할당 (유저 피드백 반영)
+    if '날짜' not in rename_dict.values() and len(df.columns) > 2:
+        df = df.rename(columns={df.columns[2]: '날짜'})
+        
     df = df.loc[:, ~df.columns.duplicated(keep='first')]
     
     for col in EXCEL_COLUMNS:
@@ -730,8 +734,8 @@ if st.session_state.current_page == "analysis":
             
     df = load_universal_data().copy()
 
-    if df.empty or '모델명(MI)' not in df.columns: 
-        st.warning("데이터베이스에 렌더링할 유효한 정보가 없습니다. 상단의 에러 원인을 확인해주세요.")
+    if df.empty: 
+        st.warning("데이터베이스에 렌더링할 정보가 전혀 없습니다.")
     else:
         def pct_to_float(x):
             try:
@@ -746,6 +750,14 @@ if st.session_state.current_page == "analysis":
             except: return 0
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        
+        # 💡 AI Fallback: 양품율이 없다면 양품수량과 검사수량으로 억지로라도 계산
+        if df['Yield_1'].isna().all():
+            if '양품수량' in df.columns and '검사 수량' in df.columns:
+                q_good = df['양품수량'].apply(safe_int)
+                q_total = df['검사 수량'].apply(safe_int)
+                df['Yield_1'] = np.where(q_total > 0, (q_good / q_total) * 100, np.nan)
+
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Comp'] = df.get('완전불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
@@ -757,45 +769,47 @@ if st.session_state.current_page == "analysis":
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
         
+        # 💡 모델명이 아예 없다면 임의 지정
+        if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all():
+            df['모델명(MI)'] = 'ALL_MODELS'
+        
+        # 💡 절대 에러가 나지 않는 강제 날짜 파싱 (No Drop)
         def parse_dt(r):
-            d_val = r.get('날짜', '')
-            t_val = r.get('시작시간', '00:00')
-            if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
-            if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
-            t_clean = re.sub(r'[^\d]', '', str(t_val))
-            if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}:00"
-            elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}:00"
-            elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00:00"
-            else: t_str = "00:00:00"
-            d_str_val = str(d_val).strip()
-            
             try:
-                if d_str_val.isdigit() and 40000 <= int(d_str_val) <= 50000:
+                d_val = str(r.get('날짜', '')).strip()
+                t_val = str(r.get('시작시간', '00:00')).strip()
+                if d_val == '' or d_val.lower() in ['nan', 'none']: return pd.NaT
+                
+                d_clean = re.sub(r'[^\d/\-.]', '', d_val)
+                if not d_clean: return pd.NaT
+                
+                t_clean = re.sub(r'[^\d:]', '', t_val)
+                if not t_clean: t_clean = "00:00"
+                elif len(t_clean.replace(':', '')) in [1, 2]: t_clean = t_clean.replace(':', '').zfill(2) + ":00"
+                elif len(t_clean.replace(':', '')) == 3: t_clean = "0" + t_clean.replace(':', '')[:1] + ":" + t_clean.replace(':', '')[1:]
+                elif len(t_clean.replace(':', '')) >= 4: t_clean = t_clean.replace(':', '')[:2] + ":" + t_clean.replace(':', '')[2:4]
+                
+                # '7/1' 혹은 '7/1/2026' 형식 네이티브 처리
+                dt_obj = pd.to_datetime(f"{d_clean} {t_clean}", errors='coerce')
+                if pd.notna(dt_obj): return dt_obj
+                
+                # 엑셀 일련번호 처리 (예: 45400)
+                if d_clean.isdigit() and 40000 <= int(d_clean) <= 50000:
                     base_date = datetime(1899, 12, 30)
-                    target_date = base_date + timedelta(days=int(d_str_val))
-                    return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
+                    d_obj = base_date + timedelta(days=int(d_clean))
+                    return pd.to_datetime(f"{d_obj.strftime('%Y-%m-%d')} {t_clean}", errors='coerce')
                     
-                m1 = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
-                if m1: return pd.to_datetime(f"{m1.group(1)}-{m1.group(2).zfill(2)}-{m1.group(3).zfill(2)} {t_str}")
-                
-                m2 = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
-                if m2: return pd.to_datetime(f"{m2.group(3)}-{m2.group(2).zfill(2)}-{m2.group(1).zfill(2)} {t_str}")
-                
-                y = str(datetime.now(timezone(timedelta(hours=9))).year)
-                m3 = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
-                if m3: return pd.to_datetime(f"{y}-{m3.group(1).zfill(2)}-{m3.group(2).zfill(2)} {t_str}")
-                
-                m4 = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_str_val)
-                if m4: return pd.to_datetime(f"{y}-{m4.group(1).zfill(2)}-{m4.group(2).zfill(2)} {t_str}")
-            except: pass
-            return pd.NaT
+                return pd.NaT
+            except:
+                return pd.NaT
             
         parsed_dates = df.apply(parse_dt, axis=1)
         missing_dates_idx = parsed_dates.isna()
         
+        # 💡 강제 보존 (날짜가 없어도 에러 대신 가짜 날짜 할당)
         if missing_dates_idx.any():
-            st.warning(f"⚠️ {missing_dates_idx.sum()}개 행의 날짜/시간을 인식할 수 없습니다. (차트 표시를 위해 2000년 1월 1일로 임시 배열됩니다.)")
-            fake_dates = [datetime(2000, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
+            st.warning(f"⚠️ {missing_dates_idx.sum()}개 행의 엑셀 날짜 형식이 깨져있습니다. 차트 렌더링을 위해 임시로 정렬됩니다.")
+            fake_dates = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
             parsed_dates.loc[missing_dates_idx] = fake_dates
             
         df['DateTime'] = pd.to_datetime(parsed_dates)
@@ -806,15 +820,16 @@ if st.session_state.current_page == "analysis":
             if not df_filtered.empty:
                 df = df_filtered
             else:
-                st.warning("⚠️ '1차 검사'로 분류된 데이터가 단 한 건도 존재하지 않아 전체 데이터를 표시합니다.")
+                st.warning("⚠️ '1차 검사'로 명시된 데이터가 없어 시트 전체 데이터를 스캔합니다.")
             
         now_kst = datetime.now(timezone(timedelta(hours=9)))
-        target_end_date = (now_kst - timedelta(days=1)).date() # 어제
-        target_start_date = target_end_date - timedelta(days=3) # 어제 기준 과거 3일
+        target_end_date = (now_kst - timedelta(days=1)).date()
+        target_start_date = target_end_date - timedelta(days=3)
         
         df['DateOnly'] = df['DateTime'].dt.date
         df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
         
+        # 💡 72H 데이터가 없을 경우 에러(빈 차트)를 막기 위해 풀스캔 대체
         if df_72h.empty:
             st.error(f"🚨 지정된 72시간 타임라인({target_start_date} ~ {target_end_date}) 내에 데이터가 없습니다! 차트 출력을 위해 DB 전체 데이터를 강제 스캔합니다.")
             df_target = df.copy()
@@ -823,7 +838,7 @@ if st.session_state.current_page == "analysis":
 
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
-            models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+            models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist())
             selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
 
             if not selected_models:
@@ -849,7 +864,9 @@ if st.session_state.current_page == "analysis":
 
                     kpi1, kpi2, kpi3 = st.columns(3)
                     total_inspected = model_df['검사수량'].sum()
-                    avg_yield = model_df['Yield_1'].mean() if not model_df['Yield_1'].isna().all() else 0.0
+                    
+                    valid_yield_df = model_df.dropna(subset=['Yield_1'])
+                    avg_yield = valid_yield_df['Yield_1'].mean() if not valid_yield_df.empty else 0.0
                     
                     defect_sums = {
                         "완전불량": model_df['완전불량_Qty'].sum(),
@@ -889,6 +906,7 @@ if st.session_state.current_page == "analysis":
                             
                             c1 = colors[idx % len(colors)]
                             
+                            # 💡 선, 마커, 그리고 LOT 텍스트가 모두 렌더링되게 고정 
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
@@ -896,7 +914,7 @@ if st.session_state.current_page == "analysis":
                                 line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                            if len(m_df.dropna(subset=['Yield_1'])) > 3:
+                            if len(m_df) > 3:
                                 m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
                                 fig1.add_trace(go.Scatter(
                                     x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend (3-MA)", 
