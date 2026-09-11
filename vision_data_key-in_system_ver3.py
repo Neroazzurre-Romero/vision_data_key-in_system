@@ -166,10 +166,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-
-# ==============================================================================
-# 💡 페이지별 CSS 분리 적용
-# ==============================================================================
 input_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -495,7 +491,7 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 최첨단 통합 데이터 로더 (조건 대폭 완화 & 예외 메시지 강화)
+# 💡 최첨단 통합 데이터 로더 (중복 컬럼 에러 및 필터링 이슈 완벽 해결)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -511,7 +507,7 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    # 💡 1. 널널한 헤더 탐지 로직 (단 하나라도 일치하면 OK)
+    # 1. 널널한 헤더 탐지 로직 (단 하나라도 일치하면 OK)
     header_idx = -1
     for i, row in enumerate(raw_data[:20]):
         row_str = "".join(str(c).replace(" ", "").upper() for c in row)
@@ -527,53 +523,75 @@ def load_universal_data():
         st.error("🚨 헤더 행 이후에 실제 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    headers = [str(h).strip() for h in raw_data[header_idx]]
-    df = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
+    # 💡 2. 중복 헤더 사전 방지 로직 (DuplicateError 원천 차단)
+    raw_headers = [str(h).strip() for h in raw_data[header_idx]]
+    unique_headers = []
+    seen = {}
+    for h in raw_headers:
+        h_clean = h if h != "" else "Unnamed"
+        if h_clean in seen:
+            seen[h_clean] += 1
+            unique_headers.append(f"{h_clean}_{seen[h_clean]}")
+        else:
+            seen[h_clean] = 0
+            unique_headers.append(h_clean)
+            
+    df = pd.DataFrame(raw_data[header_idx+1:], columns=unique_headers)
     df['_sheet_row'] = range(header_idx + 2, header_idx + 2 + len(df))
     
-    # 💡 2. 초정밀 컬럼 맵핑 (이름이 변형되어도 잡아냄)
+    # 3. 초정밀 컬럼 맵핑
     rename_dict = {}
     for c in df.columns:
         cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
-        if "고유" in cc and "ID" in cc: rename_dict[c] = '고유 ID'
-        elif cc == "상태": rename_dict[c] = '상태'
-        elif "날짜" in cc or "일자" in cc: rename_dict[c] = '날짜'
-        elif "교대" in cc: rename_dict[c] = '교대'
-        elif "시작" in cc and "시간" in cc: rename_dict[c] = '시작시간'
-        elif "종료" in cc and "시간" in cc: rename_dict[c] = '종료시간'
-        elif "휴동" in cc and "시간" in cc: rename_dict[c] = '휴동시간'
-        elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
-        elif "구분" in cc and not "도금" in cc: rename_dict[c] = '구분'
-        elif "호기" in cc: rename_dict[c] = '호기'
-        elif "모델" in cc or "품명" in cc or "MI" in cc: rename_dict[c] = '모델명(MI)'
-        elif "도금" in cc: rename_dict[c] = '도금구분'
-        elif cc in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
-        elif cc == "양품수량": rename_dict[c] = '양품수량'
-        elif "전" in cc and "배" in cc and "포함" in cc and "양품수량" in cc: rename_dict[c] = '양품 수량(전/배 포함)'
-        elif "불량수량" in cc: rename_dict[c] = '불량수량'
-        elif cc in ["양품율", "1차양품율", "수율", "합격율"]: rename_dict[c] = '양품율'
-        elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
-        elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
-        elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
-        elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
-        elif "옵셋" in cc and "불량" in cc: rename_dict[c] = '옵셋불량'
-        elif "수량부족" in cc: rename_dict[c] = '수량부족'
-        elif cc == "기타": rename_dict[c] = '기타'
-        elif "OQC" in cc: rename_dict[c] = 'OQC'
-        elif "비고" in cc: rename_dict[c] = '비고'
-        elif "도장라인" in cc: rename_dict[c] = '도장라인'
-        elif "도장일" in cc: rename_dict[c] = '도장일'
-        elif "도장순서" in cc: rename_dict[c] = '도장순서'
-        elif "입고일" in cc: rename_dict[c] = '입고일'
-        elif "LOT" in cc or "로트" in cc: rename_dict[c] = 'LOT NO.'
-        elif cc == "CLIP": rename_dict[c] = 'CLIP'
-        elif cc == "BASE": rename_dict[c] = 'BASE'
-        elif cc == "COVER": rename_dict[c] = 'COVER'
-        elif "조립기" in cc: rename_dict[c] = '조립기'
-        elif cc == "월": rename_dict[c] = '월'
-        elif "작업자" in cc: rename_dict[c] = '작업자'
+        # 중복 방지를 위해 언더바 파싱 제거 후 검사
+        cc_base = cc.split('_')[0] 
+        
+        if "고유" in cc_base and "ID" in cc_base: rename_dict[c] = '고유 ID'
+        elif cc_base == "상태": rename_dict[c] = '상태'
+        elif "날짜" in cc_base or "일자" in cc_base: rename_dict[c] = '날짜'
+        elif "교대" in cc_base: rename_dict[c] = '교대'
+        elif "시작" in cc_base and "시간" in cc_base: rename_dict[c] = '시작시간'
+        elif "종료" in cc_base and "시간" in cc_base: rename_dict[c] = '종료시간'
+        elif "휴동" in cc_base and "시간" in cc_base: rename_dict[c] = '휴동시간'
+        elif "소요" in cc_base and "시간" in cc_base: rename_dict[c] = '소요시간'
+        elif "구분" in cc_base and not "도금" in cc_base: rename_dict[c] = '구분'
+        elif "호기" in cc_base: rename_dict[c] = '호기'
+        elif "모델" in cc_base or "품명" in cc_base or "MI" in cc_base: rename_dict[c] = '모델명(MI)'
+        elif "도금" in cc_base: rename_dict[c] = '도금구분'
+        elif cc_base in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
+        elif cc_base == "양품수량": rename_dict[c] = '양품수량'
+        elif "전" in cc_base and "배" in cc_base and "포함" in cc_base and "양품수량" in cc_base: rename_dict[c] = '양품 수량(전/배 포함)'
+        elif "불량수량" in cc_base: rename_dict[c] = '불량수량'
+        elif cc_base in ["양품율", "1차양품율", "수율", "합격율"]: rename_dict[c] = '양품율'
+        elif "전" in cc_base and "배" in cc_base and "양품율" in cc_base: rename_dict[c] = '양품율(전/배 포함)'
+        elif "완전" in cc_base and "불량율" in cc_base: rename_dict[c] = '완전불량율'
+        elif "전면" in cc_base and "불량율" in cc_base: rename_dict[c] = '전면불량율'
+        elif "배면" in cc_base and "불량율" in cc_base: rename_dict[c] = '배면불량율'
+        elif cc_base == "완전불량": rename_dict[c] = '완전불량'
+        elif cc_base == "전면불량": rename_dict[c] = '전면불량'
+        elif cc_base == "배면불량": rename_dict[c] = '배면불량'
+        elif "옵셋" in cc_base and "불량" in cc_base: rename_dict[c] = '옵셋불량'
+        elif "수량부족" in cc_base: rename_dict[c] = '수량부족'
+        elif cc_base == "기타": rename_dict[c] = '기타'
+        elif "OQC" in cc_base: rename_dict[c] = 'OQC'
+        elif "비고" in cc_base: rename_dict[c] = '비고'
+        elif "도장라인" in cc_base: rename_dict[c] = '도장라인'
+        elif "도장일" in cc_base: rename_dict[c] = '도장일'
+        elif "도장순서" in cc_base: rename_dict[c] = '도장순서'
+        elif "입고일" in cc_base: rename_dict[c] = '입고일'
+        elif "LOT" in cc_base or "로트" in cc_base: rename_dict[c] = 'LOT NO.'
+        elif cc_base == "CLIP": rename_dict[c] = 'CLIP'
+        elif cc_base == "BASE": rename_dict[c] = 'BASE'
+        elif cc_base == "COVER": rename_dict[c] = 'COVER'
+        elif "조립기" in cc_base: rename_dict[c] = '조립기'
+        elif cc_base == "월": rename_dict[c] = '월'
+        elif "작업자" in cc_base: rename_dict[c] = '작업자'
     
     df = df.rename(columns=rename_dict)
+    
+    # 💡 4. 매핑 후 동일한 이름의 열이 여러 개 생겼을 경우(예: 비고_1 -> 비고, 비고_2 -> 비고) 
+    # 첫 번째만 살리고 전부 삭제 (Plotly BoxPlot 에러 완벽 해결)
+    df = df.loc[:, ~df.columns.duplicated(keep='first')]
     
     # 누락된 기본 열 자동 생성
     for col in EXCEL_COLUMNS:
@@ -732,7 +750,7 @@ if st.session_state.current_page == "analysis":
     df = load_universal_data().copy()
 
     if df.empty or '모델명(MI)' not in df.columns: 
-        st.warning("데이터베이스에 유효한 정보가 없습니다. 상단의 에러 원인을 확인해주세요.")
+        st.warning("데이터베이스에 렌더링할 유효한 정보가 없습니다. 상단의 에러 원인을 확인해주세요.")
     else:
         # 데이터 클렌징
         def pct_to_float(x):
@@ -753,7 +771,6 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 원본 시트에는 '완전불량_Qty'가 아니라 '완전불량' (명칭 통일)
         df['완전불량_Qty'] = df.get('완전불량', pd.Series([0]*len(df))).apply(safe_int)
         df['전면불량_Qty'] = df.get('전면불량', pd.Series([0]*len(df))).apply(safe_int)
         df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
@@ -781,7 +798,7 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 💡 1차 검사 예외 필터링 처리 (데이터 증발 방지)
+        # 1차 검사 예외 필터링 처리 (데이터 증발 방지)
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty:
@@ -794,13 +811,15 @@ if st.session_state.current_page == "analysis":
             df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
             df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
             
-        df_target = df.tail(200).copy()
+        # 💡 전체 데이터 스캔 (tail 150 데이터 제한 완전 삭제)
+        df_target = df.copy()
         
         with st.container(border=True):
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
                 models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+                # 전체 모델 목록이 다 나오도록 세팅
                 selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
             with col_b:
