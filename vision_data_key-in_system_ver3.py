@@ -510,89 +510,92 @@ def get_sheet():
             return doc.sheet1
     return None
 
-@st.cache_data(ttl=15) 
-def load_analysis_data():
+# 💡 최첨단 통합 데이터 로더 (입력 및 분석 공통 사용)
+@st.cache_data(ttl=15)
+def load_universal_data():
     doc = get_spreadsheet_doc()
     if doc is None: return pd.DataFrame()
-    
     try:
         ws = doc.worksheet(TAB_NAME)
         raw_data = ws.get_all_values()
     except Exception as e:
-        st.error(f"🚨 데이터를 불러오는 중 오류 발생: {e}")
+        st.error(f"🚨 '{TAB_NAME}' 시트 접근 에러: {e}")
         return pd.DataFrame()
-        
+    
     if len(raw_data) < 2: return pd.DataFrame()
     
-    header_idx = -1
+    # 💡 1. 헤더 스코어링 탐지 기법 (퍼지 매칭)
+    keywords = ['ID', '상태', '날짜', '일자', '시간', '모델', '수량', 'LOT', '양품', '불량']
+    best_row_idx = -1
+    max_score = 0
     for i, row in enumerate(raw_data[:20]):
-        row_str = "".join(str(c).replace(" ", "") for c in row)
-        if any(k in row_str for k in ["날짜", "일자", "모델", "고유ID", "LOT"]):
-            header_idx = i; break
+        row_str = "".join(str(c).replace(" ", "").upper() for c in row)
+        score = sum(1 for k in keywords if k in row_str)
+        if score >= 3 and score > max_score:
+            max_score = score
+            best_row_idx = i
             
-    if header_idx == -1: return pd.DataFrame()
+    if best_row_idx == -1: 
+        st.error("🚨 시트에서 데이터 헤더(제목 행)를 찾을 수 없습니다.")
+        return pd.DataFrame()
     
-    headers = [str(h).strip() for h in raw_data[header_idx]]
-    df_sheet = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
+    headers = [str(h).strip() for h in raw_data[best_row_idx]]
+    df = pd.DataFrame(raw_data[best_row_idx+1:], columns=headers)
+    df['_sheet_row'] = range(best_row_idx + 2, best_row_idx + 2 + len(df))
     
+    # 💡 2. 스마트 컬럼 매핑 로직 (명칭이 미세하게 달라도 모두 통일)
     rename_dict = {}
-    for c in df_sheet.columns:
-        cc = str(c).replace(" ", "").replace("률", "율").upper()
-        if "모델" in cc: rename_dict[c] = '모델명(MI)'
+    for c in df.columns:
+        cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
+        if "고유" in cc and "ID" in cc: rename_dict[c] = '고유 ID'
+        elif cc == "상태": rename_dict[c] = '상태'
         elif "날짜" in cc or "일자" in cc: rename_dict[c] = '날짜'
+        elif "교대" in cc: rename_dict[c] = '교대'
         elif "시작" in cc and "시간" in cc: rename_dict[c] = '시작시간'
+        elif "종료" in cc and "시간" in cc: rename_dict[c] = '종료시간'
+        elif "휴동" in cc and "시간" in cc: rename_dict[c] = '휴동시간'
         elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
-        elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
-        elif "구분" in cc: rename_dict[c] = '구분'
+        elif "구분" in cc and not "도금" in cc: rename_dict[c] = '구분'
+        elif "호기" in cc: rename_dict[c] = '호기'
+        elif "모델" in cc: rename_dict[c] = '모델명(MI)'
         elif "도금" in cc: rename_dict[c] = '도금구분'
-        elif cc == "양품율" or cc == "1차양품율": rename_dict[c] = '양품율'
+        elif cc in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
+        elif cc == "양품수량": rename_dict[c] = '양품수량'
+        elif "전" in cc and "배" in cc and "포함" in cc and "양품수량" in cc: rename_dict[c] = '양품 수량(전/배 포함)'
+        elif "불량수량" in cc: rename_dict[c] = '불량수량'
+        elif cc == "양품율" or cc == "1차양품율" or cc == "수율": rename_dict[c] = '양품율'
         elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
-        elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
-        elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
-        elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
+        elif "완전" in cc and "불량율" in cc: rename_dict[c] = '완전불량율'
+        elif "전면" in cc and "불량율" in cc: rename_dict[c] = '전면불량율'
+        elif "배면" in cc and "불량율" in cc: rename_dict[c] = '배면불량율'
+        elif cc == "완전불량": rename_dict[c] = '완전불량'
+        elif cc == "전면불량": rename_dict[c] = '전면불량'
+        elif cc == "배면불량": rename_dict[c] = '배면불량'
+        elif "옵셋" in cc and "불량" in cc: rename_dict[c] = '옵셋불량'
+        elif "수량부족" in cc: rename_dict[c] = '수량부족'
+        elif cc == "기타": rename_dict[c] = '기타'
+        elif "OQC" in cc: rename_dict[c] = 'OQC'
+        elif "비고" in cc: rename_dict[c] = '비고'
+        elif "도장라인" in cc: rename_dict[c] = '도장라인'
+        elif "도장일" in cc: rename_dict[c] = '도장일'
+        elif "도장순서" in cc: rename_dict[c] = '도장순서'
+        elif "입고일" in cc: rename_dict[c] = '입고일'
+        elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
+        elif cc == "CLIP": rename_dict[c] = 'CLIP'
+        elif cc == "BASE": rename_dict[c] = 'BASE'
+        elif cc == "COVER": rename_dict[c] = 'COVER'
+        elif "조립기" in cc: rename_dict[c] = '조립기'
+        elif cc == "월": rename_dict[c] = '월'
+        elif "작업자" in cc: rename_dict[c] = '작업자'
     
-    df_sheet = df_sheet.rename(columns=rename_dict)
-    return df_sheet
-
-@st.cache_data(ttl=60)
-def load_data():
-    sheet = get_sheet()
-    if sheet is None: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
-    try:
-        raw_data = sheet.get_all_values()
-        if len(raw_data) < 2: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
-        
-        header_idx = -1
-        for i, row in enumerate(raw_data[:15]):
-            row_str = "".join(str(c).replace(" ", "") for c in row)
-            if "날짜" in row_str or "교대" in row_str or "고유ID" in row_str.upper():
-                header_idx = i; break
-                
-        if header_idx == -1: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
-        
-        headers = [str(h).strip() for h in raw_data[header_idx]]
-        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
-        
-        EXCEL_COLS_LOAD = ["고유 ID", "상태", "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", "모델명(MI)", "검사 수량", "양품수량", "불량수량", "LOT NO."]
-        
-        data_list = []
-        for r_idx in range(header_idx + 1, len(raw_data)):
-            row = raw_data[r_idx]
-            if any(str(c).strip() for c in row):
-                row_data = {"_sheet_row": r_idx + 1}
-                for col in EXCEL_COLS_LOAD:
-                    col_key = col.replace(" ", "").replace("률", "율").upper()
-                    if col_key in clean_headers:
-                        try:
-                            c_idx = headers.index(clean_headers[col_key])
-                            row_data[col] = row[c_idx] if c_idx < len(row) else ""
-                        except: row_data[col] = ""
-                    else: row_data[col] = ""
-                data_list.append(row_data)
-        
-        result_df = pd.DataFrame(data_list)
-        return result_df
-    except: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+    df = df.rename(columns=rename_dict)
+    
+    # 💡 3. 강제 필드 통일: EXCEL_COLUMNS 중 없는 컬럼은 빈 값으로 생성
+    for col in EXCEL_COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
+            
+    return df
 
 def save_data_append(df):
     sheet = get_sheet()
@@ -741,7 +744,7 @@ if st.session_state.current_page == "analysis":
             st.session_state.admin_authenticated = False 
             st.rerun()
             
-    df = load_analysis_data().copy()
+    df = load_universal_data().copy()
 
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("데이터베이스에 유효한 정보가 없습니다.")
@@ -758,7 +761,6 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 날짜 파서 (에러 방어용)
         def parse_dt(r):
             try:
                 d_val = r.get('날짜', '')
@@ -784,12 +786,10 @@ if st.session_state.current_page == "analysis":
         if '구분' in df.columns:
             df = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             
-        # 💡 도금구분 정리
         if '도금구분' in df.columns:
             df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
             df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
             
-        # 💡 강제 출력 스캔 (가장 최신 150개)
         df_target = df.tail(150).copy()
         
         with st.container(border=True):
@@ -814,7 +814,6 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data available for the selected model & plating type.")
                 else:
-                    # 💡 X축을 실제 시간으로 매핑
                     model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
                     model_df = model_df.sort_values(['DateTime'])
                     
@@ -1172,7 +1171,7 @@ elif st.session_state.current_page == "input":
                                 st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
                                 
                                 st.cache_data.clear() 
-                                # 💡 에러 원인 제거: 세션값을 직접 수정하지 않고 완전 삭제(초기화)
+                                
                                 for k in list(default_state.keys()):
                                     if k in st.session_state:
                                         del st.session_state[k]
@@ -1186,14 +1185,23 @@ elif st.session_state.current_page == "input":
     # 💡 2. [작업 마감] 모드 
     # ==========================================
     elif st.session_state.app_mode == "END":
-        df_all = load_data()
-        in_progress_df = df_all[df_all['상태'] == '진행중'].copy()
+        df_all = load_universal_data().copy()
+        
+        if not df_all.empty and '상태' in df_all.columns:
+            df_all['상태'] = df_all['상태'].fillna('').astype(str).str.strip()
+            in_progress_df = df_all[df_all['상태'].str.contains('진행중', case=False, na=False)].copy()
+        else:
+            in_progress_df = pd.DataFrame()
 
         if step == 1:
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 대상 LOT 선택</h4><br>", unsafe_allow_html=True)
                 if in_progress_df.empty:
-                    st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
+                    if not df_all.empty and '상태' in df_all.columns:
+                        unique_status = df_all['상태'].unique()
+                        st.info(f"현재 '진행중'인 작업이 없습니다. (현재 감지된 상태: {', '.join(unique_status)})")
+                    else:
+                        st.info("현재 대기 중인 작업(진행중 Lot)이 없습니다.")
                     target_row = None
                 else:
                     sel_col1, sel_col2 = st.columns(2)
@@ -1205,14 +1213,14 @@ elif st.session_state.current_page == "input":
                     options = filtered_lots['고유 ID'].tolist()
                     def format_option(uid):
                         row = filtered_lots[filtered_lots['고유 ID'] == uid].iloc[0]
-                        return f"LOT: {row['LOT NO.']} (시작: {row['시작시간']})"
+                        return f"LOT: {row.get('LOT NO.', '')} (시작: {row.get('시작시간', '')})"
                     
                     with sel_col2:
                         selected_id = st.selectbox("■ 마감할 LOT 선택", options, format_func=format_option)
                         st.session_state.target_unique_id = selected_id
                     
                     target_row = filtered_lots[filtered_lots['고유 ID'] == selected_id].iloc[0]
-                    st.markdown(f"<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 15px;'>📌 모델명: {target_row['모델명(MI)']} &nbsp;|&nbsp; LOT: {target_row['LOT NO.']} &nbsp;|&nbsp; 시작시간: {target_row['시작시간']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 15px;'>📌 모델명: {target_row.get('모델명(MI)', '')} &nbsp;|&nbsp; LOT: {target_row.get('LOT NO.', '')} &nbsp;|&nbsp; 시작시간: {target_row.get('시작시간', '')}</div>", unsafe_allow_html=True)
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 작업 종료</h4><br>", unsafe_allow_html=True)
@@ -1237,10 +1245,10 @@ elif st.session_state.current_page == "input":
                 with c4:
                     if target_row is not None:
                         try:
-                            m, d = map(int, target_row['날짜'].split('/'))
+                            m, d = map(int, target_row.get('날짜', '').split('/'))
                             y = st.session_state.get("work_date", datetime.now()).year
                             s_date = datetime(y, m, d).date()
-                            s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
+                            s_time = datetime.strptime(target_row.get('시작시간', '00:00'), "%H:%M").time()
                             start_dt = datetime.combine(s_date, s_time)
                             end_dt = datetime.combine(st.session_state.get("end_date"), st.session_state.get("end_time"))
                             if end_dt < start_dt: end_dt += timedelta(days=1)
@@ -1418,7 +1426,7 @@ elif st.session_state.current_page == "input":
                         elif not st.session_state.get("target_unique_id", ""): st.warning("1단계에서 마감할 Lot를 선택해주세요.")
                         else:
                             with st.spinner("DB 마감 업데이트 중..."):
-                                df_all = load_data()
+                                df_all = load_universal_data()
                                 target_id = st.session_state.target_unique_id
                                 df_target = df_all[df_all['고유 ID'] == target_id]
                                 
@@ -1429,10 +1437,10 @@ elif st.session_state.current_page == "input":
                                     target_row = df_target.iloc[0].to_dict()
                                     
                                     try:
-                                        m, d = map(int, target_row['날짜'].split('/'))
+                                        m, d = map(int, target_row.get('날짜', '').split('/'))
                                         y = st.session_state.get("work_date", datetime.now()).year
                                         s_date = datetime(y, m, d).date()
-                                        s_time = datetime.strptime(target_row['시작시간'], "%H:%M").time()
+                                        s_time = datetime.strptime(target_row.get('시작시간', '00:00'), "%H:%M").time()
                                         start_dt = datetime.combine(s_date, s_time)
                                         end_dt = datetime.combine(st.session_state.get("end_date"), st.session_state.get("end_time"))
                                         if end_dt < start_dt: end_dt += timedelta(days=1)
@@ -1479,7 +1487,6 @@ elif st.session_state.current_page == "input":
                                         st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 데이터가 성공적으로 마감되었습니다!</div>", unsafe_allow_html=True)
                                         
                                         st.cache_data.clear()
-                                        # 💡 에러 원인 제거: 세션값을 직접 수정하지 않고 완전 삭제(초기화)
                                         for k in list(default_state.keys()):
                                             if k in st.session_state:
                                                 del st.session_state[k]
@@ -1495,12 +1502,12 @@ elif st.session_state.current_page == "input":
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
-            df_history = load_data().copy()
+            df_history = load_universal_data().copy()
             
             if not df_history.empty:
                 df_history['orig_index'] = df_history['_sheet_row']
                 recent_20 = df_history.iloc[::-1].head(20).copy()
-                display_df = recent_20.drop(columns=['orig_index', '_sheet_row'])
+                display_df = recent_20.drop(columns=['orig_index', '_sheet_row'], errors='ignore')
                 
                 edited_df = st.data_editor(
                     display_df, 
