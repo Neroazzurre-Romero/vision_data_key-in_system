@@ -610,6 +610,23 @@ def load_data():
         return result_df
     except: return pd.DataFrame()
 
+# 💡 이 함수가 빠지지 않도록 최상단 스코프에 안전하게 선언합니다.
+def save_data_append(df):
+    sheet = get_sheet()
+    if sheet is None: return False
+    try:
+        header_check = sheet.row_values(1)
+        if not header_check: sheet.append_row(EXCEL_COLUMNS, value_input_option='USER_ENTERED')
+        records = []
+        for _, row in df.iterrows():
+            records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
+        sheet.append_rows(records, value_input_option='USER_ENTERED')
+        st.cache_data.clear() 
+        return True
+    except Exception as e:
+        st.error(f"데이터 저장 오류: {e}")
+        return False
+
 def parse_scanned_data():
     raw_val = st.session_state.get("scanned_raw_data", "")
     if not raw_val: return
@@ -692,6 +709,7 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
+# 💡 하단 네비게이션 복구
 def render_nav_buttons(step_num, max_step):
     st.markdown("<br>", unsafe_allow_html=True)
     c_nav = st.columns(6)
@@ -758,10 +776,39 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        df['__SEQ__'] = range(len(df))
+        # 날짜/시간 파서
+        def parse_dt(r):
+            try:
+                d_val = r.get('날짜', '')
+                t_val = r.get('시작시간', '00:00')
+                if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
+                if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
+                t_clean = re.sub(r'[^\d]', '', str(t_val))
+                if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
+                elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
+                elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
+                else: t_str = "00:00"
+                d_str_val = str(d_val).strip()
+                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
+                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
+                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
+                if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
+            except: pass
+            return pd.NaT
+            
+        df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 💡 필터 없이 전체 데이터를 전부 살려서 마지막 200건만 가져옴
-        df_target = df.tail(200).copy()
+        # 💡 1차 검사 강제 필터링
+        if '구분' in df.columns:
+            df = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
+            
+        # 💡 도금구분 정리
+        if '도금구분' in df.columns:
+            df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
+            df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
+            
+        # 💡 강제 출력 스캔 (가장 최신 150개)
+        df_target = df.tail(150).copy()
         
         with st.container(border=True):
             col_a, col_b = st.columns(2)
@@ -772,12 +819,7 @@ if st.session_state.current_page == "analysis":
             
             with col_b:
                 st.markdown("<div class='metric-label'>■ PLATING TYPE (도금구분)</div>", unsafe_allow_html=True)
-                if '도금구분' in df_target.columns:
-                    df_target['도금구분'] = df_target['도금구분'].fillna('A').astype(str).str.strip().str.upper()
-                    df_target['도금구분'] = df_target['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
-                    plating_available = sorted(df_target['도금구분'].unique().tolist())
-                else:
-                    plating_available = ['A', 'B']
+                plating_available = sorted(df_target['도금구분'].unique().tolist()) if '도금구분' in df_target.columns else ['A', 'B']
                 selected_plating = st.multiselect("Plating Type", plating_available, default=plating_available, label_visibility="collapsed")
 
             if not selected_models:
@@ -790,42 +832,33 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data available for the selected model & plating type.")
                 else:
-                    # 💡 X축을 인덱스 순서대로 강제 배열하여 점 뭉침 현상(1개의 점) 방지
+                    # 💡 X축을 시작시간으로 매핑하고 Label에 LOT을 매핑
+                    model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
+                    model_df = model_df.sort_values(['DateTime'])
+                    
                     model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     
-                    # 💡 실제 파일 내 행(Row) 순서 기반으로 정렬하여 정확한 흐름 렌더링
-                    model_df = model_df.sort_values(['__SEQ__']) 
-                    
-                    cat_array = model_df['LOT NO.'].tolist()
-                    
                     def make_hover_text(row):
-                        d_str = str(row.get('날짜', ''))
-                        t_str = str(row.get('시작시간', ''))
-                        dur_str = str(row.get('소요시간', '0'))
                         mod_str = str(row.get('모델명(MI)', ''))
                         plat_str = str(row.get('도금구분', 'A'))
-                        return f"[{mod_str} - {plat_str}]<br>시간: {d_str} {t_str} | 소요: {dur_str}분"
+                        dur_str = str(row.get('소요시간', '0'))
+                        lot_str = str(row['LOT NO.'])
+                        return f"[{mod_str} - {plat_str}]<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    def get_dark_layout(title_text, y_title, tick_vals, tick_texts):
+                    def get_dark_layout(title_text, y_title):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
                             plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
                             font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(
-                                tickmode='array', tickvals=tick_vals, ticktext=tick_texts, 
-                                showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45
-                            ),
+                            xaxis=dict(title='작업 시작시간', type='date', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                            margin=dict(l=40, r=40, t=50, b=60), 
+                            margin=dict(l=40, r=40, t=50, b=40), 
                             hovermode='x unified',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                         )
-
-                    tick_vals = model_df['__SEQ__'].tolist()
-                    tick_texts = model_df['LOT NO.'].tolist()
 
                     # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
                     with st.container(border=True):
@@ -841,17 +874,18 @@ if st.session_state.current_page == "analysis":
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig1.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
+                                x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig1.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
+                                x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dot'), 
                                 marker=dict(size=5, symbol='x', color=c2), hovertext=m_df['HoverText']
                             ))
                         
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", tick_vals, tick_texts), height=350)
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=400)
                         st.plotly_chart(fig1, use_container_width=True)
 
                     # 💡 Graph 2: 완전불량율
@@ -863,13 +897,14 @@ if st.session_state.current_page == "analysis":
                             c1 = colors_2[idx % len(colors_2)]
                             
                             fig2.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
+                                x=m_df['DateTime'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
                                 marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
+                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=350)
                         st.plotly_chart(fig2, use_container_width=True)
 
                     # 💡 Graph 3: 전면불량율 vs 배면불량율
@@ -882,17 +917,18 @@ if st.session_state.current_page == "analysis":
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig3.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
+                                x=m_df['DateTime'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig3.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
+                                x=m_df['DateTime'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dash'), 
                                 marker=dict(size=6, symbol='triangle-up', color=c2), hovertext=m_df['HoverText']
                             ))
                             
-                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
+                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)"), height=350)
                         st.plotly_chart(fig3, use_container_width=True)
 
 # ==========================================
@@ -1075,7 +1111,8 @@ elif st.session_state.current_page == "input":
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("clip_val", "CLIP")
                     with c2_2:
-                        st.session_state.clip_k = st.checkbox("K", value=st.session_state.get("clip_k", False), key="chk_clip")
+                        # 💡 세션 스테이트 고유 바인딩 (클릭 유지)
+                        st.checkbox("K", key="clip_k")
                 with c3: 
                     st.markdown("**BASE**")
                     c3_1, c3_2 = st.columns([0.45, 0.55])
@@ -1085,7 +1122,7 @@ elif st.session_state.current_page == "input":
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("base_val", "BASE")
                     with c3_2:
-                        st.session_state.base_k = st.checkbox("K", value=st.session_state.get("base_k", False), key="chk_base")
+                        st.checkbox("K", key="base_k")
                 with c4: 
                     st.markdown("**COVER**")
                     c4_1, c4_2 = st.columns([0.45, 0.55])
@@ -1095,7 +1132,7 @@ elif st.session_state.current_page == "input":
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("cover_val", "COVER")
                     with c4_2:
-                        st.session_state.cover_k = st.checkbox("K", value=st.session_state.get("cover_k", False), key="chk_cover")
+                        st.checkbox("K", key="cover_k")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립기 정보</h4><br>", unsafe_allow_html=True)
