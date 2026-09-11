@@ -328,14 +328,6 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
 .kpi-value { color: #38BDF8; font-size: 1.8rem; font-weight: 900; }
 .kpi-sub { color: #64748B; font-size: 0.8rem; }
 
-/* Custom Selectbox for Dark Mode */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
-
-/* Buttons in Dark Mode */
-div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
-div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
-
 /* Live Blinking Dot Effect */
 @keyframes blink {
     0% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
@@ -347,6 +339,14 @@ div[data-testid="stButton"] button:hover { background-color: #1E293B !important;
     display: inline-block; margin-right: 12px; margin-bottom: 2px;
     animation: blink 1.2s ease-in-out infinite;
 }
+
+/* Custom Selectbox for Dark Mode */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
+
+/* Buttons in Dark Mode */
+div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
+div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
 </style>
 """
 
@@ -491,7 +491,6 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 최첨단 무손실 데이터 로더 (중복 컬럼 에러 완벽 해결)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -579,7 +578,6 @@ def load_universal_data():
         if col not in df.columns:
             df[col] = ""
             
-    # 에디터 및 분석을 위해 불필요한 열은 배제하고 표준 열만 리턴
     df = df[EXCEL_COLUMNS + ['_sheet_row']]
     return df
 
@@ -759,7 +757,6 @@ if st.session_state.current_page == "analysis":
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
         
-        # 💡 무손실 날짜 파서 (에러 방어용)
         def parse_dt(r):
             d_val = r.get('날짜', '')
             t_val = r.get('시작시간', '00:00')
@@ -773,7 +770,6 @@ if st.session_state.current_page == "analysis":
             d_str_val = str(d_val).strip()
             
             try:
-                # 엑셀 일련번호(예: 45400) 형태 방어
                 if d_str_val.isdigit() and 40000 <= int(d_str_val) <= 50000:
                     base_date = datetime(1899, 12, 30)
                     target_date = base_date + timedelta(days=int(d_str_val))
@@ -794,7 +790,6 @@ if st.session_state.current_page == "analysis":
             except: pass
             return pd.NaT
             
-        # 💡 무손실 보존: 강제 배열을 통해 TypeError 방지
         parsed_dates = df.apply(parse_dt, axis=1)
         missing_dates_idx = parsed_dates.isna()
         
@@ -805,7 +800,7 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = pd.to_datetime(parsed_dates)
         
-        # 💡 1차 검사 강제 필터링 (도금구분 삭제)
+        # 1차 검사 강제 필터링
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty:
@@ -813,7 +808,6 @@ if st.session_state.current_page == "analysis":
             else:
                 st.warning("⚠️ '1차 검사'로 분류된 데이터가 단 한 건도 존재하지 않아 전체 데이터를 표시합니다.")
             
-        # 💡 정확한 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
         target_end_date = (now_kst - timedelta(days=1)).date() # 어제
         target_start_date = target_end_date - timedelta(days=3) # 어제 기준 과거 3일
@@ -890,12 +884,11 @@ if st.session_state.current_page == "analysis":
                         colors = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
                         
                         for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod]
-                            if m_df.empty or m_df['Yield_1'].isna().all(): continue
+                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
+                            if m_df.empty: continue
                             
                             c1 = colors[idx % len(colors)]
                             
-                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 고정 (lines+markers+text)
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
@@ -1201,8 +1194,9 @@ elif st.session_state.current_page == "input":
                             c_val = st.session_state.get("clip_val", "")
                             b_val = st.session_state.get("base_val", "")
                             cv_val = st.session_state.get("cover_val", "")
+                            
                             fmt_clip = f"K{c_val}" if st.session_state.get("clip_k") and c_val != "" else str(c_val)
-                            fmt_base = f"K{b_val}" if st.session_state.get("base_k") and b_val != str(b_val)
+                            fmt_base = f"K{b_val}" if st.session_state.get("base_k") and b_val != "" else str(b_val)
                             fmt_cover = f"K{cv_val}" if st.session_state.get("cover_k") and cv_val != "" else str(cv_val)
                             
                             lot_in = st.session_state.get("lot_input_field", "")
