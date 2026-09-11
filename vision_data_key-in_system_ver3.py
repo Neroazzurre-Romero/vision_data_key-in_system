@@ -166,6 +166,10 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
+
+# ==============================================================================
+# 💡 페이지별 CSS 분리 적용
+# ==============================================================================
 input_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -491,6 +495,7 @@ def get_sheet():
             return doc.sheet1
     return None
 
+# 💡 최첨단 통합 데이터 로더 (조건 대폭 완화 & 예외 메시지 강화)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -502,25 +507,31 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트 접근 에러: {e}")
         return pd.DataFrame()
     
-    if len(raw_data) < 2: return pd.DataFrame()
-    
-    keywords = ['ID', '상태', '날짜', '일자', '시간', '모델', '수량', 'LOT', '양품', '불량']
-    best_row_idx = -1
-    max_score = 0
-    for i, row in enumerate(raw_data[:20]):
-        row_str = "".join(str(c).replace(" ", "").upper() for c in row)
-        score = sum(1 for k in keywords if k in row_str)
-        if score >= 3 and score > max_score:
-            max_score = score
-            best_row_idx = i
-            
-    if best_row_idx == -1: 
+    if len(raw_data) < 2: 
+        st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    headers = [str(h).strip() for h in raw_data[best_row_idx]]
-    df = pd.DataFrame(raw_data[best_row_idx+1:], columns=headers)
-    df['_sheet_row'] = range(best_row_idx + 2, best_row_idx + 2 + len(df))
+    # 💡 1. 널널한 헤더 탐지 로직 (단 하나라도 일치하면 OK)
+    header_idx = -1
+    for i, row in enumerate(raw_data[:20]):
+        row_str = "".join(str(c).replace(" ", "").upper() for c in row)
+        if any(k in row_str for k in ["날짜", "일자", "모델", "품명", "LOT"]):
+            header_idx = i
+            break
+            
+    if header_idx == -1: 
+        st.error("🚨 데이터의 제목 행(Header)을 찾을 수 없습니다. (키워드: 날짜, 모델, LOT 등 부재)")
+        return pd.DataFrame()
     
+    if len(raw_data) <= header_idx + 1:
+        st.error("🚨 헤더 행 이후에 실제 데이터가 존재하지 않습니다.")
+        return pd.DataFrame()
+    
+    headers = [str(h).strip() for h in raw_data[header_idx]]
+    df = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
+    df['_sheet_row'] = range(header_idx + 2, header_idx + 2 + len(df))
+    
+    # 💡 2. 초정밀 컬럼 맵핑 (이름이 변형되어도 잡아냄)
     rename_dict = {}
     for c in df.columns:
         cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
@@ -534,20 +545,17 @@ def load_universal_data():
         elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
         elif "구분" in cc and not "도금" in cc: rename_dict[c] = '구분'
         elif "호기" in cc: rename_dict[c] = '호기'
-        elif "모델" in cc: rename_dict[c] = '모델명(MI)'
+        elif "모델" in cc or "품명" in cc or "MI" in cc: rename_dict[c] = '모델명(MI)'
         elif "도금" in cc: rename_dict[c] = '도금구분'
         elif cc in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
         elif cc == "양품수량": rename_dict[c] = '양품수량'
         elif "전" in cc and "배" in cc and "포함" in cc and "양품수량" in cc: rename_dict[c] = '양품 수량(전/배 포함)'
         elif "불량수량" in cc: rename_dict[c] = '불량수량'
-        elif cc == "양품율" or cc == "1차양품율" or cc == "수율": rename_dict[c] = '양품율'
+        elif cc in ["양품율", "1차양품율", "수율", "합격율"]: rename_dict[c] = '양품율'
         elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
-        elif "완전" in cc and "불량율" in cc: rename_dict[c] = '완전불량율'
-        elif "전면" in cc and "불량율" in cc: rename_dict[c] = '전면불량율'
-        elif "배면" in cc and "불량율" in cc: rename_dict[c] = '배면불량율'
-        elif cc == "완전불량": rename_dict[c] = '완전불량'
-        elif cc == "전면불량": rename_dict[c] = '전면불량'
-        elif cc == "배면불량": rename_dict[c] = '배면불량'
+        elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
+        elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
+        elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
         elif "옵셋" in cc and "불량" in cc: rename_dict[c] = '옵셋불량'
         elif "수량부족" in cc: rename_dict[c] = '수량부족'
         elif cc == "기타": rename_dict[c] = '기타'
@@ -557,7 +565,7 @@ def load_universal_data():
         elif "도장일" in cc: rename_dict[c] = '도장일'
         elif "도장순서" in cc: rename_dict[c] = '도장순서'
         elif "입고일" in cc: rename_dict[c] = '입고일'
-        elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
+        elif "LOT" in cc or "로트" in cc: rename_dict[c] = 'LOT NO.'
         elif cc == "CLIP": rename_dict[c] = 'CLIP'
         elif cc == "BASE": rename_dict[c] = 'BASE'
         elif cc == "COVER": rename_dict[c] = 'COVER'
@@ -567,6 +575,7 @@ def load_universal_data():
     
     df = df.rename(columns=rename_dict)
     
+    # 누락된 기본 열 자동 생성
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
@@ -723,7 +732,7 @@ if st.session_state.current_page == "analysis":
     df = load_universal_data().copy()
 
     if df.empty or '모델명(MI)' not in df.columns: 
-        st.warning("데이터베이스에 유효한 정보가 없습니다.")
+        st.warning("데이터베이스에 유효한 정보가 없습니다. 상단의 에러 원인을 확인해주세요.")
     else:
         # 데이터 클렌징
         def pct_to_float(x):
@@ -744,6 +753,7 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
+        # 💡 원본 시트에는 '완전불량_Qty'가 아니라 '완전불량' (명칭 통일)
         df['완전불량_Qty'] = df.get('완전불량', pd.Series([0]*len(df))).apply(safe_int)
         df['전면불량_Qty'] = df.get('전면불량', pd.Series([0]*len(df))).apply(safe_int)
         df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
@@ -771,9 +781,13 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 1차 검사만 강제 필터링
+        # 💡 1차 검사 예외 필터링 처리 (데이터 증발 방지)
         if '구분' in df.columns:
-            df = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
+            df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
+            if not df_filtered.empty:
+                df = df_filtered
+            else:
+                st.warning("⚠️ '1차 검사'로 분류된 데이터가 존재하지 않아 전체 데이터를 표시합니다.")
             
         # 도금구분 정리
         if '도금구분' in df.columns:
