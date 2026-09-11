@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import json
 import os
 import re
@@ -321,6 +322,12 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
 .command-header { color: #38BDF8 !important; font-weight: 900 !important; letter-spacing: 1.5px; text-shadow: 0 0 5px rgba(56, 189, 248, 0.4); }
 .metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; }
 
+/* Dashboard KPI Cards */
+.kpi-card { background-color: #0F172A; border: 1px solid #1E293B; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.kpi-title { color: #94A3B8; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
+.kpi-value { color: #38BDF8; font-size: 1.8rem; font-weight: 900; }
+.kpi-sub { color: #64748B; font-size: 0.8rem; }
+
 /* Live Blinking Dot Effect */
 @keyframes blink {
     0% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
@@ -334,38 +341,12 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
 }
 
 /* Custom Selectbox for Dark Mode */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-    background-color: #0F172A !important;
-    border: 1px solid #1E293B !important;
-    color: #E2E8F0 !important;
-}
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
-    color: #E2E8F0 !important;
-    font-weight: bold !important;
-    font-size: 1.1rem !important;
-}
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
 
 /* Buttons in Dark Mode */
-div[data-testid="stButton"] button {
-    background-color: #0F172A !important;
-    color: #38BDF8 !important;
-    border: 1px solid #1E293B !important;
-    border-radius: 4px !important;
-    font-weight: bold !important;
-    transition: all 0.2s ease;
-}
-div[data-testid="stButton"] button:hover {
-    background-color: #1E293B !important;
-    border-color: #38BDF8 !important;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
-}
-
-/* Sidebar Custom Buttons */
-[data-testid="stSidebar"] .stButton > button { 
-    height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 4px !important; background-color: transparent !important; border: 1px solid transparent !important; box-shadow: none !important;
-}
-[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #0F172A !important; color: #38BDF8 !important; border-left: 4px solid #38BDF8 !important; }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #0F172A !important; color: #E2E8F0 !important; }
+div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
+div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
 </style>
 """
 
@@ -510,7 +491,6 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 최첨단 통합 데이터 로더 (입력 및 분석 공통 사용)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -524,7 +504,6 @@ def load_universal_data():
     
     if len(raw_data) < 2: return pd.DataFrame()
     
-    # 💡 1. 헤더 스코어링 탐지 기법 (퍼지 매칭)
     keywords = ['ID', '상태', '날짜', '일자', '시간', '모델', '수량', 'LOT', '양품', '불량']
     best_row_idx = -1
     max_score = 0
@@ -536,14 +515,12 @@ def load_universal_data():
             best_row_idx = i
             
     if best_row_idx == -1: 
-        st.error("🚨 시트에서 데이터 헤더(제목 행)를 찾을 수 없습니다.")
         return pd.DataFrame()
     
     headers = [str(h).strip() for h in raw_data[best_row_idx]]
     df = pd.DataFrame(raw_data[best_row_idx+1:], columns=headers)
     df['_sheet_row'] = range(best_row_idx + 2, best_row_idx + 2 + len(df))
     
-    # 💡 2. 스마트 컬럼 매핑 로직 (명칭이 미세하게 달라도 모두 통일)
     rename_dict = {}
     for c in df.columns:
         cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
@@ -590,7 +567,6 @@ def load_universal_data():
     
     df = df.rename(columns=rename_dict)
     
-    # 💡 3. 강제 필드 통일: EXCEL_COLUMNS 중 없는 컬럼은 빈 값으로 생성
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
@@ -721,7 +697,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (LIVE YIELD COMMAND CENTER)
+# 💡 Administrator (AI 종합 분석 대시보드)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -730,8 +706,8 @@ if st.session_state.current_page == "analysis":
         
     col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
     with col1:
-        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>LIVE YIELD COMMAND CENTER v1.0</div>", unsafe_allow_html=True)
-        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Manual LOT surveillance pipeline active.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>AI DEEP-DIVE COMMAND CENTER</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Real-time AI surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄 REFRESH DATA", use_container_width=True):
@@ -749,17 +725,30 @@ if st.session_state.current_page == "analysis":
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("데이터베이스에 유효한 정보가 없습니다.")
     else:
+        # 데이터 클렌징
         def pct_to_float(x):
             try:
                 if pd.isna(x) or str(x).strip() == '': return np.nan
                 return float(str(x).replace('%', '').replace(',', '').strip())
             except: return np.nan
+            
+        def safe_int(x):
+            try:
+                if pd.isna(x) or str(x).strip() == '': return 0
+                return int(float(str(x).replace(',', '').strip()))
+            except: return 0
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Comp'] = df.get('완전불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        
+        df['완전불량_Qty'] = df.get('완전불량', pd.Series([0]*len(df))).apply(safe_int)
+        df['전면불량_Qty'] = df.get('전면불량', pd.Series([0]*len(df))).apply(safe_int)
+        df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
+        df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
+        df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
         
         def parse_dt(r):
             try:
@@ -782,15 +771,16 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 💡 1차 검사 강제 필터링
+        # 1차 검사만 강제 필터링
         if '구분' in df.columns:
             df = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             
+        # 도금구분 정리
         if '도금구분' in df.columns:
             df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
             df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
             
-        df_target = df.tail(150).copy()
+        df_target = df.tail(200).copy()
         
         with st.container(border=True):
             col_a, col_b = st.columns(2)
@@ -816,19 +806,39 @@ if st.session_state.current_page == "analysis":
                 else:
                     model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
                     model_df = model_df.sort_values(['DateTime'])
-                    
                     model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     
                     def make_hover_text(row):
                         mod_str = str(row.get('모델명(MI)', ''))
                         plat_str = str(row.get('도금구분', 'A'))
-                        dur_str = str(row.get('소요시간', '0'))
                         lot_str = str(row['LOT NO.'])
-                        return f"[{mod_str} - {plat_str}]<br>LOT: {lot_str}<br>소요: {dur_str}분"
+                        return f"[{mod_str} - {plat_str}]<br>LOT: {lot_str}"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
+                    # 1. 핵심 KPI 요약 (Top-line Metrics)
+                    kpi1, kpi2, kpi3 = st.columns(3)
+                    total_inspected = model_df['검사수량'].sum()
+                    avg_yield = model_df['Yield_1'].mean()
+                    
+                    defect_sums = {
+                        "완전불량": model_df['완전불량_Qty'].sum(),
+                        "전면불량": model_df['전면불량_Qty'].sum(),
+                        "배면불량": model_df['배면불량_Qty'].sum(),
+                        "옵셋불량": model_df['옵셋불량_Qty'].sum()
+                    }
+                    worst_defect = max(defect_sums, key=defect_sums.get)
+                    
+                    with kpi1:
+                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Total Inspected (Units)</div><div class='kpi-value'>{total_inspected:,.0f}</div><div class='kpi-sub'>선택된 모델의 총 검사수량</div></div>", unsafe_allow_html=True)
+                    with kpi2:
+                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Average 1st Yield</div><div class='kpi-value'>{avg_yield:.2f}%</div><div class='kpi-sub'>1차 양품율 평균</div></div>", unsafe_allow_html=True)
+                    with kpi3:
+                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Top Defect Category</div><div class='kpi-value' style='color:#EF4444;'>{worst_defect}</div><div class='kpi-sub'>가장 많이 발생한 불량유형</div></div>", unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)
+
+                    # 2. 수율 트렌드 분석 (Trend Line)
                     def get_dark_layout(title_text, y_title):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
@@ -843,71 +853,81 @@ if st.session_state.current_page == "analysis":
 
                     with st.container(border=True):
                         fig1 = go.Figure()
-                        colors_1 = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
-                        colors_2 = ['#FF00FF', '#FF3366', '#9D00FF', '#00BFFF']
+                        colors = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
                         
                         for idx, mod in enumerate(selected_models):
                             m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                             if m_df.empty: continue
                             
-                            c1 = colors_1[idx % len(colors_1)]
-                            c2 = colors_2[idx % len(colors_2)]
+                            c1 = colors[idx % len(colors)]
                             
                             fig1.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
+                                x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
                                 textfont=dict(size=10, color=c1),
                                 line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
-                            fig1.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
-                                mode='lines+markers', line=dict(color=c2, width=2, dash='dot'), 
-                                marker=dict(size=5, symbol='x', color=c2), hovertext=m_df['HoverText']
-                            ))
+                            
+                            # 이동평균선 (Trend)
+                            if len(m_df) > 3:
+                                m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
+                                fig1.add_trace(go.Scatter(
+                                    x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend (3-MA)", 
+                                    mode='lines', line=dict(color=c1, width=1, dash='dot'), hoverinfo='skip'
+                                ))
                         
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=400)
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND & MOVING AVERAGE", "YIELD (%)"), height=400)
                         st.plotly_chart(fig1, use_container_width=True)
 
-                    with st.container(border=True):
-                        fig2 = go.Figure()
-                        for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Def_Comp'])
-                            if m_df.empty: continue
-                            c1 = colors_2[idx % len(colors_2)]
+                    # 3. 불량 파레토 분석 및 설비별 편차 (1x2 Grid)
+                    col_p, col_b = st.columns([1, 1])
+                    
+                    with col_p:
+                        with st.container(border=True):
+                            st.markdown("<div class='metric-label'>■ DEFECT PARETO ANALYSIS</div>", unsafe_allow_html=True)
+                            pareto_df = pd.DataFrame({
+                                'Defect': ['완전불량', '전면불량', '배면불량', '옵셋불량'],
+                                'Count': [defect_sums['완전불량'], defect_sums['전면불량'], defect_sums['배면불량'], defect_sums['옵셋불량']]
+                            }).sort_values(by='Count', ascending=False)
                             
-                            fig2.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
-                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
-                                textfont=dict(size=10, color=c1),
-                                line=dict(color=c1, width=2), fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
-                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
+                            pareto_df['Cumulative %'] = pareto_df['Count'].cumsum() / pareto_df['Count'].sum() * 100
+                            
+                            fig_pareto = go.Figure()
+                            fig_pareto.add_trace(go.Bar(
+                                x=pareto_df['Defect'], y=pareto_df['Count'], name='Count',
+                                marker_color=['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6'], text=pareto_df['Count'], textposition='auto'
+                            ))
+                            fig_pareto.add_trace(go.Scatter(
+                                x=pareto_df['Defect'], y=pareto_df['Cumulative %'], name='Cumulative %',
+                                mode='lines+markers', line=dict(color='#00E5FF', width=2), marker=dict(size=8), yaxis='y2'
                             ))
                             
-                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=350)
-                        st.plotly_chart(fig2, use_container_width=True)
-
-                    with st.container(border=True):
-                        fig3 = go.Figure()
-                        for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Def_Front', 'Def_Rear'], how='all')
-                            if m_df.empty: continue
-                            c1 = colors_1[idx % len(colors_1)]
-                            c2 = colors_2[idx % len(colors_2)]
+                            fig_pareto.update_layout(
+                                plot_bgcolor='#0B101E', paper_bgcolor='#0B101E', font=dict(color='#94A3B8'),
+                                yaxis=dict(title='Defect Count', gridcolor='#1E293B'),
+                                yaxis2=dict(title='Cumulative (%)', overlaying='y', side='right', range=[0, 105]),
+                                margin=dict(l=40, r=40, t=10, b=40), showlegend=False, height=350
+                            )
+                            st.plotly_chart(fig_pareto, use_container_width=True)
                             
-                            fig3.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
-                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
-                                textfont=dict(size=10, color=c1),
-                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
-                            ))
-                            fig3.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
-                                mode='lines+markers', line=dict(color=c2, width=2, dash='dash'), 
-                                marker=dict(size=6, symbol='triangle-up', color=c2), hovertext=m_df['HoverText']
-                            ))
-                            
-                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)"), height=350)
-                        st.plotly_chart(fig3, use_container_width=True)
+                    with col_b:
+                        with st.container(border=True):
+                            st.markdown("<div class='metric-label'>■ YIELD VARIANCE BY MACHINE (UNIT)</div>", unsafe_allow_html=True)
+                            if '호기' in model_df.columns:
+                                fig_box = px.box(
+                                    model_df.dropna(subset=['Yield_1']), x="호기", y="Yield_1", color="모델명(MI)",
+                                    points="all", hover_data=["LOT NO."]
+                                )
+                                fig_box.update_layout(
+                                    plot_bgcolor='#0B101E', paper_bgcolor='#0B101E', font=dict(color='#94A3B8'),
+                                    yaxis=dict(title='1st Yield (%)', gridcolor='#1E293B'),
+                                    xaxis=dict(title='Machine Unit'),
+                                    margin=dict(l=40, r=40, t=10, b=40), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                    height=350
+                                )
+                                st.plotly_chart(fig_box, use_container_width=True)
+                            else:
+                                st.info("Machine (Unit) data not found.")
 
 # ==========================================
 # Main Input App
@@ -1171,10 +1191,8 @@ elif st.session_state.current_page == "input":
                                 st.markdown("<div style='background-color: #FFC000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.5rem; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;'>✅ 새로운 작업이 진행중 상태로 등록되었습니다!</div>", unsafe_allow_html=True)
                                 
                                 st.cache_data.clear() 
-                                
                                 for k in list(default_state.keys()):
-                                    if k in st.session_state:
-                                        del st.session_state[k]
+                                    if k in st.session_state: del st.session_state[k]
 
                                 time.sleep(1.5) 
                                 st.session_state.app_mode = "END"
