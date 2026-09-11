@@ -54,6 +54,9 @@ if "unlocked" in st.query_params:
     st.session_state.unlocked = True
     st.query_params.clear()
 
+# 💡 관리자 인증 상태 변수 추가
+if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
+
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
     "shift_type": "주간", "worker": "작업자A",
@@ -163,6 +166,7 @@ if not st.session_state.unlocked:
         components.html(slider_html, height=90)
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
+
 
 # ==============================================================================
 # 💡 페이지별 CSS 분리 적용
@@ -554,10 +558,10 @@ def load_analysis_data():
                 for col in EXCEL_COLUMNS:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
                     
-                    # 💡 완벽한 컬럼 매핑 (빈 데이터 에러 원천 차단)
+                    # 💡 완벽한 컬럼 매핑 방어 로직
                     if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
                     elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
-                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자"] # "일자" 오류 해결
+                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자"] 
                     elif col_key == "시작시간": aliases = ["시간", "작업시간"]
                     elif col_key == "구분": aliases = ["검사구분"]
                     else: aliases = []
@@ -744,23 +748,43 @@ def show_sbl_warning(defect_type, rate):
     if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
         st.rerun()
 
+# 💡 관리자 인증 다이얼로그 (6233)
+@st.dialog("🔒 관리자 인증")
+def admin_auth_dialog():
+    st.markdown("<div style='color:#94A3B8; margin-bottom:10px;'>분석 데이터를 확인하려면 관리자 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
+    pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력")
+    if st.button("✅ 확인", type="primary", use_container_width=True):
+        if pwd == "6233":
+            st.session_state.admin_authenticated = True
+            st.rerun()
+        else:
+            st.error("비밀번호가 일치하지 않습니다.")
+
 
 # ==========================================
 # 💡 Administrator (LIVE YIELD COMMAND CENTER)
 # ==========================================
 if st.session_state.current_page == "analysis":
-    
+    # 💡 인증 안되었으면 팝업 띄우고 정지
+    if not st.session_state.admin_authenticated:
+        admin_auth_dialog()
+        st.stop()
+        
     col1, col2, col3 = st.columns([0.65, 0.15, 0.2])
     with col1:
         st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>LIVE YIELD COMMAND CENTER v1.0</div>", unsafe_allow_html=True)
-        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Real-time LOT surveillance pipeline. Auto-refresh enabled.</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Manual LOT surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        auto_refresh = st.checkbox("🔄 AUTO REFRESH", value=True)
+        # 💡 수동 새로고침 적용 (자동 갱신 X)
+        if st.button("🔄 REFRESH DATA", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("RETURN TO INPUT", type="primary", use_container_width=True):
             st.session_state.current_page = "input"
+            st.session_state.admin_authenticated = False # 나갈때 인증 초기화
             st.rerun()
             
     df = load_analysis_data().copy()
@@ -780,7 +804,7 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
-        # 💡 극강의 안정성을 갖춘 날짜 파서 (모든 변형 대응)
+        # 💡 DD-MM-YYYY 및 각종 포맷을 커버하는 강력한 날짜 파서
         def parse_dt(r):
             try:
                 d_val = str(r.get('날짜', '')).strip()
@@ -804,42 +828,55 @@ if st.session_state.current_page == "analysis":
                     target_date = base_date + timedelta(days=int(d_val))
                     return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
 
-                nums = re.findall(r'\d+', d_val)
-                if len(nums) >= 3:
-                    if len(nums[0]) == 4:
-                        return pd.to_datetime(f"{nums[0]}-{nums[1].zfill(2)}-{nums[2].zfill(2)} {t_str}")
-                    else:
-                        return pd.to_datetime(f"20{nums[0].zfill(2)}-{nums[1].zfill(2)}-{nums[2].zfill(2)} {t_str}")
-                elif len(nums) == 2:
-                    return pd.to_datetime(f"{y}-{nums[0].zfill(2)}-{nums[1].zfill(2)} {t_str}")
+                # Format: DD-MM-YYYY (예: 11-09-2026)
+                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_val)
+                if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
+
+                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
+                
+                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
+                
+                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_val)
+                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
+
             except: pass
             return pd.NaT
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 테스트 환경 기준점: DB에 기재된 가장 '최신' 날짜를 기준으로 과거 2일 전(총 3일간) 데이터 필터링
+        # 💡 동적 기준점 설정: DB 내 '가장 최신 날짜'에서 '당일(오늘)'을 제외하고 과거 3일치 스캔
         if not df['DateTime'].empty:
-            latest_date = df['DateTime'].max().date()
-            start_date = latest_date - timedelta(days=2)
+            max_dt_in_db = df['DateTime'].max().date()
+            today_date = datetime.now(timezone(timedelta(hours=9))).date()
+            
+            # DB의 최신 날짜가 오늘이라면, 어제를 기준(최신)으로 삼음
+            if max_dt_in_db >= today_date:
+                anchor_date = today_date - timedelta(days=1)
+            else:
+                anchor_date = max_dt_in_db
+                
+            start_date = anchor_date - timedelta(days=2) # 과거 3일 (D-3)
             
             df['DateOnly'] = df['DateTime'].dt.date
-            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= latest_date)].copy()
+            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= anchor_date)].copy()
         else:
             df_target = pd.DataFrame(columns=df.columns)
             start_date = datetime.now().date()
-            latest_date = datetime.now().date()
+            anchor_date = datetime.now().date()
             
         with st.container(border=True):
             col_a, col_b = st.columns(2)
             with col_a:
-                st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
+                st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
                 models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
-                selected_model = st.selectbox("Select Model", models_available, label_visibility="collapsed") if models_available else None
+                # 💡 모델 다중 선택 (Multiselect)
+                selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
             with col_b:
                 st.markdown("<div class='metric-label'>■ INSPECTION CATEGORY</div>", unsafe_allow_html=True)
-                # 💡 1차 검사를 Default로 필터링
                 if '구분' in df_target.columns:
                     df_target['구분'] = df_target['구분'].fillna('').astype(str).str.strip()
                     unique_types = [str(x) for x in df_target['구분'].unique() if str(x) != '']
@@ -850,25 +887,29 @@ if st.session_state.current_page == "analysis":
                     selected_cats = []
 
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {latest_date.strftime('%Y-%m-%d')}).")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {anchor_date.strftime('%Y-%m-%d')}).")
+            elif not selected_models:
+                st.warning("Please select at least one model.")
             else:
-                model_df = df_target[df_target['모델명(MI)'] == selected_model].copy()
+                # 선택된 모델들과 카테고리로 데이터 필터링
+                model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
                 if selected_cats and not model_df.empty:
                     model_df = model_df[model_df['구분'].isin(selected_cats)]
                 
                 if model_df.empty:
-                    st.info(f"No data for the selected model / category in this period.")
+                    st.info(f"No data for the selected models / category in this period.")
                 else:
-                    # 💡 X축을 LOT NO. 카테고리로 생성하여 연속성 유지
+                    # X축을 LOT NO. 흐름 기준으로 정렬
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
-                    model_df = model_df.sort_values('DateTime') 
+                    model_df = model_df.sort_values(['DateTime']) 
                     
                     cat_array = model_df['LOT NO.'].tolist()
                     
                     def make_hover_text(row):
                         time_str = row['DateTime'].strftime('%m-%d %H:%M')
                         dur_str = str(row.get('소요시간', '0'))
-                        return f"시간: {time_str} | 소요: {dur_str}분"
+                        mod_str = str(row.get('모델명(MI)', ''))
+                        return f"[{mod_str}] 시간: {time_str} | 소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
@@ -887,26 +928,30 @@ if st.session_state.current_page == "analysis":
                     # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
                     with st.container(border=True):
                         fig1 = go.Figure()
-                        fig1.add_trace(go.Scatter(
-                            x=model_df['LOT NO.'], y=model_df['Yield_1'], name="1차 양품율", 
-                            mode='lines+markers', line=dict(color='#00E5FF', width=3), 
-                            marker=dict(size=8, color='#00E5FF'),
-                            hovertext=model_df['HoverText']
-                        ))
-                        fig1.add_trace(go.Scatter(
-                            x=model_df['LOT NO.'], y=model_df['Yield_2'], name="1차 양품율 (전/배포함)", 
-                            mode='lines+markers', line=dict(color='#FF00FF', width=3, dash='dot'), 
-                            marker=dict(size=6, symbol='x', color='#FF00FF'),
-                            hovertext=model_df['HoverText']
-                        ))
                         
-                        last_x = model_df['LOT NO.'].iloc[-1]
-                        last_y = model_df['Yield_1'].iloc[-1]
-                        fig1.add_trace(go.Scatter(
-                            x=[last_x], y=[last_y], mode='markers', name='Live',
-                            marker=dict(size=24, color='#00E5FF', line=dict(width=10, color='rgba(0, 229, 255, 0.3)')),
-                            showlegend=False, hoverinfo='skip'
-                        ))
+                        # 모델별로 라인 그리기 (다중 선택 대응)
+                        colors_1 = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
+                        colors_2 = ['#FF00FF', '#FF3366', '#9D00FF', '#00BFFF']
+                        
+                        for idx, mod in enumerate(selected_models):
+                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            if m_df.empty: continue
+                            
+                            c1 = colors_1[idx % len(colors_1)]
+                            c2 = colors_2[idx % len(colors_2)]
+                            
+                            fig1.add_trace(go.Scatter(
+                                x=m_df['LOT NO.'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
+                                mode='lines+markers', line=dict(color=c1, width=2), 
+                                marker=dict(size=6, color=c1),
+                                hovertext=m_df['HoverText']
+                            ))
+                            fig1.add_trace(go.Scatter(
+                                x=m_df['LOT NO.'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
+                                mode='lines+markers', line=dict(color=c2, width=2, dash='dot'), 
+                                marker=dict(size=5, symbol='x', color=c2),
+                                hovertext=m_df['HoverText']
+                            ))
                         
                         fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", cat_array), height=350)
                         st.plotly_chart(fig1, use_container_width=True)
@@ -914,53 +959,46 @@ if st.session_state.current_page == "analysis":
                     # 💡 Graph 2: 완전불량율
                     with st.container(border=True):
                         fig2 = go.Figure()
-                        fig2.add_trace(go.Scatter(
-                            x=model_df['LOT NO.'], y=model_df['Def_Comp'], name="완전불량율", 
-                            mode='lines+markers', line=dict(color='#FF3366', width=3), 
-                            fill='tozeroy', fillcolor='rgba(255, 51, 102, 0.1)',
-                            marker=dict(size=8, color='#FF3366'),
-                            hovertext=model_df['HoverText']
-                        ))
-                        
-                        last_y2 = model_df['Def_Comp'].iloc[-1]
-                        fig2.add_trace(go.Scatter(
-                            x=[last_x], y=[last_y2], mode='markers', name='Live',
-                            marker=dict(size=24, color='#FF3366', line=dict(width=10, color='rgba(255, 51, 102, 0.3)')),
-                            showlegend=False, hoverinfo='skip'
-                        ))
-                        
+                        for idx, mod in enumerate(selected_models):
+                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            if m_df.empty: continue
+                            c1 = colors_2[idx % len(colors_2)] # Red계열
+                            
+                            fig2.add_trace(go.Scatter(
+                                x=m_df['LOT NO.'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
+                                mode='lines+markers', line=dict(color=c1, width=2), 
+                                fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
+                                marker=dict(size=6, color=c1),
+                                hovertext=m_df['HoverText']
+                            ))
+                            
                         fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
                         st.plotly_chart(fig2, use_container_width=True)
 
                     # 💡 Graph 3: 전면불량율 vs 배면불량율
                     with st.container(border=True):
                         fig3 = go.Figure()
-                        fig3.add_trace(go.Scatter(
-                            x=model_df['LOT NO.'], y=model_df['Def_Front'], name="전면불량율", 
-                            mode='lines+markers', line=dict(color='#FFFF00', width=3), 
-                            marker=dict(size=8, color='#FFFF00'),
-                            hovertext=model_df['HoverText']
-                        ))
-                        fig3.add_trace(go.Scatter(
-                            x=model_df['LOT NO.'], y=model_df['Def_Rear'], name="배면불량율", 
-                            mode='lines+markers', line=dict(color='#00FF00', width=3, dash='dash'), 
-                            marker=dict(size=8, symbol='triangle-up', color='#00FF00'),
-                            hovertext=model_df['HoverText']
-                        ))
-                        
-                        last_y3 = model_df['Def_Front'].iloc[-1]
-                        fig3.add_trace(go.Scatter(
-                            x=[last_x], y=[last_y3], mode='markers', name='Live',
-                            marker=dict(size=24, color='#FFFF00', line=dict(width=10, color='rgba(255, 255, 0, 0.3)')),
-                            showlegend=False, hoverinfo='skip'
-                        ))
-                        
+                        for idx, mod in enumerate(selected_models):
+                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            if m_df.empty: continue
+                            c1 = colors_1[idx % len(colors_1)]
+                            c2 = colors_2[idx % len(colors_2)]
+                            
+                            fig3.add_trace(go.Scatter(
+                                x=m_df['LOT NO.'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
+                                mode='lines+markers', line=dict(color=c1, width=2), 
+                                marker=dict(size=6, color=c1),
+                                hovertext=m_df['HoverText']
+                            ))
+                            fig3.add_trace(go.Scatter(
+                                x=m_df['LOT NO.'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
+                                mode='lines+markers', line=dict(color=c2, width=2, dash='dash'), 
+                                marker=dict(size=6, symbol='triangle-up', color=c2),
+                                hovertext=m_df['HoverText']
+                            ))
+                            
                         fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
                         st.plotly_chart(fig3, use_container_width=True)
-
-    if auto_refresh:
-        time.sleep(10)
-        st.rerun()
 
 # ==========================================
 # Main Input App
