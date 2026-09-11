@@ -491,7 +491,6 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 최첨단 통합 데이터 로더 (중복 컬럼 에러 및 필터링 이슈 완벽 해결)
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -507,7 +506,6 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    # 1. 널널한 헤더 탐지 로직 (단 하나라도 일치하면 OK)
     header_idx = -1
     for i, row in enumerate(raw_data[:20]):
         row_str = "".join(str(c).replace(" ", "").upper() for c in row)
@@ -523,7 +521,6 @@ def load_universal_data():
         st.error("🚨 헤더 행 이후에 실제 데이터가 존재하지 않습니다.")
         return pd.DataFrame()
     
-    # 💡 2. 중복 헤더 사전 방지 로직 (DuplicateError 원천 차단)
     raw_headers = [str(h).strip() for h in raw_data[header_idx]]
     unique_headers = []
     seen = {}
@@ -539,11 +536,9 @@ def load_universal_data():
     df = pd.DataFrame(raw_data[header_idx+1:], columns=unique_headers)
     df['_sheet_row'] = range(header_idx + 2, header_idx + 2 + len(df))
     
-    # 3. 초정밀 컬럼 맵핑
     rename_dict = {}
     for c in df.columns:
         cc = str(c).replace(" ", "").replace("률", "율").replace("\n", "").upper()
-        # 중복 방지를 위해 언더바 파싱 제거 후 검사
         cc_base = cc.split('_')[0] 
         
         if "고유" in cc_base and "ID" in cc_base: rename_dict[c] = '고유 ID'
@@ -557,7 +552,6 @@ def load_universal_data():
         elif "구분" in cc_base and not "도금" in cc_base: rename_dict[c] = '구분'
         elif "호기" in cc_base: rename_dict[c] = '호기'
         elif "모델" in cc_base or "품명" in cc_base or "MI" in cc_base: rename_dict[c] = '모델명(MI)'
-        elif "도금" in cc_base: rename_dict[c] = '도금구분'
         elif cc_base in ["검사수량", "총수량", "총검사수량"]: rename_dict[c] = '검사 수량'
         elif cc_base == "양품수량": rename_dict[c] = '양품수량'
         elif "전" in cc_base and "배" in cc_base and "포함" in cc_base and "양품수량" in cc_base: rename_dict[c] = '양품 수량(전/배 포함)'
@@ -588,12 +582,8 @@ def load_universal_data():
         elif "작업자" in cc_base: rename_dict[c] = '작업자'
     
     df = df.rename(columns=rename_dict)
-    
-    # 💡 4. 매핑 후 동일한 이름의 열이 여러 개 생겼을 경우(예: 비고_1 -> 비고, 비고_2 -> 비고) 
-    # 첫 번째만 살리고 전부 삭제 (Plotly BoxPlot 에러 완벽 해결)
     df = df.loc[:, ~df.columns.duplicated(keep='first')]
     
-    # 누락된 기본 열 자동 생성
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
@@ -752,7 +742,6 @@ if st.session_state.current_page == "analysis":
     if df.empty or '모델명(MI)' not in df.columns: 
         st.warning("데이터베이스에 렌더링할 유효한 정보가 없습니다. 상단의 에러 원인을 확인해주세요.")
     else:
-        # 데이터 클렌징
         def pct_to_float(x):
             try:
                 if pd.isna(x) or str(x).strip() == '': return np.nan
@@ -798,7 +787,7 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        # 1차 검사 예외 필터링 처리 (데이터 증발 방지)
+        # 💡 1차 검사 전용 필터링
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty:
@@ -806,36 +795,33 @@ if st.session_state.current_page == "analysis":
             else:
                 st.warning("⚠️ '1차 검사'로 분류된 데이터가 존재하지 않아 전체 데이터를 표시합니다.")
             
-        # 도금구분 정리
-        if '도금구분' in df.columns:
-            df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
-            df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
-            
-        # 💡 전체 데이터 스캔 (tail 150 데이터 제한 완전 삭제)
-        df_target = df.copy()
+        # 💡 어제 날짜 기준 과거 3일(72H) 타임라인 강제 스캔
+        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        today_date = now_kst.date()
+        target_end_date = today_date - timedelta(days=1)   # 어제
+        target_start_date = today_date - timedelta(days=3) # 어제 기준 과거 3일
         
+        df['DateOnly'] = df['DateTime'].dt.date
+        df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+        
+        # 테스트 환경 예외 처리 (데이터가 전혀 없을 경우 풀스캔)
+        if df_target.empty:
+            st.warning(f"⚠️ 지정된 72H 타임라인({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')})에 '1차 검사' 데이터가 없습니다. 시트 내 전체 데이터를 표시합니다.")
+            df_target = df.copy()
+
         with st.container(border=True):
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
-                models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
-                # 전체 모델 목록이 다 나오도록 세팅
-                selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
-            
-            with col_b:
-                st.markdown("<div class='metric-label'>■ PLATING TYPE (도금구분)</div>", unsafe_allow_html=True)
-                plating_available = sorted(df_target['도금구분'].unique().tolist()) if '도금구분' in df_target.columns else ['A', 'B']
-                selected_plating = st.multiselect("Plating Type", plating_available, default=plating_available, label_visibility="collapsed")
+            # 도금구분 필터 삭제 -> 모델 선택만 1열로 꽉 차게 배치
+            st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
+            models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+            selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
 
             if not selected_models:
                 st.warning("Please select at least one model to render charts.")
             else:
                 model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
-                if selected_plating and not model_df.empty and '도금구분' in model_df.columns:
-                    model_df = model_df[model_df['도금구분'].isin(selected_plating)]
                 
                 if model_df.empty:
-                    st.info("No data available for the selected model & plating type.")
+                    st.info("No data available for the selected model.")
                 else:
                     model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
                     model_df = model_df.sort_values(['DateTime'])
@@ -844,13 +830,13 @@ if st.session_state.current_page == "analysis":
                     
                     def make_hover_text(row):
                         mod_str = str(row.get('모델명(MI)', ''))
-                        plat_str = str(row.get('도금구분', 'A'))
+                        dur_str = str(row.get('소요시간', '0'))
                         lot_str = str(row['LOT NO.'])
-                        return f"[{mod_str} - {plat_str}]<br>LOT: {lot_str}"
+                        d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M') if pd.notna(row['DateTime']) and row['DateTime'] != pd.Timestamp('1900-01-01') else "Unknown Time"
+                        return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    # 1. 핵심 KPI 요약 (Top-line Metrics)
                     kpi1, kpi2, kpi3 = st.columns(3)
                     total_inspected = model_df['검사수량'].sum()
                     avg_yield = model_df['Yield_1'].mean()
@@ -871,7 +857,6 @@ if st.session_state.current_page == "analysis":
                         st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Top Defect Category</div><div class='kpi-value' style='color:#EF4444;'>{worst_defect}</div><div class='kpi-sub'>가장 많이 발생한 불량유형</div></div>", unsafe_allow_html=True)
                     st.markdown("<br>", unsafe_allow_html=True)
 
-                    # 2. 수율 트렌드 분석 (Trend Line)
                     def get_dark_layout(title_text, y_title):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
@@ -894,6 +879,7 @@ if st.session_state.current_page == "analysis":
                             
                             c1 = colors[idx % len(colors)]
                             
+                            # 💡 차트 라인 위에 LOT NO 강제 표시 모드 활성화 (lines+markers+text)
                             fig1.add_trace(go.Scatter(
                                 x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
                                 mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
@@ -901,7 +887,6 @@ if st.session_state.current_page == "analysis":
                                 line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                            # 이동평균선 (Trend)
                             if len(m_df) > 3:
                                 m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
                                 fig1.add_trace(go.Scatter(
@@ -912,7 +897,6 @@ if st.session_state.current_page == "analysis":
                         fig1.update_layout(**get_dark_layout("1ST YIELD TREND & MOVING AVERAGE", "YIELD (%)"), height=400)
                         st.plotly_chart(fig1, use_container_width=True)
 
-                    # 3. 불량 파레토 분석 및 설비별 편차 (1x2 Grid)
                     col_p, col_b = st.columns([1, 1])
                     
                     with col_p:
