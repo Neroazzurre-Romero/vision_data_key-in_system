@@ -54,7 +54,6 @@ if "unlocked" in st.query_params:
     st.session_state.unlocked = True
     st.query_params.clear()
 
-# 💡 관리자 인증 상태 변수 추가
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
 default_state = {
@@ -558,10 +557,10 @@ def load_analysis_data():
                 for col in EXCEL_COLUMNS:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
                     
-                    # 💡 완벽한 컬럼 매핑 방어 로직
+                    # 💡 완벽한 컬럼 매핑 방어 로직 (검사일자 등 포함)
                     if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
                     elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
-                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자"] 
+                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자", "검사일자"] 
                     elif col_key == "시작시간": aliases = ["시간", "작업시간"]
                     elif col_key == "구분": aliases = ["검사구분"]
                     else: aliases = []
@@ -760,12 +759,10 @@ def admin_auth_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
-
 # ==========================================
 # 💡 Administrator (LIVE YIELD COMMAND CENTER)
 # ==========================================
 if st.session_state.current_page == "analysis":
-    # 💡 인증 안되었으면 팝업 띄우고 정지
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
@@ -776,7 +773,6 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Manual LOT surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 수동 새로고침 적용 (자동 갱신 X)
         if st.button("🔄 REFRESH DATA", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -784,7 +780,7 @@ if st.session_state.current_page == "analysis":
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("RETURN TO INPUT", type="primary", use_container_width=True):
             st.session_state.current_page = "input"
-            st.session_state.admin_authenticated = False # 나갈때 인증 초기화
+            st.session_state.admin_authenticated = False 
             st.rerun()
             
     df = load_analysis_data().copy()
@@ -804,18 +800,16 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
-        # 💡 DD-MM-YYYY 및 각종 포맷을 커버하는 강력한 날짜 파서
+        # 💡 극강의 안정성을 갖춘 날짜 파서 (모든 변형 대응)
         def parse_dt(r):
             try:
-                d_val = str(r.get('날짜', '')).strip()
-                t_val = str(r.get('시작시간', '')).strip()
+                d_val = r.get('날짜', r.get('일자', ''))
+                t_val = r.get('시작시간', '00:00')
                 
-                if not d_val or d_val.lower() in ['nan', 'none', '']: return pd.NaT
-                
-                if not t_val or t_val.lower() in ['nan', 'none', '']: 
-                    t_val = "00:00"
+                if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
+                if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
                     
-                t_clean = re.sub(r'[^\d]', '', t_val)
+                t_clean = re.sub(r'[^\d]', '', str(t_val))
                 if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
                 elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
                 elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
@@ -823,22 +817,28 @@ if st.session_state.current_page == "analysis":
 
                 y = str(r.get('_year', datetime.now().year))
                 
-                if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
+                if isinstance(d_val, (datetime, pd.Timestamp)):
+                    d_str = d_val.strftime('%Y-%m-%d')
+                    return pd.to_datetime(f"{d_str} {t_str}")
+
+                d_str_val = str(d_val).strip()
+
+                if d_str_val.isdigit() and 40000 <= int(d_str_val) <= 50000:
                     base_date = datetime(1899, 12, 30)
-                    target_date = base_date + timedelta(days=int(d_val))
+                    target_date = base_date + timedelta(days=int(d_str_val))
                     return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
 
-                # Format: DD-MM-YYYY (예: 11-09-2026)
-                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_val)
+                # 💡 Format: DD-MM-YYYY (예: 11-09-2026) 
+                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
                 if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
 
-                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
                 if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
                 
-                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_val)
+                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
                 if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
                 
-                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_val)
+                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_str_val)
                 if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
 
             except: pass
@@ -847,32 +847,28 @@ if st.session_state.current_page == "analysis":
         df['DateTime'] = df.apply(parse_dt, axis=1)
         df = df.dropna(subset=['DateTime'])
         
-        # 💡 동적 기준점 설정: DB 내 '가장 최신 날짜'에서 '당일(오늘)'을 제외하고 과거 3일치 스캔
-        if not df['DateTime'].empty:
-            max_dt_in_db = df['DateTime'].max().date()
-            today_date = datetime.now(timezone(timedelta(hours=9))).date()
-            
-            # DB의 최신 날짜가 오늘이라면, 어제를 기준(최신)으로 삼음
-            if max_dt_in_db >= today_date:
-                anchor_date = today_date - timedelta(days=1)
-            else:
-                anchor_date = max_dt_in_db
-                
-            start_date = anchor_date - timedelta(days=2) # 과거 3일 (D-3)
-            
-            df['DateOnly'] = df['DateTime'].dt.date
-            df_target = df[(df['DateOnly'] >= start_date) & (df['DateOnly'] <= anchor_date)].copy()
-        else:
-            df_target = pd.DataFrame(columns=df.columns)
-            start_date = datetime.now().date()
-            anchor_date = datetime.now().date()
+        # 💡 요청하신 정확한 하드코딩 필터링: "오늘 기준 -4일 전부터 -2일 전까지 (총 3일간)"
+        # 예시: 오늘이 9월 11일이면 9월 7일 ~ 9월 9일의 데이터를 타겟팅함.
+        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        today_date = now_kst.date()
+        
+        target_end_date = today_date - timedelta(days=2)
+        target_start_date = today_date - timedelta(days=4)
+        
+        df['DateOnly'] = df['DateTime'].dt.date
+        df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+        
+        fallback_msg = ""
+        # 💡 방어 코드 (Fallback): 날짜가 9/7~9/9에 일치하는 데이터가 없더라도 빈화면 대신 최근 100개 LOT 강제 출력
+        if df_target.empty and not df.empty:
+            df_target = df.dropna(subset=['모델명(MI)', 'LOT NO.']).tail(100).copy()
+            fallback_msg = f"⚠️ 지정된 기간({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')}) 내 데이터가 없습니다. 대신 DB의 가장 최근 데이터 100개를 표시합니다."
             
         with st.container(border=True):
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
-                models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
-                # 💡 모델 다중 선택 (Multiselect)
+                models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
                 selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
             with col_b:
@@ -886,12 +882,15 @@ if st.session_state.current_page == "analysis":
                 else:
                     selected_cats = []
 
+            # Fallback 메시지가 존재하면 화면 상단에 경고로 출력
+            if fallback_msg:
+                st.warning(fallback_msg)
+
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({start_date.strftime('%Y-%m-%d')} ~ {anchor_date.strftime('%Y-%m-%d')}).")
+                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')}).")
             elif not selected_models:
                 st.warning("Please select at least one model.")
             else:
-                # 선택된 모델들과 카테고리로 데이터 필터링
                 model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
                 if selected_cats and not model_df.empty:
                     model_df = model_df[model_df['구분'].isin(selected_cats)]
@@ -899,7 +898,6 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info(f"No data for the selected models / category in this period.")
                 else:
-                    # X축을 LOT NO. 흐름 기준으로 정렬
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     model_df = model_df.sort_values(['DateTime']) 
                     
@@ -929,7 +927,6 @@ if st.session_state.current_page == "analysis":
                     with st.container(border=True):
                         fig1 = go.Figure()
                         
-                        # 모델별로 라인 그리기 (다중 선택 대응)
                         colors_1 = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
                         colors_2 = ['#FF00FF', '#FF3366', '#9D00FF', '#00BFFF']
                         
@@ -962,7 +959,7 @@ if st.session_state.current_page == "analysis":
                         for idx, mod in enumerate(selected_models):
                             m_df = model_df[model_df['모델명(MI)'] == mod]
                             if m_df.empty: continue
-                            c1 = colors_2[idx % len(colors_2)] # Red계열
+                            c1 = colors_2[idx % len(colors_2)]
                             
                             fig2.add_trace(go.Scatter(
                                 x=m_df['LOT NO.'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
