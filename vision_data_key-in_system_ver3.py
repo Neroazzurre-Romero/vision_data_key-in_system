@@ -9,7 +9,6 @@ import re
 from datetime import datetime, time as dt_time, timedelta, timezone
 import time
 from io import BytesIO
-from openpyxl.styles import Font
 import openpyxl
 import streamlit.components.v1 as components
 import gspread
@@ -489,9 +488,9 @@ EXCEL_COLUMNS = [
     "조립기", "월", "작업자"
 ]
 SPREADSHEET_ID = "1DeMJJkuq7bYa4XNK_NbkqZ-vOJKqGhmYXIvHm3yJl8E"
-TAB_NAME = "VISION_DATA_DB"
+# 💡 핵심 수정: 사용자가 지정한 시트명으로 완전히 고정
+TAB_NAME = "2026년 3Q"
 
-# 💡 DB 접속 에러를 화면에 출력하도록 수정한 로직
 @st.cache_resource(ttl=600)
 def get_spreadsheet_doc():
     try:
@@ -521,55 +520,44 @@ def load_analysis_data():
     doc = get_spreadsheet_doc()
     if doc is None: return pd.DataFrame()
     
-    worksheets = doc.worksheets()
-    q_sheets = [ws for ws in worksheets if "Q" in ws.title.upper()]
-    q_sheets.sort(key=lambda x: x.title, reverse=True)
-    
-    target_sheets = []
-    if q_sheets: target_sheets.append(q_sheets[0])
-    
-    db_sheet = next((ws for ws in worksheets if ws.title == TAB_NAME), None)
-    if db_sheet: target_sheets.append(db_sheet)
-        
-    all_data = []
-    for ws in target_sheets:
+    try:
+        ws = doc.worksheet(TAB_NAME)
         raw_data = ws.get_all_values()
-        if len(raw_data) < 2: continue
+    except Exception as e:
+        st.error(f"🚨 데이터를 불러오는 중 오류 발생: {e}")
+        return pd.DataFrame()
         
-        header_idx = -1
-        for i, row in enumerate(raw_data[:20]):
-            row_str = "".join(str(c).replace(" ", "") for c in row)
-            if any(k in row_str for k in ["날짜", "일자", "모델", "고유ID", "LOT"]):
-                header_idx = i; break
-                
-        if header_idx == -1: continue
-        
-        headers = [str(h).strip() for h in raw_data[header_idx]]
-        df_sheet = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
-        
-        rename_dict = {}
-        for c in df_sheet.columns:
-            cc = str(c).replace(" ", "").replace("률", "율").upper()
-            if "모델" in cc: rename_dict[c] = '모델명(MI)'
-            elif "날짜" in cc or "일자" in cc: rename_dict[c] = '날짜'
-            elif "시작" in cc and "시간" in cc: rename_dict[c] = '시작시간'
-            elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
-            elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
-            elif "구분" in cc: rename_dict[c] = '구분'
-            elif "도금" in cc: rename_dict[c] = '도금구분'
-            elif cc == "양품율" or cc == "1차양품율": rename_dict[c] = '양품율'
-            elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
-            elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
-            elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
-            elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
-        
-        df_sheet = df_sheet.rename(columns=rename_dict)
-        all_data.append(df_sheet)
-            
-    if not all_data: return pd.DataFrame()
+    if len(raw_data) < 2: return pd.DataFrame()
     
-    result_df = pd.concat(all_data, ignore_index=True)
-    return result_df
+    header_idx = -1
+    for i, row in enumerate(raw_data[:20]):
+        row_str = "".join(str(c).replace(" ", "") for c in row)
+        if any(k in row_str for k in ["날짜", "일자", "모델", "고유ID", "LOT"]):
+            header_idx = i; break
+            
+    if header_idx == -1: return pd.DataFrame()
+    
+    headers = [str(h).strip() for h in raw_data[header_idx]]
+    df_sheet = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
+    
+    rename_dict = {}
+    for c in df_sheet.columns:
+        cc = str(c).replace(" ", "").replace("률", "율").upper()
+        if "모델" in cc: rename_dict[c] = '모델명(MI)'
+        elif "날짜" in cc or "일자" in cc: rename_dict[c] = '날짜'
+        elif "시작" in cc and "시간" in cc: rename_dict[c] = '시작시간'
+        elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
+        elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
+        elif "구분" in cc: rename_dict[c] = '구분'
+        elif "도금" in cc: rename_dict[c] = '도금구분'
+        elif cc == "양품율" or cc == "1차양품율": rename_dict[c] = '양품율'
+        elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
+        elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
+        elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
+        elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
+    
+    df_sheet = df_sheet.rename(columns=rename_dict)
+    return df_sheet
 
 @st.cache_data(ttl=60)
 def load_data():
@@ -775,9 +763,39 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        df['__SEQ__'] = range(len(df))
+        # 💡 날짜 파서 (에러 방어용)
+        def parse_dt(r):
+            try:
+                d_val = r.get('날짜', '')
+                t_val = r.get('시작시간', '00:00')
+                if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
+                if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
+                t_clean = re.sub(r'[^\d]', '', str(t_val))
+                if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
+                elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
+                elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
+                else: t_str = "00:00"
+                d_str_val = str(d_val).strip()
+                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
+                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
+                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
+                if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
+            except: pass
+            return pd.NaT
+            
+        df['DateTime'] = df.apply(parse_dt, axis=1)
         
-        df_target = df.tail(200).copy()
+        # 💡 1차 검사 강제 필터링
+        if '구분' in df.columns:
+            df = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
+            
+        # 💡 도금구분 정리
+        if '도금구분' in df.columns:
+            df['도금구분'] = df['도금구분'].fillna('A').astype(str).str.strip().str.upper()
+            df['도금구분'] = df['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
+            
+        # 💡 강제 출력 스캔 (가장 최신 150개)
+        df_target = df.tail(150).copy()
         
         with st.container(border=True):
             col_a, col_b = st.columns(2)
@@ -788,12 +806,7 @@ if st.session_state.current_page == "analysis":
             
             with col_b:
                 st.markdown("<div class='metric-label'>■ PLATING TYPE (도금구분)</div>", unsafe_allow_html=True)
-                if '도금구분' in df_target.columns:
-                    df_target['도금구분'] = df_target['도금구분'].fillna('A').astype(str).str.strip().str.upper()
-                    df_target['도금구분'] = df_target['도금구분'].apply(lambda x: 'B' if 'B' in x else 'A')
-                    plating_available = sorted(df_target['도금구분'].unique().tolist())
-                else:
-                    plating_available = ['A', 'B']
+                plating_available = sorted(df_target['도금구분'].unique().tolist()) if '도금구분' in df_target.columns else ['A', 'B']
                 selected_plating = st.multiselect("Plating Type", plating_available, default=plating_available, label_visibility="collapsed")
 
             if not selected_models:
@@ -806,40 +819,33 @@ if st.session_state.current_page == "analysis":
                 if model_df.empty:
                     st.info("No data available for the selected model & plating type.")
                 else:
+                    # 💡 X축을 실제 시간으로 매핑
+                    model_df['DateTime'] = model_df['DateTime'].fillna(pd.Timestamp('1900-01-01'))
+                    model_df = model_df.sort_values(['DateTime'])
+                    
                     model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     
-                    model_df = model_df.sort_values(['__SEQ__']) 
-                    
-                    cat_array = model_df['LOT NO.'].tolist()
-                    
                     def make_hover_text(row):
-                        d_str = str(row.get('날짜', ''))
-                        t_str = str(row.get('시작시간', ''))
-                        dur_str = str(row.get('소요시간', '0'))
                         mod_str = str(row.get('모델명(MI)', ''))
                         plat_str = str(row.get('도금구분', 'A'))
-                        return f"[{mod_str} - {plat_str}]<br>시간: {d_str} {t_str} | 소요: {dur_str}분"
+                        dur_str = str(row.get('소요시간', '0'))
+                        lot_str = str(row['LOT NO.'])
+                        return f"[{mod_str} - {plat_str}]<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    def get_dark_layout(title_text, y_title, tick_vals, tick_texts):
+                    def get_dark_layout(title_text, y_title):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
                             plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
                             font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(
-                                tickmode='array', tickvals=tick_vals, ticktext=tick_texts, 
-                                showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45
-                            ),
+                            xaxis=dict(title='작업 시작시간', type='date', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                            margin=dict(l=40, r=40, t=50, b=60), 
+                            margin=dict(l=40, r=40, t=50, b=40), 
                             hovermode='x unified',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                         )
-
-                    tick_vals = model_df['__SEQ__'].tolist()
-                    tick_texts = model_df['LOT NO.'].tolist()
 
                     with st.container(border=True):
                         fig1 = go.Figure()
@@ -854,17 +860,18 @@ if st.session_state.current_page == "analysis":
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig1.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
+                                x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig1.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
+                                x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dot'), 
                                 marker=dict(size=5, symbol='x', color=c2), hovertext=m_df['HoverText']
                             ))
                         
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", tick_vals, tick_texts), height=350)
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)"), height=400)
                         st.plotly_chart(fig1, use_container_width=True)
 
                     with st.container(border=True):
@@ -875,13 +882,14 @@ if st.session_state.current_page == "analysis":
                             c1 = colors_2[idx % len(colors_2)]
                             
                             fig2.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
+                                x=m_df['DateTime'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
                                 marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
+                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)"), height=350)
                         st.plotly_chart(fig2, use_container_width=True)
 
                     with st.container(border=True):
@@ -893,17 +901,18 @@ if st.session_state.current_page == "analysis":
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig3.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
-                                mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
+                                x=m_df['DateTime'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
+                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                                textfont=dict(size=10, color=c1),
+                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig3.add_trace(go.Scatter(
-                                x=m_df['__SEQ__'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
+                                x=m_df['DateTime'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dash'), 
                                 marker=dict(size=6, symbol='triangle-up', color=c2), hovertext=m_df['HoverText']
                             ))
                             
-                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
+                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)"), height=350)
                         st.plotly_chart(fig3, use_container_width=True)
 
 # ==========================================
