@@ -557,7 +557,6 @@ def load_analysis_data():
                 for col in EXCEL_COLUMNS:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
                     
-                    # 💡 완벽한 컬럼 매핑 방어 로직 (검사일자 등 포함)
                     if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
                     elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
                     elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자", "검사일자"] 
@@ -773,6 +772,7 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Manual LOT surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
+        # 수동 새로고침
         if st.button("🔄 REFRESH DATA", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -800,75 +800,18 @@ if st.session_state.current_page == "analysis":
         df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
         
-        # 💡 극강의 안정성을 갖춘 날짜 파서 (모든 변형 대응)
-        def parse_dt(r):
-            try:
-                d_val = r.get('날짜', r.get('일자', ''))
-                t_val = r.get('시작시간', '00:00')
-                
-                if pd.isna(d_val) or str(d_val).strip() == '': return pd.NaT
-                if pd.isna(t_val) or str(t_val).strip() == '': t_val = "00:00"
-                    
-                t_clean = re.sub(r'[^\d]', '', str(t_val))
-                if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}"
-                elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}"
-                elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00"
-                else: t_str = "00:00"
-
-                y = str(r.get('_year', datetime.now().year))
-                
-                if isinstance(d_val, (datetime, pd.Timestamp)):
-                    d_str = d_val.strftime('%Y-%m-%d')
-                    return pd.to_datetime(f"{d_str} {t_str}")
-
-                d_str_val = str(d_val).strip()
-
-                if d_str_val.isdigit() and 40000 <= int(d_str_val) <= 50000:
-                    base_date = datetime(1899, 12, 30)
-                    target_date = base_date + timedelta(days=int(d_str_val))
-                    return pd.to_datetime(f"{target_date.strftime('%Y-%m-%d')} {t_str}")
-
-                # 💡 Format: DD-MM-YYYY (예: 11-09-2026) 
-                m_ddmmyy = re.search(r'^(\d{2})\s*-\s*(\d{2})\s*-\s*(\d{4})$', d_str_val)
-                if m_ddmmyy: return pd.to_datetime(f"{m_ddmmyy.group(3)}-{m_ddmmyy.group(2)}-{m_ddmmyy.group(1)} {t_str}")
-
-                m = re.search(r'(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
-                if m: return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)} {t_str}")
-                
-                m = re.search(r'(\d{1,2})\s*[./-]\s*(\d{1,2})', d_str_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
-                
-                m = re.search(r'(\d{1,2})\s*월\s*(\d{1,2})\s*일', d_str_val)
-                if m: return pd.to_datetime(f"{y}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)} {t_str}")
-
-            except: pass
-            return pd.NaT
-            
-        df['DateTime'] = df.apply(parse_dt, axis=1)
-        df = df.dropna(subset=['DateTime'])
+        # 💡 필터링 없이 전체 데이터를 가져오는 무적의 시계열 처리 (결측 방지용 임의 순차 인덱스 부여)
+        df['DateTime_Sort'] = pd.Series(range(len(df)))
         
-        # 💡 요청하신 정확한 하드코딩 필터링: "오늘 기준 -4일 전부터 -2일 전까지 (총 3일간)"
-        # 예시: 오늘이 9월 11일이면 9월 7일 ~ 9월 9일의 데이터를 타겟팅함.
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        today_date = now_kst.date()
+        # 💡 날짜 범위 필터링 완전 삭제 -> 최신 데이터 200건을 무조건 스캔 (Fallback)
+        df_target = df.tail(200).copy()
         
-        target_end_date = today_date - timedelta(days=2)
-        target_start_date = today_date - timedelta(days=4)
-        
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
-        
-        fallback_msg = ""
-        # 💡 방어 코드 (Fallback): 날짜가 9/7~9/9에 일치하는 데이터가 없더라도 빈화면 대신 최근 100개 LOT 강제 출력
-        if df_target.empty and not df.empty:
-            df_target = df.dropna(subset=['모델명(MI)', 'LOT NO.']).tail(100).copy()
-            fallback_msg = f"⚠️ 지정된 기간({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')}) 내 데이터가 없습니다. 대신 DB의 가장 최근 데이터 100개를 표시합니다."
-            
         with st.container(border=True):
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
-                models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+                models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+                # 다중 선택
                 selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
             with col_b:
@@ -882,12 +825,8 @@ if st.session_state.current_page == "analysis":
                 else:
                     selected_cats = []
 
-            # Fallback 메시지가 존재하면 화면 상단에 경고로 출력
-            if fallback_msg:
-                st.warning(fallback_msg)
-
             if not models_available:
-                st.info(f"NO TELEMETRY DATA FOUND IN THE TARGET RANGE ({target_start_date.strftime('%Y-%m-%d')} ~ {target_end_date.strftime('%Y-%m-%d')}).")
+                st.info("NO TELEMETRY DATA AVAILABLE FOR RENDERING.")
             elif not selected_models:
                 st.warning("Please select at least one model.")
             else:
@@ -896,18 +835,21 @@ if st.session_state.current_page == "analysis":
                     model_df = model_df[model_df['구분'].isin(selected_cats)]
                 
                 if model_df.empty:
-                    st.info(f"No data for the selected models / category in this period.")
+                    st.info("No data for the selected models / category.")
                 else:
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
-                    model_df = model_df.sort_values(['DateTime']) 
+                    
+                    # 💡 실제 파일 내 행(Row) 순서 기반으로 정렬하여 정확한 흐름 렌더링
+                    model_df = model_df.sort_values(['DateTime_Sort']) 
                     
                     cat_array = model_df['LOT NO.'].tolist()
                     
                     def make_hover_text(row):
-                        time_str = row['DateTime'].strftime('%m-%d %H:%M')
+                        d_str = str(row.get('날짜', ''))
+                        t_str = str(row.get('시작시간', ''))
                         dur_str = str(row.get('소요시간', '0'))
                         mod_str = str(row.get('모델명(MI)', ''))
-                        return f"[{mod_str}] 시간: {time_str} | 소요: {dur_str}분"
+                        return f"[{mod_str}] 시간: {d_str} {t_str} | 소요: {dur_str}분"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
