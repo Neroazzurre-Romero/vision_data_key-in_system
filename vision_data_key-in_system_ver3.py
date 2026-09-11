@@ -481,14 +481,6 @@ def render_grid_buttons(options, state_key, columns, use_width=True):
                         st.rerun()
 
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-EXCEL_COLUMNS = [
-    "고유 ID", "상태", "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", 
-    "모델명(MI)", "도금구분", "UPH", "UPD", "검사 수량", "양품수량", "양품 수량(전/배 포함)", 
-    "불량수량", "양품율", "양품율(전/배 포함)", "완전불량율", "전면불량율", "배면불량율", 
-    "완전불량", "전면불량", "배면불량", "옵셋불량", "수량부족", "기타", "OQC", "비고", 
-    "도장라인", "도장일", "도장순서", "입고일", "LOT NO.", "CLIP", "BASE", "COVER", 
-    "조립기", "월", "작업자"
-]
 SPREADSHEET_ID = "1DeMJJkuq7bYa4XNK_NbkqZ-vOJKqGhmYXIvHm3yJl8E"
 TAB_NAME = "VISION_DATA_DB"
 
@@ -516,90 +508,69 @@ def get_sheet():
         except: return doc.sheet1
     return None
 
+# 💡 강제 맵핑 최적화 로더: 시트의 헤더를 문자열로 인식해 무조건 데이터를 끌어옵니다.
 @st.cache_data(ttl=15) 
 def load_analysis_data():
     doc = get_spreadsheet_doc()
-    if doc is None: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    if doc is None: return pd.DataFrame()
     
     worksheets = doc.worksheets()
     q_sheets = [ws for ws in worksheets if "Q" in ws.title.upper()]
     q_sheets.sort(key=lambda x: x.title, reverse=True)
     
-    target_sheets = [ws for ws in worksheets if ws.title == TAB_NAME]
-    if q_sheets:
-        target_sheets.append(q_sheets[0])
+    target_sheets = []
+    if q_sheets: target_sheets.append(q_sheets[0])
+    
+    db_sheet = next((ws for ws in worksheets if ws.title == TAB_NAME), None)
+    if db_sheet: target_sheets.append(db_sheet)
         
     all_data = []
     for ws in target_sheets:
         raw_data = ws.get_all_values()
         if len(raw_data) < 2: continue
         
-        year_val = str(datetime.now().year)
-        match = re.search(r'(\d{4})', ws.title)
-        if match: year_val = match.group(1)
-        
         header_idx = -1
         for i, row in enumerate(raw_data[:15]):
             row_str = "".join(str(c).replace(" ", "") for c in row)
-            if any(k in row_str for k in ["날짜", "일자", "교대", "모델", "고유ID", "구분", "상태"]):
+            if any(k in row_str for k in ["날짜", "일자", "모델", "고유ID", "LOT"]):
                 header_idx = i; break
                 
         if header_idx == -1: continue
         
         headers = [str(h).strip() for h in raw_data[header_idx]]
-        clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
+        df_sheet = pd.DataFrame(raw_data[header_idx+1:], columns=headers)
         
-        ws_data = []
-        for r_idx in range(header_idx + 1, len(raw_data)):
-            row = raw_data[r_idx]
-            if any(str(c).strip() for c in row):
-                row_data = {"_year": year_val}
-                for col in EXCEL_COLUMNS:
-                    col_key = col.replace(" ", "").replace("률", "율").upper()
-                    
-                    if col_key == "모델명(MI)": aliases = ["모델명", "모델"]
-                    elif col_key == "검사수량": aliases = ["총수량", "총검사수량"]
-                    elif col_key == "날짜": aliases = ["일자", "작업일자", "생산일자", "검사일자"] 
-                    elif col_key == "시작시간": aliases = ["시간", "작업시간"]
-                    elif col_key == "구분": aliases = ["검사구분"]
-                    else: aliases = []
-                    
-                    matched_header = None
-                    if col_key in clean_headers:
-                        matched_header = clean_headers[col_key]
-                    else:
-                        for alias in aliases:
-                            if alias in clean_headers:
-                                matched_header = clean_headers[alias]
-                                break
-                                
-                    if matched_header:
-                        try:
-                            c_idx = headers.index(matched_header)
-                            row_data[col] = row[c_idx] if c_idx < len(row) else ""
-                        except:
-                            row_data[col] = ""
-                    else:
-                        row_data[col] = "" 
-                ws_data.append(row_data)
+        # 스마트 컬럼 리네임
+        rename_dict = {}
+        for c in df_sheet.columns:
+            cc = str(c).replace(" ", "").replace("률", "율").upper()
+            if "모델" in cc: rename_dict[c] = '모델명(MI)'
+            elif "날짜" in cc or "일자" in cc: rename_dict[c] = '날짜'
+            elif "시작" in cc and "시간" in cc: rename_dict[c] = '시작시간'
+            elif "소요" in cc and "시간" in cc: rename_dict[c] = '소요시간'
+            elif "LOT" in cc: rename_dict[c] = 'LOT NO.'
+            elif "구분" in cc: rename_dict[c] = '구분'
+            elif cc == "양품율" or cc == "1차양품율": rename_dict[c] = '양품율'
+            elif "전" in cc and "배" in cc and "양품율" in cc: rename_dict[c] = '양품율(전/배 포함)'
+            elif "완전" in cc and "불량" in cc: rename_dict[c] = '완전불량율'
+            elif "전면" in cc and "불량" in cc: rename_dict[c] = '전면불량율'
+            elif "배면" in cc and "불량" in cc: rename_dict[c] = '배면불량율'
         
-        if ws_data:
-            all_data.append(pd.DataFrame(ws_data))
+        df_sheet = df_sheet.rename(columns=rename_dict)
+        all_data.append(df_sheet)
             
-    if not all_data: return pd.DataFrame(columns=EXCEL_COLUMNS)
+    if not all_data: return pd.DataFrame()
     
     result_df = pd.concat(all_data, ignore_index=True)
-    if 'LOT NO.' in result_df.columns:
-        result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
     return result_df
 
 @st.cache_data(ttl=60)
 def load_data():
     sheet = get_sheet()
-    if sheet is None: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+    if sheet is None: return pd.DataFrame()
     try:
         raw_data = sheet.get_all_values()
-        if len(raw_data) < 2: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+        if len(raw_data) < 2: return pd.DataFrame()
         
         header_idx = -1
         for i, row in enumerate(raw_data[:15]):
@@ -607,51 +578,31 @@ def load_data():
             if "날짜" in row_str or "교대" in row_str or "고유ID" in row_str.upper():
                 header_idx = i; break
                 
-        if header_idx == -1: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+        if header_idx == -1: return pd.DataFrame()
         
         headers = [str(h).strip() for h in raw_data[header_idx]]
         clean_headers = {str(c).replace(" ", "").replace("률", "율").upper(): c for c in headers}
+        
+        EXCEL_COLS_LOAD = ["고유 ID", "상태", "날짜", "교대", "시작시간", "종료시간", "휴동시간", "소요시간", "구분", "호기", "모델명(MI)", "검사 수량", "양품수량", "불량수량", "LOT NO."]
         
         data_list = []
         for r_idx in range(header_idx + 1, len(raw_data)):
             row = raw_data[r_idx]
             if any(str(c).strip() for c in row):
                 row_data = {"_sheet_row": r_idx + 1}
-                for col in EXCEL_COLUMNS:
+                for col in EXCEL_COLS_LOAD:
                     col_key = col.replace(" ", "").replace("률", "율").upper()
                     if col_key in clean_headers:
-                        orig_col_name = clean_headers[col_key]
                         try:
-                            c_idx = headers.index(orig_col_name)
+                            c_idx = headers.index(clean_headers[col_key])
                             row_data[col] = row[c_idx] if c_idx < len(row) else ""
-                        except:
-                            row_data[col] = ""
-                    else:
-                        row_data[col] = ""
+                        except: row_data[col] = ""
+                    else: row_data[col] = ""
                 data_list.append(row_data)
         
         result_df = pd.DataFrame(data_list)
-        if 'LOT NO.' in result_df.columns:
-            result_df['LOT NO.'] = result_df['LOT NO.'].astype(str).str.replace("'", "")
-            
         return result_df
-    except: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
-
-def save_data_append(df):
-    sheet = get_sheet()
-    if sheet is None: return False
-    try:
-        header_check = sheet.row_values(1)
-        if not header_check: sheet.append_row(EXCEL_COLUMNS, value_input_option='USER_ENTERED')
-        records = []
-        for _, row in df.iterrows():
-            records.append(["" if str(row.get(col, "")).strip().lower() in ["nan", "none"] else str(row.get(col, "")).strip() for col in EXCEL_COLUMNS])
-        sheet.append_rows(records, value_input_option='USER_ENTERED')
-        st.cache_data.clear() 
-        return True
-    except Exception as e:
-        st.error(f"데이터 저장 오류: {e}")
-        return False
+    except: return pd.DataFrame()
 
 def parse_scanned_data():
     raw_val = st.session_state.get("scanned_raw_data", "")
@@ -660,13 +611,6 @@ def parse_scanned_data():
     if '$' in raw_val:
         parts = [p for p in raw_val.split('$') if p]
         if len(parts) >= 5:
-            plating_code = parts[2]
-            if plating_code == 'S110': st.session_state.plating_type = 'A'
-            elif plating_code == 'S112': st.session_state.plating_type = 'B'
-            date_str = parts[3]
-            if len(date_str) == 8 and date_str.isdigit():
-                try: st.session_state.in_date_field = datetime.strptime(date_str, "%Y%m%d").date()
-                except ValueError: pass
             st.session_state.lot_input_field = parts[4]
         else:
             st.session_state.lot_input_field = parts[-1]
@@ -674,8 +618,7 @@ def parse_scanned_data():
         st.session_state.lot_input_field = raw_val
     st.session_state.scanned_raw_data = "" 
 
-def on_scan_apply():
-    parse_scanned_data()
+def on_scan_apply(): parse_scanned_data()
 
 def pad_callback(digit):
     c_val = st.session_state.get("numpad_buffer", "")
@@ -734,19 +677,8 @@ def timepad_dialog(field_key, display_name):
                     st.session_state[field_key] = dt_time(h, m)
                     st.session_state.timepad_buffer = "" 
                     st.rerun()
-                else:
-                    st.error("유효한 시간(00~23)과 분(00~59)을 입력하세요.")
             except ValueError: pass
-        else: st.error("4자리 숫자를 모두 입력하세요 (예: 0830)")
 
-@st.dialog("SBL Warning!")
-def show_sbl_warning(defect_type, rate):
-    st.markdown(f"### [{defect_type}] 불량 제품 별도 보관 조치")
-    st.error(f"현재 1차검사 공정의 {defect_type}율이 **{rate:.1f}%** 로 기준치(5.0%)를 초과하였습니다.")
-    if st.button("확인 완료 (닫기)", key=f"btn_close_{defect_type}"):
-        st.rerun()
-
-# 💡 관리자 인증 다이얼로그 (6233)
 @st.dialog("🔒 관리자 인증")
 def admin_auth_dialog():
     st.markdown("<div style='color:#94A3B8; margin-bottom:10px;'>분석 데이터를 확인하려면 관리자 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
@@ -766,13 +698,12 @@ if st.session_state.current_page == "analysis":
         admin_auth_dialog()
         st.stop()
         
-    col1, col2, col3 = st.columns([0.65, 0.15, 0.2])
+    col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
     with col1:
         st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>LIVE YIELD COMMAND CENTER v1.0</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Manual LOT surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 수동 새로고침
         if st.button("🔄 REFRESH DATA", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -785,33 +716,33 @@ if st.session_state.current_page == "analysis":
             
     df = load_analysis_data().copy()
 
-    if df.empty or '모델명(MI)' not in df.columns: 
-        st.warning("No valid telemetry data retrieved from the database.")
+    if df.empty: 
+        st.warning("No data retrieved from the database.")
     else:
         def pct_to_float(x):
             try:
-                if pd.isna(x) or str(x).strip() == '': return 0.0
+                if pd.isna(x) or str(x).strip() == '': return np.nan
                 return float(str(x).replace('%', '').replace(',', '').strip())
-            except: return 0.0
+            except: return np.nan
 
-        df['Yield_1'] = df.get('양품율', pd.Series([0]*len(df))).apply(pct_to_float)
-        df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([0]*len(df))).apply(pct_to_float)
-        df['Def_Comp'] = df.get('완전불량율', pd.Series([0]*len(df))).apply(pct_to_float)
-        df['Def_Front'] = df.get('전면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
-        df['Def_Rear'] = df.get('배면불량율', pd.Series([0]*len(df))).apply(pct_to_float)
+        # 데이터 매핑 안전하게 적용
+        df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        df['Def_Comp'] = df.get('완전불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        df['Def_Front'] = df.get('전면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        df['Def_Rear'] = df.get('배면불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 필터링 없이 전체 데이터를 가져오는 무적의 시계열 처리 (결측 방지용 임의 순차 인덱스 부여)
-        df['DateTime_Sort'] = pd.Series(range(len(df)))
+        # 💡 원본 순서(인덱스)를 보존하여 X축 전개에 사용
+        df['__SEQ__'] = range(len(df))
         
-        # 💡 날짜 범위 필터링 완전 삭제 -> 최신 데이터 200건을 무조건 스캔 (Fallback)
-        df_target = df.tail(200).copy()
+        # 💡 날짜 필터링을 아예 해제하고 무조건 최신 150개를 가져옴 (데이터 안보이는 문제 원천 차단)
+        df_target = df.tail(150).copy()
         
         with st.container(border=True):
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
-                models_available = sorted(df_target['모델명(MI)'].dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
-                # 다중 선택
+                models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
                 selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
             with col_b:
@@ -825,118 +756,113 @@ if st.session_state.current_page == "analysis":
                 else:
                     selected_cats = []
 
-            if not models_available:
-                st.info("NO TELEMETRY DATA AVAILABLE FOR RENDERING.")
-            elif not selected_models:
-                st.warning("Please select at least one model.")
+            if not selected_models:
+                st.warning("Please select at least one model to render charts.")
             else:
                 model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
                 if selected_cats and not model_df.empty:
                     model_df = model_df[model_df['구분'].isin(selected_cats)]
                 
                 if model_df.empty:
-                    st.info("No data for the selected models / category.")
+                    st.info("No data available for the selected model & category.")
                 else:
+                    # 💡 X축을 인덱스 순서대로 강제 배열하여 점 뭉침 현상(1개의 점) 방지
+                    model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
                     model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                     
-                    # 💡 실제 파일 내 행(Row) 순서 기반으로 정렬하여 정확한 흐름 렌더링
-                    model_df = model_df.sort_values(['DateTime_Sort']) 
-                    
-                    cat_array = model_df['LOT NO.'].tolist()
-                    
+                    # Hover 텍스트 정보 구성
                     def make_hover_text(row):
                         d_str = str(row.get('날짜', ''))
                         t_str = str(row.get('시작시간', ''))
-                        dur_str = str(row.get('소요시간', '0'))
                         mod_str = str(row.get('모델명(MI)', ''))
-                        return f"[{mod_str}] 시간: {d_str} {t_str} | 소요: {dur_str}분"
+                        return f"[{mod_str}] {d_str} {t_str}<br>LOT: {row['LOT NO.']}"
                     
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    def get_dark_layout(title_text, y_title, cat_arr):
+                    def get_dark_layout(title_text, y_title, tick_vals, tick_texts):
                         return dict(
                             title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
                             plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
                             font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(type='category', categoryorder='array', categoryarray=cat_arr, showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45),
+                            xaxis=dict(
+                                tickmode='array', tickvals=tick_vals, ticktext=tick_texts, 
+                                showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickangle=-45
+                            ),
                             yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
                             margin=dict(l=40, r=40, t=50, b=60), 
                             hovermode='x unified',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
                         )
 
+                    tick_vals = model_df['__SEQ__'].tolist()
+                    tick_texts = model_df['LOT NO.'].tolist()
+
                     # 💡 Graph 1: 1차 수율 vs 1차 수율 (전/배 포함)
                     with st.container(border=True):
                         fig1 = go.Figure()
-                        
                         colors_1 = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
                         colors_2 = ['#FF00FF', '#FF3366', '#9D00FF', '#00BFFF']
                         
                         for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                             if m_df.empty: continue
                             
                             c1 = colors_1[idx % len(colors_1)]
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig1.add_trace(go.Scatter(
-                                x=m_df['LOT NO.'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
+                                x=m_df['__SEQ__'], y=m_df['Yield_1'], name=f"[{mod}] 1차", 
                                 mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1),
-                                hovertext=m_df['HoverText']
+                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig1.add_trace(go.Scatter(
-                                x=m_df['LOT NO.'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
+                                x=m_df['__SEQ__'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dot'), 
-                                marker=dict(size=5, symbol='x', color=c2),
-                                hovertext=m_df['HoverText']
+                                marker=dict(size=5, symbol='x', color=c2), hovertext=m_df['HoverText']
                             ))
                         
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", cat_array), height=350)
+                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND (STANDARD vs INCL. F/R)", "YIELD (%)", tick_vals, tick_texts), height=350)
                         st.plotly_chart(fig1, use_container_width=True)
 
                     # 💡 Graph 2: 완전불량율
                     with st.container(border=True):
                         fig2 = go.Figure()
                         for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Def_Comp'])
                             if m_df.empty: continue
                             c1 = colors_2[idx % len(colors_2)]
                             
                             fig2.add_trace(go.Scatter(
-                                x=m_df['LOT NO.'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
+                                x=m_df['__SEQ__'], y=m_df['Def_Comp'], name=f"[{mod}] 완전불량", 
                                 mode='lines+markers', line=dict(color=c1, width=2), 
                                 fill='tozeroy', fillcolor=c1.replace(')', ', 0.1)').replace('rgb', 'rgba') if 'rgb' in c1 else None,
-                                marker=dict(size=6, color=c1),
-                                hovertext=m_df['HoverText']
+                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             
-                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
+                        fig2.update_layout(**get_dark_layout("COMPLETE DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
                         st.plotly_chart(fig2, use_container_width=True)
 
                     # 💡 Graph 3: 전면불량율 vs 배면불량율
                     with st.container(border=True):
                         fig3 = go.Figure()
                         for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod]
+                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Def_Front', 'Def_Rear'], how='all')
                             if m_df.empty: continue
                             c1 = colors_1[idx % len(colors_1)]
                             c2 = colors_2[idx % len(colors_2)]
                             
                             fig3.add_trace(go.Scatter(
-                                x=m_df['LOT NO.'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
+                                x=m_df['__SEQ__'], y=m_df['Def_Front'], name=f"[{mod}] 전면불량", 
                                 mode='lines+markers', line=dict(color=c1, width=2), 
-                                marker=dict(size=6, color=c1),
-                                hovertext=m_df['HoverText']
+                                marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                             ))
                             fig3.add_trace(go.Scatter(
-                                x=m_df['LOT NO.'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
+                                x=m_df['__SEQ__'], y=m_df['Def_Rear'], name=f"[{mod}] 배면불량", 
                                 mode='lines+markers', line=dict(color=c2, width=2, dash='dash'), 
-                                marker=dict(size=6, symbol='triangle-up', color=c2),
-                                hovertext=m_df['HoverText']
+                                marker=dict(size=6, symbol='triangle-up', color=c2), hovertext=m_df['HoverText']
                             ))
                             
-                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", cat_array), height=300)
+                        fig3.update_layout(**get_dark_layout("FRONT & REAR DEFECT RATE", "DEFECT RATE (%)", tick_vals, tick_texts), height=300)
                         st.plotly_chart(fig3, use_container_width=True)
 
 # ==========================================
