@@ -293,6 +293,7 @@ div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6r
 </style>
 """
 
+# 💡 사이버펑크 네온 대시보드 테마 적용
 analysis_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -301,52 +302,65 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 2.5rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
-/* Dark Background */
-[data-testid="stAppViewContainer"] { background-color: #050814 !important; color: #E2E8F0 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
-[data-testid="stSidebar"] { background-color: #030508 !important; }
+/* 딥 다크 네이비 그라데이션 배경 */
+[data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
+[data-testid="stSidebar"] { background-color: #02040A !important; border-right: 1px solid #1E3A8A !important; }
 [data-testid="stSidebar"] * { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
 
-/* Dashboard Cards */
+/* 사이버 네온 패널 디자인 */
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #0B101E !important;
-    border: 1px solid #1E293B !important;
-    border-radius: 6px !important;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6) !important;
+    background: linear-gradient(180deg, rgba(11,25,60,0.6) 0%, rgba(3,9,20,0.8) 100%) !important;
+    border: 1px solid #1E3A8A !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.05) !important;
     padding: 1.2rem !important;
     margin-bottom: 0.8rem !important;
+    backdrop-filter: blur(10px);
 }
 
 h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
 
-/* Custom Neon Titles */
-.command-header { color: #38BDF8 !important; font-weight: 900 !important; letter-spacing: 1.5px; text-shadow: 0 0 5px rgba(56, 189, 248, 0.4); }
-.metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; }
+/* 타이틀 및 라벨 텍스트 */
+.command-header { color: #00E5FF !important; font-weight: 900 !important; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
+.metric-label { color: #38BDF8 !important; font-size: 1.1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
 
-/* Dashboard KPI Cards */
-.kpi-card { background-color: #0F172A; border: 1px solid #1E293B; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-.kpi-title { color: #94A3B8; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
-.kpi-value { color: #38BDF8; font-size: 1.8rem; font-weight: 900; }
-.kpi-sub { color: #64748B; font-size: 0.8rem; }
+/* 커스텀 네온 캡슐형 KPI 카드 */
+.cyber-kpi-card { 
+    background: linear-gradient(90deg, rgba(30,58,138,0.3) 0%, rgba(3,9,20,0) 100%);
+    border-left: 4px solid #00E5FF;
+    border-radius: 8px; 
+    padding: 15px 20px; 
+    text-align: left; 
+    box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.cyber-kpi-title { color: #94A3B8; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+.cyber-kpi-value { color: #00E5FF; font-size: 2.2rem; font-weight: 900; text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); margin: 5px 0; }
+.cyber-kpi-value.alert { color: #FF3366; text-shadow: 0 0 10px rgba(255, 51, 102, 0.4); }
+.cyber-kpi-sub { color: #64748B; font-size: 0.75rem; }
 
-/* Live Blinking Dot Effect */
+/* Blinking Live Dot */
 @keyframes blink {
-    0% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
-    50% { opacity: 0.3; box-shadow: 0 0 3px #EF4444; }
-    100% { opacity: 1; box-shadow: 0 0 12px #EF4444; }
+    0% { opacity: 1; box-shadow: 0 0 15px #00E5FF; }
+    50% { opacity: 0.3; box-shadow: 0 0 5px #00E5FF; }
+    100% { opacity: 1; box-shadow: 0 0 15px #00E5FF; }
 }
 .live-dot {
-    height: 14px; width: 14px; background-color: #EF4444; border-radius: 50%;
+    height: 12px; width: 12px; background-color: #00E5FF; border-radius: 50%;
     display: inline-block; margin-right: 12px; margin-bottom: 2px;
-    animation: blink 1.2s ease-in-out infinite;
+    animation: blink 1.5s ease-in-out infinite;
 }
 
-/* Custom Selectbox for Dark Mode */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: #0F172A !important; border: 1px solid #1E293B !important; color: #E2E8F0 !important; }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #E2E8F0 !important; font-weight: bold !important; font-size: 1.1rem !important; }
+/* Custom Selectbox */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: rgba(11,25,60,0.5) !important; border: 1px solid #1E3A8A !important; color: #00E5FF !important; border-radius: 6px; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
 
-/* Buttons in Dark Mode */
-div[data-testid="stButton"] button { background-color: #0F172A !important; color: #38BDF8 !important; border: 1px solid #1E293B !important; border-radius: 4px !important; font-weight: bold !important; transition: all 0.2s ease; }
-div[data-testid="stButton"] button:hover { background-color: #1E293B !important; border-color: #38BDF8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important; }
+/* Buttons */
+div[data-testid="stButton"] button { background-color: rgba(30,58,138,0.2) !important; color: #38BDF8 !important; border: 1px solid #1E3A8A !important; border-radius: 6px !important; font-weight: bold !important; transition: all 0.3s ease; }
+div[data-testid="stButton"] button:hover { background-color: rgba(0, 229, 255, 0.1) !important; border-color: #00E5FF !important; box-shadow: 0 0 15px rgba(0, 229, 255, 0.3) !important; color: #ffffff !important; }
 </style>
 """
 
@@ -491,7 +505,7 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 최강력 철통 보존 무손실 데이터 로더 (밀림 현상 완벽 제거)
+# 💡 절대 좌표 매핑(Absolute Coordinate Mapping) 로더
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -503,125 +517,96 @@ def load_universal_data():
         st.error(f"🚨 '{TAB_NAME}' 시트 접근 에러: {e}")
         return pd.DataFrame()
     
-    if len(raw_data) < 2: 
-        st.error(f"🚨 '{TAB_NAME}' 시트에 데이터가 존재하지 않습니다.")
+    if len(raw_data) < 24: 
+        st.error(f"🚨 데이터가 부족합니다. 최소 24행 이상이 필요합니다.")
         return pd.DataFrame()
     
-    # 💡 1. 엑셀 데이터의 진짜 시작 위치 감지 (C열 날짜 인식 기반)
-    data_start_idx = -1
-    for i, row in enumerate(raw_data[:20]):
-        if len(row) > 2:
-            c_val = str(row[2]).strip()
-            # 7/1, 2026-07-01, 혹은 일련번호(45400) 형태 방어
-            if re.match(r'^\d{1,4}[./-]\d{1,2}', c_val) or (c_val.isdigit() and 40000 <= int(c_val) <= 50000):
-                data_start_idx = i
-                break
-                
-    if data_start_idx <= 0:
-        data_start_idx = 2  # 감지 실패 시 기본적으로 3번째 줄부터 데이터로 인식
-
-    # 💡 2. 다중 병합 셀 완벽 복원을 위한 가로/세로 연속 추출 (수직압축기술)
-    header_rows = raw_data[:data_start_idx]
-    ffill_headers = []
-    for r in header_rows:
-        curr_row = []
-        last_val = ""
-        for val in r:
-            v = str(val).strip().replace('\n', '')
-            if v != "": last_val = v
-            curr_row.append(last_val)
-        ffill_headers.append(curr_row)
-
-    num_cols = max(len(r) for r in ffill_headers) if ffill_headers else len(raw_data[0])
-    final_headers = []
-    for c in range(num_cols):
-        parts = []
-        for r in ffill_headers:
-            if c < len(r):
-                val = r[c]
-                if val and val not in parts:
-                    parts.append(val)
-        final_headers.append("".join(parts))
-
-    # 데이터 추출 및 프레임워크 생성
-    df_raw = pd.DataFrame(raw_data[data_start_idx:])
-    if df_raw.empty: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row'])
+    # 💡 1. 사용자 확인 완료: 23행(Index 22)이 헤더, 24행(Index 23)부터 데이터
+    header_idx = 22
+    data_start_idx = 23
     
-    if len(df_raw.columns) < num_cols:
-        for c in range(len(df_raw.columns), num_cols): df_raw[c] = ""
-    df_raw = df_raw.iloc[:, :num_cols]
-
-    # 💡 3. 오작동을 차단하는 EXACT 인덱스 맵핑
+    # 헤더 추출 (개행문자 등 쓰레기값 제거)
+    raw_headers = [str(h).strip().replace('\n', '') for h in raw_data[header_idx]]
+    
+    # 빈칸 등 중복 컬럼명 방지
+    unique_headers = []
+    seen = {}
+    for h in raw_headers:
+        h_clean = h if h != "" else "UNNAMED"
+        if h_clean in seen:
+            seen[h_clean] += 1
+            unique_headers.append(f"{h_clean}_{seen[h_clean]}")
+        else:
+            seen[h_clean] = 0
+            unique_headers.append(h_clean)
+            
+    df = pd.DataFrame(raw_data[data_start_idx:], columns=unique_headers)
+    df['_sheet_row'] = range(data_start_idx + 1, data_start_idx + 1 + len(df))
+    
+    # 💡 2. 절대 맵핑 및 C열 날짜 절대 방어
     rename_dict = {}
     mapped_std_cols = set()
 
-    for c_idx, h in enumerate(final_headers):
+    for c_idx, h in enumerate(unique_headers):
         cc = h.replace(" ", "").replace("률", "율").upper()
         matched_col = None
         
-        # '단어 포함'이 아닌 명확한 1:1 대응 타겟팅
-        if "고유" in cc and "ID" in cc: matched_col = '고유 ID'
-        elif "상태" in cc: matched_col = '상태'
-        elif "교대" in cc: matched_col = '교대'
-        elif "시작" in cc and "시간" in cc: matched_col = '시작시간'
-        elif "종료" in cc and "시간" in cc: matched_col = '종료시간'
-        elif "휴동" in cc and "시간" in cc: matched_col = '휴동시간'
-        elif "소요" in cc and "시간" in cc: matched_col = '소요시간'
-        elif "호기" in cc or "UNIT" in cc: matched_col = '호기'
-        elif "모델" in cc or "품명" in cc or "MI" in cc or "기종" in cc: matched_col = '모델명(MI)'
-        elif "도금" in cc or "PLATING" in cc: matched_col = '도금구분'
-        elif "구분" in cc and "도금" not in cc: matched_col = '구분'
-        elif "검사" in cc and "수량" in cc or "총수량" in cc: matched_col = '검사 수량'
-        elif "양품" in cc and "수량" in cc and "포함" in cc: matched_col = '양품 수량(전/배 포함)'
-        elif "양품" in cc and "수량" in cc and "포함" not in cc: matched_col = '양품수량'
-        elif "불량" in cc and "수량" in cc: matched_col = '불량수량'
-        elif ("양품율" in cc or "수율" in cc or "합격율" in cc) and "포함" in cc: matched_col = '양품율(전/배 포함)'
-        elif ("양품율" in cc or "수율" in cc or "합격율" in cc) and "포함" not in cc: matched_col = '양품율'
-        elif "완전" in cc and "불량" in cc and "율" in cc: matched_col = '완전불량율'
-        elif "전면" in cc and "불량" in cc and "율" in cc: matched_col = '전면불량율'
-        elif "배면" in cc and "불량" in cc and "율" in cc: matched_col = '배면불량율'
-        elif "완전" in cc and "불량" in cc: matched_col = '완전불량'
-        elif "전면" in cc and "불량" in cc: matched_col = '전면불량'
-        elif "배면" in cc and "불량" in cc: matched_col = '배면불량'
-        elif "옵셋" in cc and "불량" in cc: matched_col = '옵셋불량'
-        elif "부족" in cc: matched_col = '수량부족'
-        elif "기타" in cc: matched_col = '기타'
-        elif "OQC" in cc: matched_col = 'OQC'
-        elif "비고" in cc: matched_col = '비고'
-        elif "도장라인" in cc: matched_col = '도장라인'
-        elif "도장일" in cc: matched_col = '도장일'
-        elif "도장순서" in cc: matched_col = '도장순서'
-        elif "입고일" in cc: matched_col = '입고일'
-        elif "LOT" in cc or "로트" in cc: matched_col = 'LOT NO.'
-        elif "CLIP" in cc: matched_col = 'CLIP'
-        elif "BASE" in cc: matched_col = 'BASE'
-        elif "COVER" in cc: matched_col = 'COVER'
-        elif "조립기" in cc: matched_col = '조립기'
-        elif "월" == cc: matched_col = '월'
-        elif "작업자" in cc: matched_col = '작업자'
-        elif "날짜" in cc or "일자" in cc or "DATE" in cc: matched_col = '날짜'
+        # 엑셀의 C열(인덱스 2)은 무조건 '날짜'로 강제 고정
+        if c_idx == 2: matched_col = '날짜'
+        elif "고유" in cc and "ID" in cc: matched_col = '고유 ID'
+        elif cc == "상태": matched_col = '상태'
+        elif cc == "교대": matched_col = '교대'
+        elif cc == "시작시간": matched_col = '시작시간'
+        elif cc == "종료시간": matched_col = '종료시간'
+        elif cc == "휴동시간": matched_col = '휴동시간'
+        elif cc == "소요시간": matched_col = '소요시간'
+        elif cc == "구분": matched_col = '구분'
+        elif cc == "호기": matched_col = '호기'
+        elif cc in ["모델명(MI)", "모델명", "품명", "MI"]: matched_col = '모델명(MI)'
+        elif cc in ["도금구분", "도금"]: matched_col = '도금구분'
+        elif cc == "UPH": matched_col = 'UPH'
+        elif cc == "UPD": matched_col = 'UPD'
+        elif cc in ["검사수량", "총수량"]: matched_col = '검사 수량'
+        elif cc == "양품수량": matched_col = '양품수량'
+        elif "양품수량" in cc and "포함" in cc: matched_col = '양품 수량(전/배 포함)'
+        elif cc == "불량수량": matched_col = '불량수량'
+        elif cc in ["양품율", "수율", "합격율"]: matched_col = '양품율'
+        elif ("양품율" in cc or "수율" in cc) and "포함" in cc: matched_col = '양품율(전/배 포함)'
+        elif cc in ["완전불량율", "완전불량률"]: matched_col = '완전불량율'
+        elif cc in ["전면불량율", "전면불량률"]: matched_col = '전면불량율'
+        elif cc in ["배면불량율", "배면불량률"]: matched_col = '배면불량율'
+        elif cc == "완전불량": matched_col = '완전불량'
+        elif cc == "전면불량": matched_col = '전면불량'
+        elif cc == "배면불량": matched_col = '배면불량'
+        elif cc == "옵셋불량": matched_col = '옵셋불량'
+        elif cc == "수량부족": matched_col = '수량부족'
+        elif cc == "기타": matched_col = '기타'
+        elif cc in ["육안/OQC", "OQC"]: matched_col = 'OQC'
+        elif cc == "비고": matched_col = '비고'
+        elif cc == "도장라인": matched_col = '도장라인'
+        elif cc == "도장일": matched_col = '도장일'
+        elif cc == "도장순서": matched_col = '도장순서'
+        elif cc == "입고일": matched_col = '입고일'
+        elif cc in ["LOTNO.", "LOTNO", "LOT", "로트"]: matched_col = 'LOT NO.'
+        elif cc == "CLIP": matched_col = 'CLIP'
+        elif cc == "BASE": matched_col = 'BASE'
+        elif cc == "COVER": matched_col = 'COVER'
+        elif cc == "조립기": matched_col = '조립기'
+        elif cc == "월": matched_col = '월'
+        elif cc == "작업자": matched_col = '작업자'
+        elif "날짜" in cc and c_idx != 2: matched_col = '날짜'
 
         if matched_col and matched_col not in mapped_std_cols:
-            rename_dict[c_idx] = matched_col
+            rename_dict[h] = matched_col
             mapped_std_cols.add(matched_col)
 
-    # 💡 C열 강제 할당 보호망 (헤더 인식 실패해도 무조건 날짜로 배정)
-    if 2 not in rename_dict and '날짜' not in mapped_std_cols and len(df_raw.columns) > 2:
-        rename_dict[2] = '날짜'
-
-    # 조각난 엑셀 데이터를 깔끔하게 재조립
-    final_data = {}
-    for col_idx, std_col in rename_dict.items():
-        if col_idx < len(df_raw.columns):
-            final_data[std_col] = df_raw[col_idx]
-
-    df = pd.DataFrame(final_data)
-
+    df = df.rename(columns=rename_dict)
+    
+    # EXCEL_COLUMNS 포맷으로 완벽 정렬
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
-
-    df['_sheet_row'] = range(data_start_idx + 1, data_start_idx + 1 + len(df))
+            
     return df[EXCEL_COLUMNS + ['_sheet_row']]
 
 def save_data_append(df):
@@ -748,7 +733,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드)
+# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -758,7 +743,7 @@ if st.session_state.current_page == "analysis":
     col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
     with col1:
         st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>AI DEEP-DIVE COMMAND CENTER</div>", unsafe_allow_html=True)
-        st.markdown("<div style='color: #64748B; font-size: 0.85rem; margin-bottom: 15px;'>Real-time AI surveillance pipeline active.</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #38BDF8; font-size: 0.85rem; margin-bottom: 15px;'>Real-time Cyber-surveillance pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄 REFRESH DATA", use_container_width=True):
@@ -790,7 +775,7 @@ if st.session_state.current_page == "analysis":
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 AI Fallback: 양품율이 없다면 억지로라도 역산하여 트렌드 보존
+        # 💡 AI Fallback: 양품율이 비어있으면 강제로 계산하여 선을 살려냄
         if df['Yield_1'].isna().all() or (df['Yield_1'] == 0.0).all():
             if '양품수량' in df.columns and '검사 수량' in df.columns:
                 q_good = df['양품수량'].apply(safe_int)
@@ -806,13 +791,13 @@ if st.session_state.current_page == "analysis":
         if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all():
             df['모델명(MI)'] = 'ALL_MODELS'
         
-        # 💡 Zero Drop 날짜 파서: 형태가 어찌됐든 절대 지우지 않음
+        # 💡 Zero Drop 날짜 파서 (절대 행을 지우지 않음)
         def parse_dt(r):
             d_val = str(r.get('날짜', '')).strip()
             t_val = str(r.get('시작시간', '00:00')).strip()
             
             if not d_val or d_val.lower() in ['nan', 'none']: 
-                return datetime(2026, 1, 1) # 비어있어도 무조건 차트에 띄움
+                return datetime(2026, 1, 1) 
                 
             t_clean = re.sub(r'[^\d]', '', str(t_val))
             if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}:00"
@@ -821,26 +806,21 @@ if st.session_state.current_page == "analysis":
             else: t_str = "00:00:00"
             
             try:
-                # 엑셀 일련번호 (예: 45400)
+                # 엑셀 날짜 (45400)
                 if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
                     base_date = datetime(1899, 12, 30)
                     d_obj = base_date + timedelta(days=int(d_val))
                     res = pd.to_datetime(f"{d_obj.strftime('%Y-%m-%d')} {t_str}", errors='coerce')
                     return res if pd.notna(res) else datetime(2026, 1, 1)
 
-                # m/d/yyyy 혹은 m-d-yyyy 형식
                 parts = re.split(r'[./-]', d_val)
                 if len(parts) == 3:
                     p1, p2, p3 = int(parts[0]), int(parts[1]), int(parts[2])
-                    if p1 > 1000: # yyyy-mm-dd
-                        res = pd.to_datetime(f"{p1}-{p2:02d}-{p3:02d} {t_str}", errors='coerce')
-                    elif p3 > 1000: # mm-dd-yyyy (7/1/2026)
-                        res = pd.to_datetime(f"{p3}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
-                    else:
-                        res = pd.to_datetime(f"20{p3:02d}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
+                    if p1 > 1000: res = pd.to_datetime(f"{p1}-{p2:02d}-{p3:02d} {t_str}", errors='coerce')
+                    elif p3 > 1000: res = pd.to_datetime(f"{p3}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
+                    else: res = pd.to_datetime(f"20{p3:02d}-{p1:02d}-{p2:02d} {t_str}", errors='coerce')
                     return res if pd.notna(res) else datetime(2026, 1, 1)
 
-                # m/d 혹은 m-d 형식 (예: "7/1")
                 if len(parts) == 2:
                     y = 2026
                     p1, p2 = int(parts[0]), int(parts[1])
@@ -853,7 +833,6 @@ if st.session_state.current_page == "analysis":
         parsed_dates = df.apply(parse_dt, axis=1)
         missing_dates_idx = parsed_dates.isna()
         
-        # 날짜 포맷이 박살나있어도 데이터는 살립니다.
         if missing_dates_idx.any():
             fake_dates = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
             parsed_dates.loc[missing_dates_idx] = fake_dates
@@ -864,9 +843,7 @@ if st.session_state.current_page == "analysis":
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
-            else: st.warning("⚠️ '1차 검사'로 명시된 데이터가 없어 전체 데이터를 스캔합니다.")
             
-        # 💡 72H 타임라인 고정 (어제 기준 과거 3일 전체 스캔)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
         target_end_date = (now_kst - timedelta(days=1)).date()
         target_start_date = target_end_date - timedelta(days=3)
@@ -874,152 +851,127 @@ if st.session_state.current_page == "analysis":
         df['DateOnly'] = df['DateTime'].dt.date
         df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
         
-        # 72H 데이터가 없을 경우 전체 데이터 스캔으로 Fallback
         if df_72h.empty:
-            st.warning(f"⚠️ 지정된 72시간 타임라인({target_start_date} ~ {target_end_date}) 내에 1차검사 데이터가 없습니다! DB 전체 데이터를 렌더링합니다.")
             df_target = df.copy()
         else:
             df_target = df_72h.copy()
 
-        with st.container(border=True):
-            st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION (Multi)</div>", unsafe_allow_html=True)
+        # 사이버펑크 3단 레이아웃 (1 : 1.5 : 1)
+        left_col, center_col, right_col = st.columns([1, 1.5, 1])
+
+        with center_col:
+            st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
             models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
             selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
 
             if not selected_models:
-                st.warning("Please select at least one model to render charts.")
+                st.warning("Select models to render data.")
+                model_df = pd.DataFrame()
             else:
                 model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
+                model_df = model_df.sort_values(['DateTime'])
+                model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
+                model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
                 
-                if model_df.empty:
-                    st.info("No data available for the selected model.")
-                else:
-                    model_df = model_df.sort_values(['DateTime'])
-                    model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
-                    model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
-                    
-                    def make_hover_text(row):
-                        mod_str = str(row.get('모델명(MI)', ''))
-                        dur_str = str(row.get('소요시간', '0'))
-                        lot_str = str(row['LOT NO.'])
-                        d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
-                        return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
-                    
-                    model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
+                def make_hover_text(row):
+                    mod_str = str(row.get('모델명(MI)', ''))
+                    dur_str = str(row.get('소요시간', '0'))
+                    lot_str = str(row['LOT NO.'])
+                    d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
+                    return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
+                model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
-                    kpi1, kpi2, kpi3 = st.columns(3)
-                    total_inspected = model_df['검사수량'].sum()
-                    
-                    valid_yield_df = model_df.dropna(subset=['Yield_1'])
-                    avg_yield = valid_yield_df['Yield_1'].mean() if not valid_yield_df.empty else 0.0
-                    
-                    defect_sums = {
-                        "완전불량": model_df['완전불량_Qty'].sum(),
-                        "전면불량": model_df['전면불량_Qty'].sum(),
-                        "배면불량": model_df['배면불량_Qty'].sum(),
-                        "옵셋불량": model_df['옵셋불량_Qty'].sum()
-                    }
-                    worst_defect = max(defect_sums, key=defect_sums.get) if sum(defect_sums.values()) > 0 else "불량없음"
-                    
-                    with kpi1:
-                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Total Inspected (Units)</div><div class='kpi-value'>{total_inspected:,.0f}</div><div class='kpi-sub'>선택된 모델의 총 검사수량</div></div>", unsafe_allow_html=True)
-                    with kpi2:
-                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Average 1st Yield</div><div class='kpi-value'>{avg_yield:.2f}%</div><div class='kpi-sub'>1차 양품율 평균</div></div>", unsafe_allow_html=True)
-                    with kpi3:
-                        st.markdown(f"<div class='kpi-card'><div class='kpi-title'>Top Defect Category</div><div class='kpi-value' style='color:#EF4444;'>{worst_defect}</div><div class='kpi-sub'>가장 많이 발생한 불량유형</div></div>", unsafe_allow_html=True)
-                    st.markdown("<br>", unsafe_allow_html=True)
+            total_inspected = model_df['검사수량'].sum() if not model_df.empty else 0
+            valid_yield_df = model_df.dropna(subset=['Yield_1']) if not model_df.empty else pd.DataFrame()
+            avg_yield = valid_yield_df['Yield_1'].mean() if not valid_yield_df.empty else 0.0
+            
+            defect_sums = {
+                "완전불량": model_df['완전불량_Qty'].sum() if not model_df.empty else 0,
+                "전면불량": model_df['전면불량_Qty'].sum() if not model_df.empty else 0,
+                "배면불량": model_df['배면불량_Qty'].sum() if not model_df.empty else 0,
+                "옵셋불량": model_df['옵셋불량_Qty'].sum() if not model_df.empty else 0
+            }
+            worst_defect = max(defect_sums, key=defect_sums.get) if sum(defect_sums.values()) > 0 else "N/A"
+            
+            # 커스텀 네온 KPI 카드 렌더링
+            st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 15px;">
+                <div class='cyber-kpi-card' style="flex:1;">
+                    <div class='cyber-kpi-title'>Total Inspected</div>
+                    <div class='cyber-kpi-value'>{total_inspected:,.0f}</div>
+                    <div class='cyber-kpi-sub'>Target Models Units</div>
+                </div>
+                <div class='cyber-kpi-card' style="flex:1;">
+                    <div class='cyber-kpi-title'>Average Yield</div>
+                    <div class='cyber-kpi-value'>{avg_yield:.1f}%</div>
+                    <div class='cyber-kpi-sub'>1st Inspection Rate</div>
+                </div>
+                <div class='cyber-kpi-card' style="flex:1;">
+                    <div class='cyber-kpi-title'>Top Defect</div>
+                    <div class='cyber-kpi-value alert'>{worst_defect}</div>
+                    <div class='cyber-kpi-sub'>Highest Occurring</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                    def get_dark_layout(title_text, y_title):
-                        return dict(
-                            title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16)),
-                            plot_bgcolor='#0B101E', paper_bgcolor='#0B101E',
-                            font=dict(color='#94A3B8', family='monospace'),
-                            xaxis=dict(title='작업 시작시간', type='date', showgrid=True, gridcolor='#1E293B', linecolor='#334155', tickformat='%m-%d %H:%M'),
-                            yaxis=dict(title=y_title, showgrid=True, gridcolor='#1E293B', linecolor='#334155', zeroline=False),
-                            margin=dict(l=40, r=40, t=50, b=40), 
-                            hovermode='x unified',
-                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
-                        )
+        def get_neon_layout(title_text, y_title, show_x=True):
+            return dict(
+                title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=14)),
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#94A3B8', family='monospace'),
+                xaxis=dict(showticklabels=show_x, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A'),
+                yaxis=dict(title=y_title, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A', zeroline=False),
+                margin=dict(l=30, r=30, t=40, b=30), 
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
+            )
 
-                    with st.container(border=True):
-                        fig1 = go.Figure()
-                        colors = ['#00E5FF', '#FF9900', '#00FF00', '#FFFF00']
+        # 좌측 패널: 수율 트렌드 및 이동평균
+        with left_col:
+            with st.container(border=True):
+                fig1 = go.Figure()
+                colors = ['#00E5FF', '#3B82F6', '#22D3EE', '#8B5CF6']
+                
+                if not model_df.empty:
+                    for idx, mod in enumerate(selected_models):
+                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
+                        if m_df.empty: continue
+                        c1 = colors[idx % len(colors)]
                         
-                        for idx, mod in enumerate(selected_models):
-                            m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
-                            if m_df.empty: continue
-                            
-                            c1 = colors[idx % len(colors)]
-                            
-                            # 💡 꺾은선 점 위에 LOT 번호가 항상 표시되도록 모드 고정
-                            fig1.add_trace(go.Scatter(
-                                x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 1차 수율", 
-                                mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
-                                textfont=dict(size=10, color=c1),
-                                line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
-                            ))
-                            
-                            if len(m_df) > 3:
-                                m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
-                                fig1.add_trace(go.Scatter(
-                                    x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend (3-MA)", 
-                                    mode='lines', line=dict(color=c1, width=1, dash='dot'), hoverinfo='skip'
-                                ))
-                        
-                        fig1.update_layout(**get_dark_layout("1ST YIELD TREND & MOVING AVERAGE", "YIELD (%)"), height=400)
-                        st.plotly_chart(fig1, use_container_width=True)
+                        fig1.add_trace(go.Scatter(
+                            x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}]", 
+                            mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                            textfont=dict(size=9, color=c1),
+                            line=dict(color=c1, width=2, shape='spline'), marker=dict(size=5, color=c1, line=dict(color='white', width=1)), hovertext=m_df['HoverText']
+                        ))
+                
+                fig1.update_layout(**get_neon_layout("1ST YIELD TREND", "YIELD (%)"), height=350)
+                st.plotly_chart(fig1, use_container_width=True)
 
-                    col_p, col_b = st.columns([1, 1])
-                    
-                    with col_p:
-                        with st.container(border=True):
-                            st.markdown("<div class='metric-label'>■ DEFECT PARETO ANALYSIS</div>", unsafe_allow_html=True)
-                            pareto_df = pd.DataFrame({
-                                'Defect': ['완전불량', '전면불량', '배면불량', '옵셋불량'],
-                                'Count': [defect_sums['완전불량'], defect_sums['전면불량'], defect_sums['배면불량'], defect_sums['옵셋불량']]
-                            }).sort_values(by='Count', ascending=False)
-                            
-                            if pareto_df['Count'].sum() > 0:
-                                pareto_df['Cumulative %'] = pareto_df['Count'].cumsum() / pareto_df['Count'].sum() * 100
-                            else:
-                                pareto_df['Cumulative %'] = 0
-                            
-                            fig_pareto = go.Figure()
-                            fig_pareto.add_trace(go.Bar(
-                                x=pareto_df['Defect'], y=pareto_df['Count'], name='Count',
-                                marker_color=['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6'], text=pareto_df['Count'], textposition='auto'
-                            ))
-                            fig_pareto.add_trace(go.Scatter(
-                                x=pareto_df['Defect'], y=pareto_df['Cumulative %'], name='Cumulative %',
-                                mode='lines+markers', line=dict(color='#00E5FF', width=2), marker=dict(size=8), yaxis='y2'
-                            ))
-                            
-                            fig_pareto.update_layout(
-                                plot_bgcolor='#0B101E', paper_bgcolor='#0B101E', font=dict(color='#94A3B8'),
-                                yaxis=dict(title='Defect Count', gridcolor='#1E293B'),
-                                yaxis2=dict(title='Cumulative (%)', overlaying='y', side='right', range=[0, 105]),
-                                margin=dict(l=40, r=40, t=10, b=40), showlegend=False, height=350
-                            )
-                            st.plotly_chart(fig_pareto, use_container_width=True)
-                            
-                    with col_b:
-                        with st.container(border=True):
-                            st.markdown("<div class='metric-label'>■ YIELD VARIANCE BY MACHINE (UNIT)</div>", unsafe_allow_html=True)
-                            if '호기' in model_df.columns and not model_df.empty:
-                                fig_box = px.box(
-                                    model_df.dropna(subset=['Yield_1']), x="호기", y="Yield_1", color="모델명(MI)",
-                                    points="all", hover_data=["LOT NO."]
-                                )
-                                fig_box.update_layout(
-                                    plot_bgcolor='#0B101E', paper_bgcolor='#0B101E', font=dict(color='#94A3B8'),
-                                    yaxis=dict(title='1st Yield (%)', gridcolor='#1E293B'),
-                                    xaxis=dict(title='Machine Unit'),
-                                    margin=dict(l=40, r=40, t=10, b=40), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                                    height=350
-                                )
-                                st.plotly_chart(fig_box, use_container_width=True)
-                            else:
-                                st.info("Machine (Unit) data not found.")
+        # 우측 패널: 파레토 및 설비 편차
+        with right_col:
+            with st.container(border=True):
+                pareto_df = pd.DataFrame({
+                    'Defect': ['완전불량', '전면불량', '배면불량', '옵셋불량'],
+                    'Count': [defect_sums['완전불량'], defect_sums['전면불량'], defect_sums['배면불량'], defect_sums['옵셋불량']]
+                }).sort_values(by='Count', ascending=False)
+                
+                if pareto_df['Count'].sum() > 0: pareto_df['Cumulative %'] = pareto_df['Count'].cumsum() / pareto_df['Count'].sum() * 100
+                else: pareto_df['Cumulative %'] = 0
+                
+                fig_pareto = go.Figure()
+                fig_pareto.add_trace(go.Bar(
+                    x=pareto_df['Defect'], y=pareto_df['Count'], name='Count',
+                    marker_color=['#00E5FF', '#3B82F6', '#1E3A8A', '#0F172A'], text=pareto_df['Count'], textposition='auto'
+                ))
+                fig_pareto.add_trace(go.Scatter(
+                    x=pareto_df['Defect'], y=pareto_df['Cumulative %'], name='Cumulative %',
+                    mode='lines+markers', line=dict(color='#FF3366', width=2), marker=dict(size=6), yaxis='y2'
+                ))
+                
+                fig_pareto.update_layout(**get_neon_layout("DEFECT PARETO", "COUNT", show_x=True), height=350)
+                fig_pareto.update_layout(yaxis2=dict(title='Cum (%)', overlaying='y', side='right', range=[0, 105], showgrid=False))
+                st.plotly_chart(fig_pareto, use_container_width=True)
 
 # ==========================================
 # Main Input App
@@ -1393,7 +1345,7 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4><br>", unsafe_allow_html=True)
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
-                    st.markdown("**검사 수량 (자동)**")
+                    st.markdown("**검 수량 (자동)**")
                     st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
                 with q2: 
                     st.markdown("**양품수량**")
