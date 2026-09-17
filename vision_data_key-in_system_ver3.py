@@ -354,9 +354,10 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
     animation: blink 1.5s ease-in-out infinite;
 }
 
-/* Custom Selectbox */
+/* Custom Selectbox & Radio */
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: rgba(11,25,60,0.5) !important; border: 1px solid #1E3A8A !important; color: #00E5FF !important; border-radius: 6px; }
 div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
+div[role="radiogroup"] label { color: #00E5FF !important; font-weight: bold !important; }
 
 /* Buttons */
 div[data-testid="stButton"] button { background-color: rgba(30,58,138,0.2) !important; color: #38BDF8 !important; border: 1px solid #1E3A8A !important; border-radius: 6px !important; font-weight: bold !important; transition: all 0.3s ease; }
@@ -521,14 +522,11 @@ def load_universal_data():
         st.error(f"🚨 데이터가 부족합니다. 최소 24행 이상이 필요합니다.")
         return pd.DataFrame()
     
-    # 💡 1. 사용자 확인 완료: 23행(Index 22)이 헤더, 24행(Index 23)부터 데이터
     header_idx = 22
     data_start_idx = 23
     
-    # 헤더 추출 (개행문자 등 쓰레기값 제거)
     raw_headers = [str(h).strip().replace('\n', '') for h in raw_data[header_idx]]
     
-    # 빈칸 등 중복 컬럼명 방지
     unique_headers = []
     seen = {}
     for h in raw_headers:
@@ -543,7 +541,6 @@ def load_universal_data():
     df = pd.DataFrame(raw_data[data_start_idx:], columns=unique_headers)
     df['_sheet_row'] = range(data_start_idx + 1, data_start_idx + 1 + len(df))
     
-    # 💡 2. 절대 맵핑 및 C열 날짜 절대 방어
     rename_dict = {}
     mapped_std_cols = set()
 
@@ -602,7 +599,6 @@ def load_universal_data():
 
     df = df.rename(columns=rename_dict)
     
-    # EXCEL_COLUMNS 포맷으로 완벽 정렬
     for col in EXCEL_COLUMNS:
         if col not in df.columns:
             df[col] = ""
@@ -774,6 +770,7 @@ if st.session_state.current_page == "analysis":
             except: return 0
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
+        df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
         # 💡 AI Fallback: 양품율이 비어있으면 강제로 계산하여 선을 살려냄
         if df['Yield_1'].isna().all() or (df['Yield_1'] == 0.0).all():
@@ -781,6 +778,12 @@ if st.session_state.current_page == "analysis":
                 q_good = df['양품수량'].apply(safe_int)
                 q_total = df['검사 수량'].apply(safe_int)
                 df['Yield_1'] = np.where(q_total > 0, (q_good / q_total) * 100, np.nan)
+                
+        if df['Yield_2'].isna().all() or (df['Yield_2'] == 0.0).all():
+            if '양품 수량(전/배 포함)' in df.columns and '검사 수량' in df.columns:
+                q_good2 = df['양품 수량(전/배 포함)'].apply(safe_int)
+                q_total = df['검사 수량'].apply(safe_int)
+                df['Yield_2'] = np.where(q_total > 0, (q_good2 / q_total) * 100, np.nan)
 
         df['완전불량_Qty'] = df.get('완전불량', pd.Series([0]*len(df))).apply(safe_int)
         df['전면불량_Qty'] = df.get('전면불량', pd.Series([0]*len(df))).apply(safe_int)
@@ -791,7 +794,7 @@ if st.session_state.current_page == "analysis":
         if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all():
             df['모델명(MI)'] = 'ALL_MODELS'
         
-        # 💡 Zero Drop 날짜 파서 (절대 행을 지우지 않음)
+        # Zero Drop 날짜 파서 (절대 행을 지우지 않음)
         def parse_dt(r):
             d_val = str(r.get('날짜', '')).strip()
             t_val = str(r.get('시작시간', '00:00')).strip()
@@ -806,7 +809,6 @@ if st.session_state.current_page == "analysis":
             else: t_str = "00:00:00"
             
             try:
-                # 엑셀 날짜 (45400)
                 if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
                     base_date = datetime(1899, 12, 30)
                     d_obj = base_date + timedelta(days=int(d_val))
@@ -844,72 +846,87 @@ if st.session_state.current_page == "analysis":
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        target_end_date = (now_kst - timedelta(days=1)).date()
-        target_start_date = target_end_date - timedelta(days=3)
-        
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
-        
-        if df_72h.empty:
-            df_target = df.copy()
-        else:
-            df_target = df_72h.copy()
-
         # 사이버펑크 3단 레이아웃 (1 : 1.5 : 1)
         left_col, center_col, right_col = st.columns([1, 1.5, 1])
 
         with center_col:
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
-            models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+            models_available = sorted(df['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df.columns else []
             selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
+            
+            # 💡 실시간 수율 기준 스위치 
+            st.markdown("<br>", unsafe_allow_html=True)
+            yield_type = st.radio(
+                "■ YIELD CRITERIA (수율 기준 설정)", 
+                ["Standard (기본 1차 수율)", "Include F/R (전/배 양품 포함)"], 
+                horizontal=True
+            )
+            target_yield_col = 'Yield_1' if "Standard" in yield_type else 'Yield_2'
 
             if not selected_models:
                 st.warning("Select models to render data.")
                 model_df = pd.DataFrame()
             else:
-                model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
-                model_df = model_df.sort_values(['DateTime'])
-                model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
-                model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
+                # 💡 선택된 모델에 한해서 D-Day 기준 72H 스캔 (오늘, 어제, 그제)
+                now_kst = datetime.now(timezone(timedelta(hours=9)))
+                target_end_date = now_kst.date() # D-Day
+                target_start_date = target_end_date - timedelta(days=2) # D-2 (총 3일)
                 
-                def make_hover_text(row):
-                    mod_str = str(row.get('모델명(MI)', ''))
-                    dur_str = str(row.get('소요시간', '0'))
-                    lot_str = str(row['LOT NO.'])
-                    d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
-                    return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
-                model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
+                df['DateOnly'] = df['DateTime'].dt.date
+                df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+                
+                if df_72h.empty:
+                    st.warning(f"⚠️ 최근 72시간({target_start_date} ~ {target_end_date}) 내 데이터가 없어 전체 기간을 스캔합니다.")
+                    df_target = df.copy()
+                else:
+                    df_target = df_72h.copy()
+                    
+                model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
+                
+                if model_df.empty:
+                    st.info("No data available for the selected model in the recent timeline.")
+                else:
+                    model_df = model_df.sort_values(['DateTime'])
+                    model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
+                    model_df['LOT NO.'] = model_df['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
+                    
+                    def make_hover_text(row):
+                        mod_str = str(row.get('모델명(MI)', ''))
+                        dur_str = str(row.get('소요시간', '0'))
+                        lot_str = str(row['LOT NO.'])
+                        d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
+                        return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
+                    model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
 
             total_inspected = model_df['검사수량'].sum() if not model_df.empty else 0
-            valid_yield_df = model_df.dropna(subset=['Yield_1']) if not model_df.empty else pd.DataFrame()
-            avg_yield = valid_yield_df['Yield_1'].mean() if not valid_yield_df.empty else 0.0
+            valid_yield_df = model_df.dropna(subset=[target_yield_col]) if not model_df.empty else pd.DataFrame()
+            avg_yield = valid_yield_df[target_yield_col].mean() if not valid_yield_df.empty else 0.0
             
-            defect_sums = {
-                "완전불량": model_df['완전불량_Qty'].sum() if not model_df.empty else 0,
-                "전면불량": model_df['전면불량_Qty'].sum() if not model_df.empty else 0,
-                "배면불량": model_df['배면불량_Qty'].sum() if not model_df.empty else 0,
-                "옵셋불량": model_df['옵셋불량_Qty'].sum() if not model_df.empty else 0
-            }
-            worst_defect = max(defect_sums, key=defect_sums.get) if sum(defect_sums.values()) > 0 else "N/A"
+            # 💡 최악의 불량 LOT NO 역추적 로직
+            if not model_df.empty:
+                worst_comp_lot = model_df.loc[model_df['완전불량_Qty'].idxmax()]['LOT NO.'] if model_df['완전불량_Qty'].sum() > 0 else "N/A"
+                worst_front_lot = model_df.loc[model_df['전면불량_Qty'].idxmax()]['LOT NO.'] if model_df['전면불량_Qty'].sum() > 0 else "N/A"
+                worst_rear_lot = model_df.loc[model_df['배면불량_Qty'].idxmax()]['LOT NO.'] if model_df['배면불량_Qty'].sum() > 0 else "N/A"
+            else:
+                worst_comp_lot, worst_front_lot, worst_rear_lot = "N/A", "N/A", "N/A"
             
-            # 커스텀 네온 KPI 카드 렌더링
             st.markdown(f"""
             <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 15px;">
                 <div class='cyber-kpi-card' style="flex:1;">
                     <div class='cyber-kpi-title'>Total Inspected</div>
                     <div class='cyber-kpi-value'>{total_inspected:,.0f}</div>
-                    <div class='cyber-kpi-sub'>Target Models Units</div>
+                    <div class='cyber-kpi-sub'>Recent 72H Units</div>
                 </div>
                 <div class='cyber-kpi-card' style="flex:1;">
                     <div class='cyber-kpi-title'>Average Yield</div>
                     <div class='cyber-kpi-value'>{avg_yield:.1f}%</div>
-                    <div class='cyber-kpi-sub'>1st Inspection Rate</div>
+                    <div class='cyber-kpi-sub'>Based on Selection</div>
                 </div>
                 <div class='cyber-kpi-card' style="flex:1;">
-                    <div class='cyber-kpi-title'>Top Defect</div>
-                    <div class='cyber-kpi-value alert'>{worst_defect}</div>
-                    <div class='cyber-kpi-sub'>Highest Occurring</div>
+                    <div class='cyber-kpi-title'>Top Defect LOTs</div>
+                    <div class='cyber-kpi-sub' style='margin-top: 5px;'><span style='color:#EF4444; font-weight:bold;'>완전:</span> {worst_comp_lot}</div>
+                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#F59E0B; font-weight:bold;'>전면:</span> {worst_front_lot}</div>
+                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#3B82F6; font-weight:bold;'>배면:</span> {worst_rear_lot}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -926,7 +943,7 @@ if st.session_state.current_page == "analysis":
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
             )
 
-        # 좌측 패널: 수율 트렌드 및 이동평균
+        # 좌측 패널: 수율 트렌드 및 이동평균 (선택된 수율 기준 반영)
         with left_col:
             with st.container(border=True):
                 fig1 = go.Figure()
@@ -934,18 +951,19 @@ if st.session_state.current_page == "analysis":
                 
                 if not model_df.empty:
                     for idx, mod in enumerate(selected_models):
-                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
+                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=[target_yield_col])
                         if m_df.empty: continue
                         c1 = colors[idx % len(colors)]
                         
                         fig1.add_trace(go.Scatter(
-                            x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}]", 
+                            x=m_df['DateTime'], y=m_df[target_yield_col], name=f"[{mod}]", 
                             mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
                             textfont=dict(size=9, color=c1),
                             line=dict(color=c1, width=2, shape='spline'), marker=dict(size=5, color=c1, line=dict(color='white', width=1)), hovertext=m_df['HoverText']
                         ))
                 
-                fig1.update_layout(**get_neon_layout("1ST YIELD TREND", "YIELD (%)"), height=350)
+                chart_title = "1ST YIELD TREND" if "Standard" in yield_type else "YIELD TREND (INCL. F/R)"
+                fig1.update_layout(**get_neon_layout(chart_title, "YIELD (%)"), height=420)
                 st.plotly_chart(fig1, use_container_width=True)
 
         # 우측 패널: 파레토 및 설비 편차
@@ -969,7 +987,7 @@ if st.session_state.current_page == "analysis":
                     mode='lines+markers', line=dict(color='#FF3366', width=2), marker=dict(size=6), yaxis='y2'
                 ))
                 
-                fig_pareto.update_layout(**get_neon_layout("DEFECT PARETO", "COUNT", show_x=True), height=350)
+                fig_pareto.update_layout(**get_neon_layout("DEFECT PARETO", "COUNT", show_x=True), height=420)
                 fig_pareto.update_layout(yaxis2=dict(title='Cum (%)', overlaying='y', side='right', range=[0, 105], showgrid=False))
                 st.plotly_chart(fig_pareto, use_container_width=True)
 
@@ -1345,7 +1363,7 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4><br>", unsafe_allow_html=True)
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
-                    st.markdown("**검 수량 (자동)**")
+                    st.markdown("**검사 수량 (자동)**")
                     st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
                 with q2: 
                     st.markdown("**양품수량**")
