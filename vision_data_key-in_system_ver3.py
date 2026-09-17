@@ -328,20 +328,6 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
 .command-header { color: #00E5FF !important; font-weight: 900 !important; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
 .metric-label { color: #38BDF8 !important; font-size: 0.9rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
 
-/* 커스텀 네온 캡슐형 KPI 카드 (1x6 배열 최적화) */
-.cyber-kpi-card { 
-    background: linear-gradient(90deg, rgba(30,58,138,0.3) 0%, rgba(3,9,20,0) 100%);
-    border-left: 3px solid #00E5FF;
-    border-radius: 8px; 
-    padding: 10px 10px; 
-    text-align: left; 
-    box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05);
-    height: 100%;
-}
-.cyber-kpi-title { color: #94A3B8; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; }
-.cyber-kpi-value { color: #00E5FF; font-size: 1.6rem; font-weight: 900; text-shadow: 0 0 8px rgba(0, 229, 255, 0.4); margin: 2px 0; }
-.cyber-kpi-sub { color: #64748B; font-size: 0.7rem; }
-
 /* SBL 카드 */
 .sbl-card { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.5); border-left: 4px solid #EF4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
 .sbl-title { color: #EF4444 !important; font-weight: bold; font-size: 0.8rem; margin-bottom: 3px;}
@@ -523,6 +509,7 @@ def load_universal_data():
     data_start_idx = 23
     
     raw_headers = [str(h).strip().replace('\n', '') for h in raw_data[header_idx]]
+    
     unique_headers = []
     seen = {}
     for h in raw_headers:
@@ -713,7 +700,6 @@ if st.session_state.current_page == "analysis":
         admin_auth_dialog()
         st.stop()
         
-    # 💡 5분 타이머 스왑 기능 (Auto Rotate JS 주입)
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -774,7 +760,6 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
-        # 데이터 변환 로직
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
@@ -783,7 +768,6 @@ if st.session_state.current_page == "analysis":
         df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         
-        # AI Fallback (비율 계산)
         if df['Yield_1'].isna().all():
             q_good = df.get('양품수량', pd.Series([0]*len(df))).apply(safe_int)
             df['Yield_1'] = np.where(df['검사수량'] > 0, (q_good / df['검사수량']) * 100, np.nan)
@@ -838,10 +822,9 @@ if st.session_state.current_page == "analysis":
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
-        # 시간대(Timezone) 제거하여 Pandas 비교 에러 방지
         now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
         target_end_date = now_kst.date() 
-        target_start_date = target_end_date - timedelta(days=2) # 총 3일 (72H)
+        target_start_date = target_end_date - timedelta(days=2) 
         yesterday_date = target_end_date - timedelta(days=1)
         
         df['DateOnly'] = df['DateTime'].dt.date
@@ -850,7 +833,6 @@ if st.session_state.current_page == "analysis":
 
         models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
 
-        # 💡 [Expander] TARGET MODEL SELECTION (1x2 Array)
         with st.expander("■ TARGET MODEL SELECTION", expanded=True):
             exp_c1, exp_c2 = st.columns(2)
             with exp_c1:
@@ -860,7 +842,6 @@ if st.session_state.current_page == "analysis":
                 
         all_selected = list(set(selected_models_std + selected_models_inc))
 
-        # 💡 모델 자동 스왑 로직 적용
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -872,7 +853,6 @@ if st.session_state.current_page == "analysis":
             display_inc = selected_models_inc
             active_model = None
 
-        # 💡 타임라인 데이터 분류 로직
         def get_kpi_metrics(df_sub):
             if df_sub.empty: return 0, 0.0, 0.0, 0.0, 0.0, 0.0
             t_inspected = df_sub['검사수량'].sum()
@@ -888,52 +868,58 @@ if st.session_state.current_page == "analysis":
 
         base_df = df_target[df_target['모델명(MI)'].isin(all_selected)].copy() if all_selected else pd.DataFrame()
         
-        # 1. 72H 전체 (Overall)
         t_ins, a_yld, a_cmp, a_fr, a_re, a_off = get_kpi_metrics(base_df)
-        # 2. 어제 (Yesterday)
+        
         df_yesterday = base_df[base_df['DateOnly'] == yesterday_date].copy() if not base_df.empty else pd.DataFrame()
         y_ins, y_yld, y_cmp, y_fr, y_re, y_off = get_kpi_metrics(df_yesterday)
-        # 3. 최근 6시간 (Last 6H)
+        
         df_6h = base_df[base_df['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df.empty else pd.DataFrame()
         h_ins, h_yld, h_cmp, h_fr, h_re, h_off = get_kpi_metrics(df_6h)
 
-        def make_kpi_html(title, value, sub, color="#00E5FF"):
+        # 💡 [그라데이션 CSS 적용]
+        def make_kpi_html(title, value, sub, color="#00E5FF", theme="blue"):
+            if theme == "dark":
+                bg = "linear-gradient(90deg, rgba(80,80,80,0.6) 0%, rgba(0,0,0,1) 100%)"
+                border = "#FFC000"
+            else:
+                bg = "linear-gradient(90deg, rgba(30,58,138,0.3) 0%, rgba(3,9,20,0) 100%)"
+                border = "#00E5FF"
+                
             return f"""
-            <div class='cyber-kpi-card'>
-                <div class='cyber-kpi-title'>{title}</div>
-                <div class='cyber-kpi-value' style='color:{color};'>{value}</div>
-                <div class='cyber-kpi-sub'>{sub}</div>
+            <div style="background: {bg}; border-left: 4px solid {border}; border-radius: 8px; padding: 10px; height: 100%; box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05);">
+                <div style="color: #94A3B8; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px;">{title}</div>
+                <div style="color: {color}; font-size: 1.6rem; font-weight: 900; text-shadow: 0 0 8px rgba(0,0,0,0.5); margin: 2px 0;">{value}</div>
+                <div style="color: #64748B; font-size: 0.7rem;">{sub}</div>
             </div>
             """
 
-        # 💡 [3 Rows x 1x6 Arrays] 타임라인별 KPI 매트릭스 
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ OVERALL SUMMARY (72H)</div>", unsafe_allow_html=True)
             o1, o2, o3, o4, o5, o6 = st.columns(6)
-            o1.markdown(make_kpi_html("Total Inspected", f"{t_ins:,.0f}", "72H Total"), unsafe_allow_html=True)
-            o2.markdown(make_kpi_html("Avg Yield", f"{a_yld:.1f}%", "72H Average"), unsafe_allow_html=True)
-            o3.markdown(make_kpi_html("Avg Complete", f"{a_cmp:.1f}%", "72H Defect Rate", "#FF3366"), unsafe_allow_html=True)
-            o4.markdown(make_kpi_html("Avg Front", f"{a_fr:.1f}%", "72H Defect Rate", "#3B82F6"), unsafe_allow_html=True)
-            o5.markdown(make_kpi_html("Avg Rear", f"{a_re:.1f}%", "72H Defect Rate", "#22D3EE"), unsafe_allow_html=True)
-            o6.markdown(make_kpi_html("Avg Offset", f"{a_off:.1f}%", "72H Defect Rate", "#F59E0B"), unsafe_allow_html=True)
+            o1.markdown(make_kpi_html("Total Inspected", f"{t_ins:,.0f}", "72H Total", theme="dark"), unsafe_allow_html=True)
+            o2.markdown(make_kpi_html("Yield", f"{a_yld:.1f}%", "72H Average", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
+            o3.markdown(make_kpi_html("Complete", f"{a_cmp:.1f}%", "72H Rate", color="#FF3366", theme="dark"), unsafe_allow_html=True)
+            o4.markdown(make_kpi_html("Front", f"{a_fr:.1f}%", "72H Rate", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
+            o5.markdown(make_kpi_html("Rear", f"{a_re:.1f}%", "72H Rate", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
+            o6.markdown(make_kpi_html("Offset", f"{a_off:.1f}%", "72H Rate", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
             
             st.markdown("<div class='metric-label' style='margin-top: 15px;'>■ YESTERDAY SUMMARY</div>", unsafe_allow_html=True)
             y1, y2, y3, y4, y5, y6 = st.columns(6)
             y1.markdown(make_kpi_html("Total Inspected", f"{y_ins:,.0f}", "Yesterday"), unsafe_allow_html=True)
-            y2.markdown(make_kpi_html("Avg Yield", f"{y_yld:.1f}%", "Yesterday"), unsafe_allow_html=True)
-            y3.markdown(make_kpi_html("Avg Complete", f"{y_cmp:.1f}%", "Yesterday", "#FF3366"), unsafe_allow_html=True)
-            y4.markdown(make_kpi_html("Avg Front", f"{y_fr:.1f}%", "Yesterday", "#3B82F6"), unsafe_allow_html=True)
-            y5.markdown(make_kpi_html("Avg Rear", f"{y_re:.1f}%", "Yesterday", "#22D3EE"), unsafe_allow_html=True)
-            y6.markdown(make_kpi_html("Avg Offset", f"{y_off:.1f}%", "Yesterday", "#F59E0B"), unsafe_allow_html=True)
+            y2.markdown(make_kpi_html("Yield", f"{y_yld:.1f}%", "Yesterday", color="#FFFF00"), unsafe_allow_html=True)
+            y3.markdown(make_kpi_html("Complete", f"{y_cmp:.1f}%", "Yesterday", color="#FF3366"), unsafe_allow_html=True)
+            y4.markdown(make_kpi_html("Front", f"{y_fr:.1f}%", "Yesterday", color="#3B82F6"), unsafe_allow_html=True)
+            y5.markdown(make_kpi_html("Rear", f"{y_re:.1f}%", "Yesterday", color="#22D3EE"), unsafe_allow_html=True)
+            y6.markdown(make_kpi_html("Offset", f"{y_off:.1f}%", "Yesterday", color="#F59E0B"), unsafe_allow_html=True)
 
             st.markdown("<div class='metric-label' style='margin-top: 15px;'>■ LAST 6 HOURS SUMMARY</div>", unsafe_allow_html=True)
             h1, h2, h3, h4, h5, h6 = st.columns(6)
-            h1.markdown(make_kpi_html("Total Inspected", f"{h_ins:,.0f}", "Last 6H"), unsafe_allow_html=True)
-            h2.markdown(make_kpi_html("Avg Yield", f"{h_yld:.1f}%", "Last 6H"), unsafe_allow_html=True)
-            h3.markdown(make_kpi_html("Avg Complete", f"{h_cmp:.1f}%", "Last 6H", "#FF3366"), unsafe_allow_html=True)
-            h4.markdown(make_kpi_html("Avg Front", f"{h_fr:.1f}%", "Last 6H", "#3B82F6"), unsafe_allow_html=True)
-            h5.markdown(make_kpi_html("Avg Rear", f"{h_re:.1f}%", "Last 6H", "#22D3EE"), unsafe_allow_html=True)
-            h6.markdown(make_kpi_html("Avg Offset", f"{h_off:.1f}%", "Last 6H", "#F59E0B"), unsafe_allow_html=True)
+            h1.markdown(make_kpi_html("Total Inspected", f"{h_ins:,.0f}", "Last 6H", theme="dark"), unsafe_allow_html=True)
+            h2.markdown(make_kpi_html("Yield", f"{h_yld:.1f}%", "Last 6H", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
+            h3.markdown(make_kpi_html("Complete", f"{h_cmp:.1f}%", "Last 6H", color="#FF3366", theme="dark"), unsafe_allow_html=True)
+            h4.markdown(make_kpi_html("Front", f"{h_fr:.1f}%", "Last 6H", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
+            h5.markdown(make_kpi_html("Rear", f"{h_re:.1f}%", "Last 6H", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
+            h6.markdown(make_kpi_html("Offset", f"{h_off:.1f}%", "Last 6H", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
 
         def get_neon_layout(title_text, y_title, show_x=True):
             return dict(
@@ -942,12 +928,12 @@ if st.session_state.current_page == "analysis":
                 font=dict(color='#94A3B8', family='monospace'),
                 xaxis=dict(showticklabels=show_x, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A'),
                 yaxis=dict(title=y_title, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A', zeroline=False),
-                margin=dict(l=30, r=30, t=40, b=30), 
                 hovermode='x unified',
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
             )
 
-        colors_map = ['#00E5FF', '#22D3EE', '#8B5CF6', '#F59E0B', '#10B981', '#FF3366', '#3B82F6', '#D946EF']
+        # 💡 [다채로운 형광색 팔레트 적용]
+        colors_map = ['#00E5FF', '#FF00FF', '#39FF14', '#FFA500', '#FF3333', '#9D00FF', '#FFFF00', '#00FFFF', '#FF1493', '#10B981']
         model_color_dict = {mod: colors_map[i % len(colors_map)] for i, mod in enumerate(all_selected)}
 
         if not base_df.empty:
@@ -973,18 +959,30 @@ if st.session_state.current_page == "analysis":
                     m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                     if m_df.empty: continue
                     c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] Std", mode='lines+markers', line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']))
+                    fig_yld.add_trace(go.Scatter(
+                        x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] Std", 
+                        mode='lines+markers+text', 
+                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
+                        textposition='top center', textfont=dict(size=9, color=c1),
+                        line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
+                    ))
                 for mod in display_inc:
                     m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
                     if m_df.empty: continue
                     c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] Incl.", mode='lines+markers', line=dict(color=c1, width=2, dash='dash'), marker=dict(size=5, symbol='cross', color=c1), hovertext=m_df['HoverText']))
+                    fig_yld.add_trace(go.Scatter(
+                        x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] Incl.", 
+                        mode='lines+markers+text', 
+                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
+                        textposition='top center', textfont=dict(size=9, color=c1),
+                        line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
+                    ))
                     
             fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=300)
-            fig_yld.update_layout(yaxis=dict(range=[y_min, 100.0]), xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M')) # 3시간 틱
+            fig_yld.update_layout(yaxis=dict(range=[y_min, 100.0]), xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M'))
             st.plotly_chart(fig_yld, use_container_width=True)
 
-        # 💡 [1x4 배열] 불량률 꺾은선 트렌드 차트
+        # 💡 [1x4 배열] 실선 & 백분율 텍스트 적용된 불량률 트렌드 차트
         with st.container(border=True):
             dc1, dc2, dc3, dc4 = st.columns(4)
             
@@ -995,9 +993,15 @@ if st.session_state.current_page == "analysis":
                         m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=[d_col])
                         if m_df.empty: continue
                         c1 = model_color_dict[mod]
-                        f.add_trace(go.Scatter(x=m_df['DateTime'], y=m_df[d_col], name=mod, mode='lines+markers', line=dict(color=c1, width=2), marker=dict(size=4, color=c1), hovertext=m_df['HoverText']))
-                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True), height=250, margin=dict(l=30, r=30, t=30, b=30))
-                f.update_layout(xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) # 6시간 틱으로 약간 조정하여 좁은 공간 대응
+                        f.add_trace(go.Scatter(
+                            x=m_df['DateTime'], y=m_df[d_col], name=mod, 
+                            mode='lines+markers+text', 
+                            text=m_df[d_col].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
+                            textposition='top center', textfont=dict(size=9, color=c1),
+                            line=dict(color=c1, width=2), marker=dict(size=4, color=c1), hovertext=m_df['HoverText']
+                        ))
+                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True), height=250)
+                f.update_layout(xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) 
                 return f
 
             with dc1: st.plotly_chart(make_defect_chart('Def_Comp', "COMPLETE DEFECT"), use_container_width=True)
