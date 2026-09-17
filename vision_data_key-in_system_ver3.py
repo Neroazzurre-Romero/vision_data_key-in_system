@@ -293,7 +293,7 @@ div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6r
 </style>
 """
 
-# 💡 사이버펑크 네온 대시보드 테마 적용
+# 💡 사이버펑크 네온 대시보드 테마 적용 (선택 창 커스텀 포함)
 analysis_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -354,12 +354,22 @@ h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: '
     animation: blink 1.5s ease-in-out infinite;
 }
 
-/* Custom Selectbox & Radio */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div { background-color: rgba(11,25,60,0.5) !important; border: 1px solid #1E3A8A !important; color: #00E5FF !important; border-radius: 6px; }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
-div[role="radiogroup"] label { color: #00E5FF !important; font-weight: bold !important; }
+/* 💡 Custom Selectbox - 배경 검정, 태그 전면불량 블루(#3B82F6) 적용 */
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div { 
+    background-color: #000000 !important; 
+    border: 1px solid #1E3A8A !important; 
+    color: #00E5FF !important; 
+    border-radius: 6px; 
+}
+div[data-testid="stMultiSelect"] span[data-baseweb="tag"] { 
+    background-color: #3B82F6 !important; 
+    color: #ffffff !important; 
+    font-weight: bold !important; 
+    border: none !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
 
-/* Buttons */
+/* Buttons in Dark Mode */
 div[data-testid="stButton"] button { background-color: rgba(30,58,138,0.2) !important; color: #38BDF8 !important; border: 1px solid #1E3A8A !important; border-radius: 6px !important; font-weight: bold !important; transition: all 0.3s ease; }
 div[data-testid="stButton"] button:hover { background-color: rgba(0, 229, 255, 0.1) !important; border-color: #00E5FF !important; box-shadow: 0 0 15px rgba(0, 229, 255, 0.3) !important; color: #ffffff !important; }
 </style>
@@ -547,7 +557,6 @@ def load_universal_data():
         cc = h.replace(" ", "").replace("률", "율").upper()
         matched_col = None
         
-        # 엑셀의 C열(인덱스 2)은 무조건 '날짜'로 강제 고정
         if c_idx == 2: matched_col = '날짜'
         elif "고유" in cc and "ID" in cc: matched_col = '고유 ID'
         elif cc == "상태": matched_col = '상태'
@@ -842,22 +851,20 @@ if st.session_state.current_page == "analysis":
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
-        left_col, center_col, right_col = st.columns([1, 1.5, 1])
+        # 💡 [5:3:2] 황금 비율 3단 분할 레이아웃 적용
+        left_col, center_col, right_col = st.columns([5, 3, 2])
 
         with center_col:
             st.markdown("<div class='metric-label'>■ TARGET MODEL SELECTION</div>", unsafe_allow_html=True)
             models_available = sorted(df['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df.columns else []
-            selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            yield_type = st.radio(
-                "■ YIELD CRITERIA (수율 기준 설정)", 
-                ["Standard (기본 1차 수율)", "Include F/R (전/배 양품 포함)"], 
-                horizontal=True
-            )
-            target_yield_col = 'Yield_1' if "Standard" in yield_type else 'Yield_2'
+            # 💡 기본 모델 & 포함 모델 개별 셀렉터 분리 배치
+            selected_models_std = st.multiselect("▶ Standard (기본 1차 수율)", models_available, default=models_available[:1] if models_available else [])
+            selected_models_inc = st.multiselect("▶ Include F/R (전/배 양품 포함)", models_available, default=[])
+            
+            all_selected = list(set(selected_models_std + selected_models_inc))
 
-            if not selected_models:
+            if not all_selected:
                 st.warning("Select models to render data.")
                 model_df = pd.DataFrame()
                 defect_sums = {"완전불량": 0, "전면불량": 0, "배면불량": 0, "옵셋불량": 0}
@@ -875,7 +882,7 @@ if st.session_state.current_page == "analysis":
                 else:
                     df_target = df_72h.copy()
                     
-                model_df = df_target[df_target['모델명(MI)'].isin(selected_models)].copy()
+                model_df = df_target[df_target['모델명(MI)'].isin(all_selected)].copy()
                 
                 if model_df.empty:
                     st.info("No data available for the selected model in the recent timeline.")
@@ -893,7 +900,6 @@ if st.session_state.current_page == "analysis":
                         return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
                     
-                    # 💡 누락되었던 defect_sums 변수를 다시 정의합니다.
                     defect_sums = {
                         "완전불량": model_df['완전불량_Qty'].sum(),
                         "전면불량": model_df['전면불량_Qty'].sum(),
@@ -902,8 +908,15 @@ if st.session_state.current_page == "analysis":
                     }
 
             total_inspected = model_df['검사수량'].sum() if not model_df.empty else 0
-            valid_yield_df = model_df.dropna(subset=[target_yield_col]) if not model_df.empty else pd.DataFrame()
-            avg_yield = valid_yield_df[target_yield_col].mean() if not valid_yield_df.empty else 0.0
+            
+            # 💡 각 옵션에 따라 수율을 합산하여 72시간 전체 평균 계산
+            valid_yields = []
+            if not model_df.empty:
+                for mod in selected_models_std:
+                    valid_yields.extend(model_df[model_df['모델명(MI)'] == mod]['Yield_1'].dropna().tolist())
+                for mod in selected_models_inc:
+                    valid_yields.extend(model_df[model_df['모델명(MI)'] == mod]['Yield_2'].dropna().tolist())
+            avg_yield = np.mean(valid_yields) if valid_yields else 0.0
             
             if not model_df.empty:
                 worst_comp_lot = model_df.loc[model_df['완전불량_Qty'].idxmax()]['LOT NO.'] if model_df['완전불량_Qty'].sum() > 0 else "N/A"
@@ -913,22 +926,22 @@ if st.session_state.current_page == "analysis":
                 worst_comp_lot, worst_front_lot, worst_rear_lot = "N/A", "N/A", "N/A"
             
             st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 15px;">
-                <div class='cyber-kpi-card' style="flex:1;">
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                <div class='cyber-kpi-card'>
                     <div class='cyber-kpi-title'>Total Inspected</div>
                     <div class='cyber-kpi-value'>{total_inspected:,.0f}</div>
                     <div class='cyber-kpi-sub'>Recent 72H Units</div>
                 </div>
-                <div class='cyber-kpi-card' style="flex:1;">
+                <div class='cyber-kpi-card'>
                     <div class='cyber-kpi-title'>Average Yield</div>
                     <div class='cyber-kpi-value'>{avg_yield:.1f}%</div>
                     <div class='cyber-kpi-sub'>Based on Selection</div>
                 </div>
-                <div class='cyber-kpi-card' style="flex:1;">
+                <div class='cyber-kpi-card'>
                     <div class='cyber-kpi-title'>Top Defect LOTs</div>
                     <div class='cyber-kpi-sub' style='margin-top: 5px;'><span style='color:#EF4444; font-weight:bold;'>완전:</span> {worst_comp_lot}</div>
-                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#F59E0B; font-weight:bold;'>전면:</span> {worst_front_lot}</div>
-                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#3B82F6; font-weight:bold;'>배면:</span> {worst_rear_lot}</div>
+                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#3B82F6; font-weight:bold;'>전면:</span> {worst_front_lot}</div>
+                    <div class='cyber-kpi-sub' style='margin-top: 3px;'><span style='color:#1E3A8A; font-weight:bold;'>배면:</span> {worst_rear_lot}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -948,23 +961,56 @@ if st.session_state.current_page == "analysis":
         with left_col:
             with st.container(border=True):
                 fig1 = go.Figure()
-                colors = ['#00E5FF', '#3B82F6', '#22D3EE', '#8B5CF6']
+                colors = ['#00E5FF', '#22D3EE', '#8B5CF6', '#F59E0B', '#10B981', '#FF3366']
+                color_idx = 0
                 
                 if not model_df.empty:
-                    for idx, mod in enumerate(selected_models):
-                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=[target_yield_col])
+                    # 💡 기본 모델 (Yield_1) 렌더링
+                    for mod in selected_models_std:
+                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                         if m_df.empty: continue
-                        c1 = colors[idx % len(colors)]
+                        c1 = colors[color_idx % len(colors)]
+                        color_idx += 1
                         
                         fig1.add_trace(go.Scatter(
-                            x=m_df['DateTime'], y=m_df[target_yield_col], name=f"[{mod}]", 
+                            x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] 기본", 
                             mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
                             textfont=dict(size=9, color=c1),
                             line=dict(color=c1, width=2, shape='spline'), marker=dict(size=5, color=c1, line=dict(color='white', width=1)), hovertext=m_df['HoverText']
                         ))
+                        if len(m_df) > 3:
+                            m_df['MA'] = m_df['Yield_1'].rolling(window=3, min_periods=1).mean()
+                            fig1.add_trace(go.Scatter(
+                                x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend", 
+                                mode='lines', line=dict(color=c1, width=1, dash='dot'), hoverinfo='skip'
+                            ))
+                            
+                    # 💡 전배면 포함 모델 (Yield_2) 렌더링
+                    for mod in selected_models_inc:
+                        m_df = model_df[model_df['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
+                        if m_df.empty: continue
+                        c1 = colors[color_idx % len(colors)]
+                        color_idx += 1
+                        
+                        fig1.add_trace(go.Scatter(
+                            x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] 전/배포함", 
+                            mode='lines+markers+text', text=m_df['LOT NO.'], textposition='top center',
+                            textfont=dict(size=9, color=c1),
+                            line=dict(color=c1, width=2, shape='spline', dash='dash'), marker=dict(size=5, symbol='cross', color=c1, line=dict(color='white', width=1)), hovertext=m_df['HoverText']
+                        ))
+                        if len(m_df) > 3:
+                            m_df['MA'] = m_df['Yield_2'].rolling(window=3, min_periods=1).mean()
+                            fig1.add_trace(go.Scatter(
+                                x=m_df['DateTime'], y=m_df['MA'], name=f"[{mod}] Trend", 
+                                mode='lines', line=dict(color=c1, width=1, dash='dot'), hoverinfo='skip'
+                            ))
                 
-                chart_title = "1ST YIELD TREND" if "Standard" in yield_type else "YIELD TREND (INCL. F/R)"
-                fig1.update_layout(**get_neon_layout(chart_title, "YIELD (%)"), height=420)
+                # 💡 좌측 차트 Y축 80~100 강제 적용 및 X축 3시간 간격(10800000ms) 적용
+                fig1.update_layout(**get_neon_layout("YIELD TREND & MOVING AVERAGE", "YIELD (%)"), height=580)
+                fig1.update_layout(
+                    yaxis=dict(range=[80.0, 100.0]), 
+                    xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M')
+                )
                 st.plotly_chart(fig1, use_container_width=True)
 
         with right_col:
@@ -980,16 +1026,34 @@ if st.session_state.current_page == "analysis":
                 fig_pareto = go.Figure()
                 fig_pareto.add_trace(go.Bar(
                     x=pareto_df['Defect'], y=pareto_df['Count'], name='Count',
-                    marker_color=['#00E5FF', '#3B82F6', '#1E3A8A', '#0F172A'], text=pareto_df['Count'], textposition='auto'
+                    marker_color=['#EF4444', '#3B82F6', '#1E3A8A', '#0F172A'], text=pareto_df['Count'], textposition='auto'
                 ))
                 fig_pareto.add_trace(go.Scatter(
                     x=pareto_df['Defect'], y=pareto_df['Cumulative %'], name='Cumulative %',
                     mode='lines+markers', line=dict(color='#FF3366', width=2), marker=dict(size=6), yaxis='y2'
                 ))
                 
-                fig_pareto.update_layout(**get_neon_layout("DEFECT PARETO", "COUNT", show_x=True), height=420)
+                fig_pareto.update_layout(**get_neon_layout("DEFECT PARETO", "COUNT", show_x=True), height=280)
                 fig_pareto.update_layout(yaxis2=dict(title='Cum (%)', overlaying='y', side='right', range=[0, 105], showgrid=False))
                 st.plotly_chart(fig_pareto, use_container_width=True)
+                
+            with st.container(border=True):
+                st.markdown("<div class='metric-label'>■ YIELD VARIANCE BY MACHINE</div>", unsafe_allow_html=True)
+                if '호기' in model_df.columns and not model_df.empty:
+                    fig_box = px.box(
+                        model_df.dropna(subset=['Yield_1']), x="호기", y="Yield_1", color="모델명(MI)",
+                        points="all", hover_data=["LOT NO."]
+                    )
+                    fig_box.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#94A3B8', family='monospace'),
+                        yaxis=dict(title='1st Yield (%)', gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A'),
+                        xaxis=dict(title='', linecolor='#1E3A8A'),
+                        margin=dict(l=30, r=30, t=10, b=30), showlegend=False,
+                        height=240
+                    )
+                    st.plotly_chart(fig_box, use_container_width=True)
+                else:
+                    st.info("No Machine data.")
 
 # ==========================================
 # Main Input App
