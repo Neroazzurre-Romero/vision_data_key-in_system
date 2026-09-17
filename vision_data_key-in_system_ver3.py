@@ -506,7 +506,6 @@ def get_sheet():
             return doc.sheet1
     return None
 
-# 💡 절대 좌표 매핑(Absolute Coordinate Mapping) 로더
 @st.cache_data(ttl=15)
 def load_universal_data():
     doc = get_spreadsheet_doc()
@@ -772,7 +771,6 @@ if st.session_state.current_page == "analysis":
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         
-        # 💡 AI Fallback: 양품율이 비어있으면 강제로 계산하여 선을 살려냄
         if df['Yield_1'].isna().all() or (df['Yield_1'] == 0.0).all():
             if '양품수량' in df.columns and '검사 수량' in df.columns:
                 q_good = df['양품수량'].apply(safe_int)
@@ -794,7 +792,6 @@ if st.session_state.current_page == "analysis":
         if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all():
             df['모델명(MI)'] = 'ALL_MODELS'
         
-        # Zero Drop 날짜 파서 (절대 행을 지우지 않음)
         def parse_dt(r):
             d_val = str(r.get('날짜', '')).strip()
             t_val = str(r.get('시작시간', '00:00')).strip()
@@ -841,12 +838,10 @@ if st.session_state.current_page == "analysis":
             
         df['DateTime'] = pd.to_datetime(parsed_dates)
         
-        # 1차 검사 강제 고정 
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
-        # 사이버펑크 3단 레이아웃 (1 : 1.5 : 1)
         left_col, center_col, right_col = st.columns([1, 1.5, 1])
 
         with center_col:
@@ -854,7 +849,6 @@ if st.session_state.current_page == "analysis":
             models_available = sorted(df['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df.columns else []
             selected_models = st.multiselect("Select Models", models_available, default=models_available[:1] if models_available else [], label_visibility="collapsed")
             
-            # 💡 실시간 수율 기준 스위치 
             st.markdown("<br>", unsafe_allow_html=True)
             yield_type = st.radio(
                 "■ YIELD CRITERIA (수율 기준 설정)", 
@@ -866,11 +860,11 @@ if st.session_state.current_page == "analysis":
             if not selected_models:
                 st.warning("Select models to render data.")
                 model_df = pd.DataFrame()
+                defect_sums = {"완전불량": 0, "전면불량": 0, "배면불량": 0, "옵셋불량": 0}
             else:
-                # 💡 선택된 모델에 한해서 D-Day 기준 72H 스캔 (오늘, 어제, 그제)
                 now_kst = datetime.now(timezone(timedelta(hours=9)))
-                target_end_date = now_kst.date() # D-Day
-                target_start_date = target_end_date - timedelta(days=2) # D-2 (총 3일)
+                target_end_date = now_kst.date() 
+                target_start_date = target_end_date - timedelta(days=2) 
                 
                 df['DateOnly'] = df['DateTime'].dt.date
                 df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
@@ -885,6 +879,7 @@ if st.session_state.current_page == "analysis":
                 
                 if model_df.empty:
                     st.info("No data available for the selected model in the recent timeline.")
+                    defect_sums = {"완전불량": 0, "전면불량": 0, "배면불량": 0, "옵셋불량": 0}
                 else:
                     model_df = model_df.sort_values(['DateTime'])
                     model_df['LOT NO.'] = model_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(model_df)))
@@ -897,12 +892,19 @@ if st.session_state.current_page == "analysis":
                         d_str = row['DateTime'].strftime('%Y-%m-%d %H:%M')
                         return f"[{mod_str}]<br>Time: {d_str}<br>LOT: {lot_str}<br>소요: {dur_str}분"
                     model_df['HoverText'] = model_df.apply(make_hover_text, axis=1)
+                    
+                    # 💡 누락되었던 defect_sums 변수를 다시 정의합니다.
+                    defect_sums = {
+                        "완전불량": model_df['완전불량_Qty'].sum(),
+                        "전면불량": model_df['전면불량_Qty'].sum(),
+                        "배면불량": model_df['배면불량_Qty'].sum(),
+                        "옵셋불량": model_df['옵셋불량_Qty'].sum()
+                    }
 
             total_inspected = model_df['검사수량'].sum() if not model_df.empty else 0
             valid_yield_df = model_df.dropna(subset=[target_yield_col]) if not model_df.empty else pd.DataFrame()
             avg_yield = valid_yield_df[target_yield_col].mean() if not valid_yield_df.empty else 0.0
             
-            # 💡 최악의 불량 LOT NO 역추적 로직
             if not model_df.empty:
                 worst_comp_lot = model_df.loc[model_df['완전불량_Qty'].idxmax()]['LOT NO.'] if model_df['완전불량_Qty'].sum() > 0 else "N/A"
                 worst_front_lot = model_df.loc[model_df['전면불량_Qty'].idxmax()]['LOT NO.'] if model_df['전면불량_Qty'].sum() > 0 else "N/A"
@@ -943,7 +945,6 @@ if st.session_state.current_page == "analysis":
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
             )
 
-        # 좌측 패널: 수율 트렌드 및 이동평균 (선택된 수율 기준 반영)
         with left_col:
             with st.container(border=True):
                 fig1 = go.Figure()
@@ -966,7 +967,6 @@ if st.session_state.current_page == "analysis":
                 fig1.update_layout(**get_neon_layout(chart_title, "YIELD (%)"), height=420)
                 st.plotly_chart(fig1, use_container_width=True)
 
-        # 우측 패널: 파레토 및 설비 편차
         with right_col:
             with st.container(border=True):
                 pareto_df = pd.DataFrame({
