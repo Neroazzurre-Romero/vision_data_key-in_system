@@ -571,7 +571,7 @@ def load_universal_data():
         elif cc == "전면불량": matched_col = '전면불량'
         elif cc == "배면불량": matched_col = '배면불량'
         elif cc == "옵셋불량": matched_col = '옵셋불량'
-        elif cc == "옵셋" in cc and ("율" in cc or "률" in cc): matched_col = '옵셋불량율' # 옵셋불량율 추가 지원
+        elif cc == "옵셋" in cc and ("율" in cc or "률" in cc): matched_col = '옵셋불량율' 
         elif cc == "수량부족": matched_col = '수량부족'
         elif cc == "기타": matched_col = '기타'
         elif cc in ["육안/OQC", "OQC"]: matched_col = 'OQC'
@@ -599,7 +599,6 @@ def load_universal_data():
         if col not in df.columns:
             df[col] = ""
             
-    # 확장 컬럼 지원 (옵셋불량율 포함)
     ext_cols = EXCEL_COLUMNS + ['옵셋불량율']
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
@@ -831,14 +830,16 @@ if st.session_state.current_page == "analysis":
             
         parsed_dates = df.apply(parse_dt, axis=1)
         missing_dates_idx = parsed_dates.isna()
-        if missing_dates_idx.any(): parsed_dates.loc[missing_dates_idx] = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
+        if missing_dates_idx.any():
+            parsed_dates.loc[missing_dates_idx] = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
         df['DateTime'] = pd.to_datetime(parsed_dates)
         
         if '구분' in df.columns:
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
+        # 시간대(Timezone) 제거하여 Pandas 비교 에러 방지
+        now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
         target_end_date = now_kst.date() 
         target_start_date = target_end_date - timedelta(days=2) # 총 3일 (72H)
         yesterday_date = target_end_date - timedelta(days=1)
@@ -1015,10 +1016,8 @@ if st.session_state.current_page == "analysis":
                     return html + "<div class='sbl-text'>No data.</div>"
                 
                 if is_yield:
-                    # 수율 SBL: 임의로 90% 미만으로 가정
                     sbl_df = base_df[(base_df[d_col] < threshold) & (base_df[d_col] > 0)].copy()
                 else:
-                    # 불량 SBL: 5% 초과
                     sbl_df = base_df[base_df[d_col] > threshold].copy()
                     
                 sbl_df = sbl_df.sort_values('DateTime', ascending=False).head(5)
