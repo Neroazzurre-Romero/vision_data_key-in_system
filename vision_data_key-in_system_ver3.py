@@ -319,8 +319,12 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     backdrop-filter: blur(10px);
 }
 
-div[data-testid="stExpander"] { background: rgba(3,9,20,0.8) !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
-div[data-testid="stExpander"] summary p { color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; }
+/* 💡 Expander 화이트 픽스 및 우측 정렬 */
+div[data-testid="stExpander"] { background-color: #030614 !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
+div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important;}
+div[data-testid="stExpander"] details summary:hover { background-color: rgba(0, 229, 255, 0.1) !important; }
+div[data-testid="stExpander"] details summary p { text-align: right !important; color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; flex-grow: 1; margin-right: 10px;}
+div[data-testid="stExpander"] details summary svg { fill: #00E5FF !important; }
 
 h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; margin-bottom: 2px; }
 
@@ -833,7 +837,7 @@ if st.session_state.current_page == "analysis":
 
         models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
 
-        with st.expander("■ TARGET MODEL SELECTION", expanded=True):
+        with st.expander("▶ TARGET MODEL SELECTION (클릭하여 펴기/접기) ◀", expanded=True):
             exp_c1, exp_c2 = st.columns(2)
             with exp_c1:
                 selected_models_std = st.multiselect("▶ 기본 1차 수율 (Standard)", models_available, default=models_available[:1] if models_available else [])
@@ -876,8 +880,7 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df[base_df['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df.empty else pd.DataFrame()
         h_ins, h_yld, h_cmp, h_fr, h_re, h_off = get_kpi_metrics(df_6h)
 
-        # 💡 [그라데이션 CSS 적용]
-        def make_kpi_html(title, value, sub, color="#00E5FF", theme="blue"):
+        def make_kpi_html(title, value, color="#00E5FF", theme="blue"):
             if theme == "dark":
                 bg = "linear-gradient(90deg, rgba(80,80,80,0.6) 0%, rgba(0,0,0,1) 100%)"
                 border = "#FFC000"
@@ -886,40 +889,52 @@ if st.session_state.current_page == "analysis":
                 border = "#00E5FF"
                 
             return f"""
-            <div style="background: {bg}; border-left: 4px solid {border}; border-radius: 8px; padding: 10px; height: 100%; box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05);">
-                <div style="color: #94A3B8; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px;">{title}</div>
-                <div style="color: {color}; font-size: 1.6rem; font-weight: 900; text-shadow: 0 0 8px rgba(0,0,0,0.5); margin: 2px 0;">{value}</div>
-                <div style="color: #64748B; font-size: 0.7rem;">{sub}</div>
+            <div style="background: {bg}; border-left: 4px solid {border}; border-radius: 8px; padding: 10px; height: 100%; box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <div style="color: #94A3B8; font-size: 0.8rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 5px;">{title}</div>
+                <div style="color: {color}; font-size: 1.5rem; font-weight: 900; text-shadow: 0 0 8px rgba(0,0,0,0.5);">{value}</div>
             </div>
             """
 
-        with st.container(border=True):
-            st.markdown("<div class='metric-label'>■ OVERALL SUMMARY (72H)</div>", unsafe_allow_html=True)
-            o1, o2, o3, o4, o5, o6 = st.columns(6)
-            o1.markdown(make_kpi_html("Total Inspected", f"{t_ins:,.0f}", "72H Total", theme="dark"), unsafe_allow_html=True)
-            o2.markdown(make_kpi_html("Yield", f"{a_yld:.1f}%", "72H Average", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
-            o3.markdown(make_kpi_html("Complete", f"{a_cmp:.1f}%", "72H Rate", color="#FF3366", theme="dark"), unsafe_allow_html=True)
-            o4.markdown(make_kpi_html("Front", f"{a_fr:.1f}%", "72H Rate", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
-            o5.markdown(make_kpi_html("Rear", f"{a_re:.1f}%", "72H Rate", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
-            o6.markdown(make_kpi_html("Offset", f"{a_off:.1f}%", "72H Rate", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
-            
-            st.markdown("<div class='metric-label' style='margin-top: 15px;'>■ YESTERDAY SUMMARY</div>", unsafe_allow_html=True)
-            y1, y2, y3, y4, y5, y6 = st.columns(6)
-            y1.markdown(make_kpi_html("Total Inspected", f"{y_ins:,.0f}", "Yesterday"), unsafe_allow_html=True)
-            y2.markdown(make_kpi_html("Yield", f"{y_yld:.1f}%", "Yesterday", color="#FFFF00"), unsafe_allow_html=True)
-            y3.markdown(make_kpi_html("Complete", f"{y_cmp:.1f}%", "Yesterday", color="#FF3366"), unsafe_allow_html=True)
-            y4.markdown(make_kpi_html("Front", f"{y_fr:.1f}%", "Yesterday", color="#3B82F6"), unsafe_allow_html=True)
-            y5.markdown(make_kpi_html("Rear", f"{y_re:.1f}%", "Yesterday", color="#22D3EE"), unsafe_allow_html=True)
-            y6.markdown(make_kpi_html("Offset", f"{y_off:.1f}%", "Yesterday", color="#F59E0B"), unsafe_allow_html=True)
+        kpi_ovr_col, kpi_ytd_col, kpi_6h_col = st.columns(3)
+        
+        with kpi_ovr_col:
+            with st.container(border=True):
+                st.markdown("<div class='metric-label' style='text-align:center;'>■ OVERALL SUMMARY (72H)</div>", unsafe_allow_html=True)
+                r1c1, r1c2, r1c3 = st.columns(3)
+                r1c1.markdown(make_kpi_html("Total Inspected", f"{t_ins:,.0f}", theme="dark"), unsafe_allow_html=True)
+                r1c2.markdown(make_kpi_html("Yield", f"{a_yld:.1f}%", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
+                r1c3.markdown(make_kpi_html("Complete", f"{a_cmp:.1f}%", color="#FF3366", theme="dark"), unsafe_allow_html=True)
+                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+                r2c1, r2c2, r2c3 = st.columns(3)
+                r2c1.markdown(make_kpi_html("Front", f"{a_fr:.1f}%", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
+                r2c2.markdown(make_kpi_html("Rear", f"{a_re:.1f}%", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
+                r2c3.markdown(make_kpi_html("Offset", f"{a_off:.1f}%", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
 
-            st.markdown("<div class='metric-label' style='margin-top: 15px;'>■ LAST 6 HOURS SUMMARY</div>", unsafe_allow_html=True)
-            h1, h2, h3, h4, h5, h6 = st.columns(6)
-            h1.markdown(make_kpi_html("Total Inspected", f"{h_ins:,.0f}", "Last 6H", theme="dark"), unsafe_allow_html=True)
-            h2.markdown(make_kpi_html("Yield", f"{h_yld:.1f}%", "Last 6H", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
-            h3.markdown(make_kpi_html("Complete", f"{h_cmp:.1f}%", "Last 6H", color="#FF3366", theme="dark"), unsafe_allow_html=True)
-            h4.markdown(make_kpi_html("Front", f"{h_fr:.1f}%", "Last 6H", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
-            h5.markdown(make_kpi_html("Rear", f"{h_re:.1f}%", "Last 6H", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
-            h6.markdown(make_kpi_html("Offset", f"{h_off:.1f}%", "Last 6H", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
+        with kpi_ytd_col:
+            with st.container(border=True):
+                st.markdown("<div class='metric-label' style='text-align:center;'>■ YESTERDAY SUMMARY</div>", unsafe_allow_html=True)
+                r1c1, r1c2, r1c3 = st.columns(3)
+                r1c1.markdown(make_kpi_html("Total Inspected", f"{y_ins:,.0f}", theme="blue"), unsafe_allow_html=True)
+                r1c2.markdown(make_kpi_html("Yield", f"{y_yld:.1f}%", color="#FFFF00", theme="blue"), unsafe_allow_html=True)
+                r1c3.markdown(make_kpi_html("Complete", f"{y_cmp:.1f}%", color="#FF3366", theme="blue"), unsafe_allow_html=True)
+                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+                r2c1, r2c2, r2c3 = st.columns(3)
+                r2c1.markdown(make_kpi_html("Front", f"{y_fr:.1f}%", color="#3B82F6", theme="blue"), unsafe_allow_html=True)
+                r2c2.markdown(make_kpi_html("Rear", f"{y_re:.1f}%", color="#22D3EE", theme="blue"), unsafe_allow_html=True)
+                r2c3.markdown(make_kpi_html("Offset", f"{y_off:.1f}%", color="#F59E0B", theme="blue"), unsafe_allow_html=True)
+
+        with kpi_6h_col:
+            with st.container(border=True):
+                st.markdown("<div class='metric-label' style='text-align:center;'>■ LAST 6 HOURS SUMMARY</div>", unsafe_allow_html=True)
+                r1c1, r1c2, r1c3 = st.columns(3)
+                r1c1.markdown(make_kpi_html("Total Inspected", f"{h_ins:,.0f}", theme="dark"), unsafe_allow_html=True)
+                r1c2.markdown(make_kpi_html("Yield", f"{h_yld:.1f}%", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
+                r1c3.markdown(make_kpi_html("Complete", f"{h_cmp:.1f}%", color="#FF3366", theme="dark"), unsafe_allow_html=True)
+                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+                r2c1, r2c2, r2c3 = st.columns(3)
+                r2c1.markdown(make_kpi_html("Front", f"{h_fr:.1f}%", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
+                r2c2.markdown(make_kpi_html("Rear", f"{h_re:.1f}%", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
+                r2c3.markdown(make_kpi_html("Offset", f"{h_off:.1f}%", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
 
         def get_neon_layout(title_text, y_title, show_x=True):
             return dict(
@@ -932,7 +947,6 @@ if st.session_state.current_page == "analysis":
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
             )
 
-        # 💡 [다채로운 형광색 팔레트 적용]
         colors_map = ['#00E5FF', '#FF00FF', '#39FF14', '#FFA500', '#FF3333', '#9D00FF', '#FFFF00', '#00FFFF', '#FF1493', '#10B981']
         model_color_dict = {mod: colors_map[i % len(colors_map)] for i, mod in enumerate(all_selected)}
 
@@ -978,7 +992,7 @@ if st.session_state.current_page == "analysis":
                         line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
                     ))
                     
-            fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=300)
+            fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=300, margin=dict(l=30, r=30, t=40, b=30))
             fig_yld.update_layout(yaxis=dict(range=[y_min, 100.0]), xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M'))
             st.plotly_chart(fig_yld, use_container_width=True)
 
@@ -1000,7 +1014,7 @@ if st.session_state.current_page == "analysis":
                             textposition='top center', textfont=dict(size=9, color=c1),
                             line=dict(color=c1, width=2), marker=dict(size=4, color=c1), hovertext=m_df['HoverText']
                         ))
-                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True), height=250)
+                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True), height=250, margin=dict(l=30, r=30, t=30, b=30))
                 f.update_layout(xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) 
                 return f
 
