@@ -642,10 +642,17 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        c2_1, c2_2 = st.columns([1, 1])
+        # 💡 히든 버튼을 체크박스 왼쪽 절대좌표로 완전히 숨김
+        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
         with c2_1:
-            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+            st.markdown("<div style='position:absolute; left:-9999px;'>", unsafe_allow_html=True)
+            if st.button("H_TICK", key="hidden_tick_btn"):
+                st.session_state.rotate_idx += 1
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
         with c2_2:
+            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+        with c2_3:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -783,7 +790,7 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
-        # 💡 [Auto Rotate 필터링 적용]
+        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -816,7 +823,7 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-        # 💡 [1. Aggregated Data] - 도넛 차트 (한글 레이블, 좌측 정렬, 넓은 여백)
+        # 💡 [도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
             labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
             values = [q_good, q_comp, q_front, q_rear, q_offset]
@@ -838,20 +845,20 @@ if st.session_state.current_page == "analysis":
                 textinfo='text', text=txt, textposition='outside', 
                 textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value',
-                sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 할당
+                sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 강제 할당
             )])
             
             fig.update_layout(
                 title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
                 annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#64748b;'>Inspected</span>", 
                                   x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
-                showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=120, r=120, t=60, b=20), # 좌우 마진을 크게 확보하여 레이블 잘림 방지
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=120, r=120, t=60, b=20), # 레이블 외부 출력용 좌우 여백 확보
                 height=350
             )
             return fig
 
-        st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:15px; font-size:1.5rem;'>1. Aggregated data</h3>", unsafe_allow_html=True)
         donut_c1, donut_c2, donut_c3 = st.columns(3)
         with donut_c1:
             with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
@@ -862,17 +869,22 @@ if st.session_state.current_page == "analysis":
 
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 [데이터 정렬 로직 (소요시간 기준 및 LOT 원형 텍스트 보존)]
+        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 보존)]
         if not base_df_48h.empty:
             base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
             base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
-            # 숫자로 치환되는 것을 방지하기 위해 정규식으로 앞의 따옴표만 제거
-            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).astype(str).str.replace(r"^'", "", regex=True)
-            base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
+            # 숫자로 치환되는 것을 방지하기 위해 정규식으로 앞의 따옴표만 제거 후 5자리 zfill 처리
+            def clean_lot(val):
+                val = str(val).replace("'", "").strip()
+                if val.endswith('.0'): val = val[:-2]
+                if val.isdigit() and len(val) < 5:
+                    return val.zfill(5)
+                return val if val else 'UNKNOWN'
+            
+            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [2. Graph] Light Theme, 차트 2개 분리 및 범례 우측 이동
-        st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:20px; font-size:1.5rem;'>2. Graph</h3>", unsafe_allow_html=True)
+        # 💡 [2. Graph] 꺾은선 실선(Solid) 및 막대그래프 2분할 (범례 우측)
 
         # --- 2-1. YIELD TREND (Line Chart) ---
         with st.container(border=True):
@@ -921,7 +933,7 @@ if st.session_state.current_page == "analysis":
             else:
                 fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
                 
-            fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 100.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
+            fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 103.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_yld, use_container_width=True)
             
         # --- 2-2. DEFECT TREND (Bar Chart) ---
