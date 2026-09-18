@@ -597,14 +597,14 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Layout v11)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Version)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
         
-    # 💡 1분 간격 자동 회전 
+    # 💡 1분 단위 Auto Rotate 트리거
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -626,7 +626,7 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 HIDDEN_TICK 버튼 위치 이동 및 은닉
+        # 💡 히든 버튼을 체크박스 왼쪽 절대좌표로 완전히 숨김
         c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
         with c2_1:
             st.markdown("<div style='position:absolute; left:-9999px;'>", unsafe_allow_html=True)
@@ -654,6 +654,7 @@ if st.session_state.current_page == "analysis":
     if df.empty: 
         st.warning("데이터베이스에 렌더링할 정보가 전혀 없습니다.")
     else:
+        # 데이터 전처리 (결측치 및 타입 캐스팅)
         def pct_to_float(x):
             try:
                 if pd.isna(x) or str(x).strip() == '': return np.nan
@@ -748,7 +749,7 @@ if st.session_state.current_page == "analysis":
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
-            # 💡 [SBL 알람 기준치 설정]
+            # 💡 [SBL 알람 기준치 실시간 설정]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>⚙️ SBL 알람 기준치 설정 (%)</div>", unsafe_allow_html=True)
             limit_cols = st.columns(7)
             with limit_cols[0]: st.session_state.sbl_limits['Yield_Default'] = st.number_input("양품(기본)", value=st.session_state.sbl_limits['Yield_Default'], step=0.1)
@@ -759,7 +760,7 @@ if st.session_state.current_page == "analysis":
             with limit_cols[5]: st.session_state.sbl_limits['Def_Rear'] = st.number_input("배면불량", value=st.session_state.sbl_limits['Def_Rear'], step=0.1)
             with limit_cols[6]: st.session_state.sbl_limits['Def_Offset'] = st.number_input("옵셋불량", value=st.session_state.sbl_limits['Def_Offset'], step=0.1)
             
-            # 💡 [컬러 피커]
+            # 💡 [컬러 피커 커스터마이징]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
             model_color_dict = {}
             if all_selected:
@@ -767,13 +768,13 @@ if st.session_state.current_page == "analysis":
                 default_colors = ['#3B82F6', '#FF3366', '#10B981', '#F59E0B', '#8B5CF6', '#00E5FF', '#FF00FF', '#39FF14']
                 for i, mod in enumerate(all_selected):
                     k = f"color_pref_{mod}"
-                    if k not in st.session_state:
-                        st.session_state[k] = default_colors[i % len(default_colors)]
+                    if k not in st.session_state: st.session_state[k] = default_colors[i % len(default_colors)]
                     with color_cols[i % 8]:
                         picked = st.color_picker(mod, st.session_state[k], key=f"picker_{mod}")
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
+        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -784,12 +785,12 @@ if st.session_state.current_page == "analysis":
             display_std = selected_models_std
             display_inc = selected_models_inc
 
-        # 💡 [Auto Rotate 필터링]
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
+        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴하여 Unpack 에러 완벽 해결)
         def get_qty_metrics(df_sub):
-            if df_sub.empty: return 0, 0, 0, 0, 0
+            if df_sub.empty: return 0, 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
             q_comp = df_sub['완전불량_Qty'].sum()
             q_front = df_sub['전면불량_Qty'].sum()
@@ -806,7 +807,7 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-        # 💡 [3D 도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
+        # 💡 [1. Aggregated Data] - 도넛 차트 (한글 레이블, 좌측 정렬, 넓은 여백)
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
             labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
             values = [q_good, q_comp, q_front, q_rear, q_offset]
@@ -818,6 +819,7 @@ if st.session_state.current_page == "analysis":
                     l.append(label)
                     v.append(val)
                     c.append(color)
+                    # 전체 검사수량 대비 절대 백분율 강제 적용
                     pct = (val / t_ins * 100) if t_ins > 0 else 0
                     txt.append(f"{label}<br>{pct:.1f}%")
                     
@@ -825,18 +827,17 @@ if st.session_state.current_page == "analysis":
                 labels=l, values=v, hole=0.65,
                 marker=dict(colors=c, line=dict(color='#ffffff', width=2)),
                 textinfo='text', text=txt, textposition='outside', 
-                textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
+                textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
                 hoverinfo='label+value',
-                sort=False, direction='clockwise', rotation=270 
+                sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 할당
             )])
             
             fig.update_layout(
-                title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
+                title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), x=0.5, xanchor='center'),
                 annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#64748b;'>Inspected</span>", 
-                                  x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
-                showlegend=False,
-                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=120, r=120, t=60, b=20), 
+                                  x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", showarrow=False)],
+                showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=120, r=120, t=60, b=20), # 좌우 마진을 크게 확보하여 레이블 잘림 방지
                 height=350
             )
             return fig
@@ -844,26 +845,24 @@ if st.session_state.current_page == "analysis":
         st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:15px; font-size:1.5rem;'>1. Aggregated data</h3>", unsafe_allow_html=True)
         donut_c1, donut_c2, donut_c3 = st.columns(3)
         with donut_c1:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
         with donut_c2:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
         with donut_c3:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
 
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 보존)]
+        # 💡 [데이터 정렬 로직 (소요시간 기준 및 LOT 원형 텍스트 보존)]
         if not base_df_48h.empty:
             base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
             base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
+            # 숫자로 치환되는 것을 방지하기 위해 정규식으로 앞의 따옴표만 제거
             base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).astype(str).str.replace(r"^'", "", regex=True)
             base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [2. Graph] Light Theme, 차트 2개 분리 및 범례 우측 이동
+        # 💡 [2. Graph] 꺾은선 실선(Solid) 및 막대그래프 2분할 (범례 우측)
         st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:20px; font-size:1.5rem;'>2. Graph</h3>", unsafe_allow_html=True)
 
         # --- 2-1. YIELD TREND (Line Chart) ---
@@ -872,8 +871,7 @@ if st.session_state.current_page == "analysis":
             y_min = 50.0
             if not base_df_48h.empty:
                 all_val = base_df_48h['Yield_1'].dropna().tolist() + base_df_48h['Yield_2'].dropna().tolist()
-                if all_val:
-                    y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
+                if all_val: y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
             if y_min > 80: y_min = 80.0
 
             if not base_df_48h.empty:
@@ -882,22 +880,22 @@ if st.session_state.current_page == "analysis":
                     if m_df.empty: continue
                     c1 = model_color_dict[mod]
                     fig_yld.add_trace(go.Scatter(
-                        x=m_df.index, y=m_df['Yield_1'], name=f"[{mod}] Std", 
+                        x=m_df.index, y=m_df['Yield_1'], name=f"[{mod}] 양품율(기본)", 
                         mode='lines+markers+text', 
-                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='bottom center', textfont=dict(size=14, color='#1e293b', weight='bold'), 
-                        line=dict(color=c1, width=3), marker=dict(size=12, color=c1), hovertext=m_df['HoverText']
+                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
+                        textposition='bottom center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
+                        line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='circle'), hovertext=m_df['HoverText']
                     ))
                 for mod in display_inc:
                     m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
                     if m_df.empty: continue
                     c1 = model_color_dict[mod]
                     fig_yld.add_trace(go.Scatter(
-                        x=m_df.index, y=m_df['Yield_2'], name=f"[{mod}] Incl.", 
+                        x=m_df.index, y=m_df['Yield_2'], name=f"[{mod}] 양품율(포함)", 
                         mode='lines+markers+text', 
-                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=14, color='#1e293b', weight='bold'), 
-                        line=dict(color=c1, width=3), marker=dict(size=12, color=c1, symbol='diamond'), hovertext=m_df['HoverText']
+                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
+                        textposition='top center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
+                        line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='diamond'), hovertext=m_df['HoverText']
                     ))
 
             fig_yld.update_layout(
@@ -905,7 +903,7 @@ if st.session_state.current_page == "analysis":
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
                 legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
-                margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
+                margin=dict(l=30, r=200, t=50, b=50), height=400, hovermode='x unified'
             )
             
             if not base_df_48h.empty:
@@ -935,8 +933,8 @@ if st.session_state.current_page == "analysis":
                 title=dict(text=f"■ DEFECT TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01), 
-                margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
+                margin=dict(l=30, r=200, t=50, b=50), height=400, hovermode='x unified'
             )
             
             if not base_df_48h.empty:
@@ -947,7 +945,7 @@ if st.session_state.current_page == "analysis":
             fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_def, use_container_width=True)
 
-        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템 (Yield 논리 분리 및 동적 리미트 적용)
+        # 💡 [SBL 알림 이력] 조건부 로직 완벽 연동
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 48H)</div>", unsafe_allow_html=True)
             sb1, sb2, sb3, sb4, sb5 = st.columns(5)
