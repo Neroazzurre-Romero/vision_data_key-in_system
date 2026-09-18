@@ -57,6 +57,18 @@ if "unlocked" in st.query_params:
 
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
+# 💡 SBL Limit 초기값 세팅 (세션 스테이트 보존)
+if "sbl_limits" not in st.session_state:
+    st.session_state.sbl_limits = {
+        "Yield_Default": 85.0,
+        "Yield_MEM": 93.2,
+        "Yield_Centaur": 91.4,
+        "Def_Comp": 10.0,
+        "Def_Front": 5.0,
+        "Def_Rear": 5.0,
+        "Def_Offset": 5.0
+    }
+
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
     "shift_type": "주간", "worker": "작업자A",
@@ -199,7 +211,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     margin-bottom: 0.8rem !important;
 }
 
-/* Expander 사이드바 네이비 색상 */
+/* Expander 사이드바 네이비 색상 및 화살표 에러 완벽 해결 */
 div[data-testid="stExpander"] { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; }
 div[data-testid="stExpander"] details summary { background-color: #0f172a !important; border-bottom: 1px solid #0f172a !important; padding: 10px 15px !important; }
 div[data-testid="stExpander"] details summary:hover { background-color: #1e293b !important; }
@@ -236,6 +248,10 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; }
+
+/* Number Input Box Customization */
+div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
+div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
@@ -581,7 +597,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Light Theme & 3D Donut v10)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Layout v11)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -595,7 +611,7 @@ if st.session_state.current_page == "analysis":
         setTimeout(function() {
             const btns = window.parent.document.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){
-                if(btns[i].innerText.includes('HIDDEN_TICK')){
+                if(btns[i].innerText.includes('H_TICK')){
                     btns[i].click();
                     break;
                 }
@@ -603,12 +619,6 @@ if st.session_state.current_page == "analysis":
         }, 60000); 
         </script>
         """, height=0)
-        
-        st.markdown("<div style='display:none;'>", unsafe_allow_html=True)
-        if st.button("HIDDEN_TICK", key="hidden_tick_btn"):
-            st.session_state.rotate_idx += 1
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([0.5, 0.35, 0.15])
     with col1:
@@ -616,10 +626,17 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        c2_1, c2_2 = st.columns([1, 1])
+        # 💡 HIDDEN_TICK 버튼 위치 이동 및 은닉
+        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
         with c2_1:
-            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+            st.markdown("<div style='position:absolute; left:-9999px;'>", unsafe_allow_html=True)
+            if st.button("H_TICK", key="hidden_tick_btn"):
+                st.session_state.rotate_idx += 1
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
         with c2_2:
+            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+        with c2_3:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -731,8 +748,19 @@ if st.session_state.current_page == "analysis":
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
-            # 💡 [컬러 피커] 모델별 차트 색상 커스터마이징 기능 추가
-            st.markdown("<div style='margin-top:10px; font-weight:bold; color:#f8fafc; border-top:1px solid #1E3A8A; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
+            # 💡 [SBL 알람 기준치 설정]
+            st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>⚙️ SBL 알람 기준치 설정 (%)</div>", unsafe_allow_html=True)
+            limit_cols = st.columns(7)
+            with limit_cols[0]: st.session_state.sbl_limits['Yield_Default'] = st.number_input("양품(기본)", value=st.session_state.sbl_limits['Yield_Default'], step=0.1)
+            with limit_cols[1]: st.session_state.sbl_limits['Yield_MEM'] = st.number_input("양품(MEM)", value=st.session_state.sbl_limits['Yield_MEM'], step=0.1)
+            with limit_cols[2]: st.session_state.sbl_limits['Yield_Centaur'] = st.number_input("양품(Centaur)", value=st.session_state.sbl_limits['Yield_Centaur'], step=0.1)
+            with limit_cols[3]: st.session_state.sbl_limits['Def_Comp'] = st.number_input("완전불량", value=st.session_state.sbl_limits['Def_Comp'], step=0.1)
+            with limit_cols[4]: st.session_state.sbl_limits['Def_Front'] = st.number_input("전면불량", value=st.session_state.sbl_limits['Def_Front'], step=0.1)
+            with limit_cols[5]: st.session_state.sbl_limits['Def_Rear'] = st.number_input("배면불량", value=st.session_state.sbl_limits['Def_Rear'], step=0.1)
+            with limit_cols[6]: st.session_state.sbl_limits['Def_Offset'] = st.number_input("옵셋불량", value=st.session_state.sbl_limits['Def_Offset'], step=0.1)
+            
+            # 💡 [컬러 피커]
+            st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
             model_color_dict = {}
             if all_selected:
                 color_cols = st.columns(len(all_selected) if len(all_selected) < 8 else 8)
@@ -756,12 +784,12 @@ if st.session_state.current_page == "analysis":
             display_std = selected_models_std
             display_inc = selected_models_inc
 
-        # 💡 [Auto Rotate 필터링] 활성화된 모델만 DataFrame에 남김
+        # 💡 [Auto Rotate 필터링]
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
         def get_qty_metrics(df_sub):
-            if df_sub.empty: return 0, 0, 0, 0, 0, 0
+            if df_sub.empty: return 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
             q_comp = df_sub['완전불량_Qty'].sum()
             q_front = df_sub['전면불량_Qty'].sum()
@@ -770,7 +798,6 @@ if st.session_state.current_page == "analysis":
             q_good = 0
             for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
             for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
-            # ETC/Shortage 완전 제외 (양품+4대불량만 리턴)
             return t_ins, q_good, q_comp, q_front, q_rear, q_offset
         
         o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
@@ -779,9 +806,9 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-        # 💡 [3D 도넛 차트 레이블 외부 및 정렬 수정 (ETC 제외)]
+        # 💡 [3D 도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
-            labels = ['Yield', 'Complete', 'Front', 'Rear', 'Offset']
+            labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
             values = [q_good, q_comp, q_front, q_rear, q_offset]
             colors = ['#3B82F6', '#1E3A8A', '#FFC000', '#10B981', '#8B5CF6']
             
@@ -791,7 +818,6 @@ if st.session_state.current_page == "analysis":
                     l.append(label)
                     v.append(val)
                     c.append(color)
-                    # 전체 검사수량 대비 정확한 퍼센티지를 강제로 텍스트로 지정
                     pct = (val / t_ins * 100) if t_ins > 0 else 0
                     txt.append(f"{label}<br>{pct:.1f}%")
                     
@@ -801,7 +827,7 @@ if st.session_state.current_page == "analysis":
                 textinfo='text', text=txt, textposition='outside', 
                 textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value',
-                sort=False, direction='clockwise', rotation=180 # 불량률을 왼쪽 9시~12시 영역으로 강제 할당
+                sort=False, direction='clockwise', rotation=270 
             )])
             
             fig.update_layout(
@@ -810,7 +836,7 @@ if st.session_state.current_page == "analysis":
                                   x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                 showlegend=False,
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=100, r=100, t=60, b=20), # 레이블 외부 출력용 좌우 여백 확보
+                margin=dict(l=120, r=120, t=60, b=20), 
                 height=350
             )
             return fig
@@ -878,7 +904,7 @@ if st.session_state.current_page == "analysis":
                 title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01), # 범례 우측 아웃사이드로 이동
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
                 margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
             )
             
@@ -891,12 +917,11 @@ if st.session_state.current_page == "analysis":
             fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 100.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_yld, use_container_width=True)
             
-        # --- 2-2. DEFECT TREND (Bar Chart) - X축 균일 간격화 ---
+        # --- 2-2. DEFECT TREND (Bar Chart) ---
         with st.container(border=True):
             fig_def = go.Figure()
             
             if not base_df_48h.empty:
-                # Plotly가 막대를 오토사이징(자동 두께)으로 예쁘게 그리도록 index(순차 정수)를 x축으로 사용
                 x_indices = base_df_48h.index
                 x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_48h.iterrows()]
                 
@@ -906,11 +931,11 @@ if st.session_state.current_page == "analysis":
                 fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_48h['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
 
             fig_def.update_layout(
-                barmode='stack', bargap=0.2, # 막대 간격 오토사이징 
+                barmode='stack', bargap=0.2, 
                 title=dict(text=f"■ DEFECT TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01), # 범례 우측 아웃사이드로 이동
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01), 
                 margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
             )
             
@@ -922,46 +947,45 @@ if st.session_state.current_page == "analysis":
             fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_def, use_container_width=True)
 
-        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템 (Yield 모델별 조건 분리 적용)
+        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템 (Yield 논리 분리 및 동적 리미트 적용)
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 48H)</div>", unsafe_allow_html=True)
             sb1, sb2, sb3, sb4, sb5 = st.columns(5)
             
-            def render_sbl_list(d_col, title, threshold, is_yield=False):
+            def render_sbl_list(d_col, title, is_yield=False):
                 html = f"<div class='sbl-title'>{title}</div>"
                 if base_df_48h.empty: return html + "<div class='sbl-text'>No data.</div>"
                 
-                if is_yield:
-                    sbl_items = []
-                    for _, r in base_df_48h.iterrows():
-                        mod = str(r.get('모델명(MI)', ''))
-                        val = r['Yield_2'] if mod in display_inc else r['Yield_1']
-                        if pd.notna(val) and 0 < val < threshold:
-                            sbl_items.append(r)
-                    sbl_df = pd.DataFrame(sbl_items)
-                else:
-                    sbl_df = base_df_48h[base_df_48h[d_col] > threshold].copy()
+                sbl_items = []
+                for _, r in base_df_48h.iterrows():
+                    mod = str(r.get('모델명(MI)', ''))
+                    lot = str(r.get('LOT NO.', '')).replace("'", "")
+                    t_str = r['DateTime'].strftime('%H:%M')
                     
-                if sbl_df.empty:
+                    if is_yield:
+                        val = r['Yield_2'] if mod in display_inc else r['Yield_1']
+                        limit = st.session_state.sbl_limits.get(f'Yield_{mod}', st.session_state.sbl_limits['Yield_Default'])
+                        if pd.notna(val) and 0 < val < limit:
+                            sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
+                    else:
+                        val = r[d_col]
+                        limit = st.session_state.sbl_limits.get(d_col, 5.0)
+                        if pd.notna(val) and val > limit:
+                            sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
+                
+                if not sbl_items:
                     html += "<div class='sbl-text'>No alerts.</div>"
                 else:
-                    sbl_df = sbl_df.sort_values('DateTime', ascending=False).head(5)
-                    for _, r in sbl_df.iterrows():
-                        t_str = r['DateTime'].strftime('%H:%M')
-                        mod = str(r.get('모델명(MI)', ''))
-                        lot = str(r.get('LOT NO.', '')).replace("'", "")
-                        
-                        if is_yield: val = r['Yield_2'] if mod in display_inc else r['Yield_1']
-                        else: val = r[d_col]
-                            
-                        html += f"<div class='sbl-card'><div class='sbl-text'>[{t_str}] {mod}<br>LOT: {lot}<br><b>Value: {val:.1f}%</b></div></div>"
+                    sbl_items = sorted(sbl_items, key=lambda x: x['Time'], reverse=True)[:5]
+                    for item in sbl_items:
+                        html += f"<div class='sbl-card'><div class='sbl-text'>[{item['Time']}] {item['Mod']}<br>LOT: {item['Lot']}<br><b>Value: {item['Val']:.1f}%</b> (Limit: {item['Limit']:.1f}%)</div></div>"
                 return html
 
-            with sb1: st.markdown(render_sbl_list('Yield_1', "Yield SBL List (< 90%)", 90.0, is_yield=True), unsafe_allow_html=True)
-            with sb2: st.markdown(render_sbl_list('Def_Comp', "Comp Defect (> 5%)", 5.0), unsafe_allow_html=True)
-            with sb3: st.markdown(render_sbl_list('Def_Front', "Front Defect (> 5%)", 5.0), unsafe_allow_html=True)
-            with sb4: st.markdown(render_sbl_list('Def_Rear', "Rear Defect (> 5%)", 5.0), unsafe_allow_html=True)
-            with sb5: st.markdown(render_sbl_list('Def_Offset', "Offset Defect (> 5%)", 5.0), unsafe_allow_html=True)
+            with sb1: st.markdown(render_sbl_list('Yield_1', "Yield SBL List", is_yield=True), unsafe_allow_html=True)
+            with sb2: st.markdown(render_sbl_list('Def_Comp', "Comp Defect", is_yield=False), unsafe_allow_html=True)
+            with sb3: st.markdown(render_sbl_list('Def_Front', "Front Defect", is_yield=False), unsafe_allow_html=True)
+            with sb4: st.markdown(render_sbl_list('Def_Rear', "Rear Defect", is_yield=False), unsafe_allow_html=True)
+            with sb5: st.markdown(render_sbl_list('Def_Offset', "Offset Defect", is_yield=False), unsafe_allow_html=True)
 
 # ==========================================
 # Main Input App
