@@ -167,7 +167,7 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# 💡 빛나는 네이비/화이트 ERP 라이트 테마 (모든 텍스트 가독성 최우선 적용)
+# 💡 빛나는 네이비/화이트 ERP 라이트 테마
 global_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -176,7 +176,7 @@ body { overscroll-behavior-y: none !important; }
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
-/* 💡 전역 폰트 통합 (Apple SD Gothic Neo, Malgun Gothic) */
+/* 전역 폰트 통합 */
 h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
 
 /* 배경 밝게, 포인트 컬러 남색(#1e293b) */
@@ -199,7 +199,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     margin-bottom: 0.8rem !important;
 }
 
-/* 💡 Expander 사이드바 네이비 색상 및 화살표 에러 완벽 해결 */
+/* Expander 사이드바 네이비 색상 및 화살표 에러 완벽 해결 */
 div[data-testid="stExpander"] { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; }
 div[data-testid="stExpander"] details summary { background-color: #0f172a !important; border-bottom: 1px solid #0f172a !important; padding: 10px 15px !important; }
 div[data-testid="stExpander"] details summary:hover { background-color: #1e293b !important; }
@@ -216,7 +216,7 @@ div[data-testid="stExpander"] details summary span[class*="st-icon"] {
 .command-header { color: #1e293b !important; font-weight: 900 !important; letter-spacing: 1px; }
 .metric-label { color: #1e293b !important; font-size: 1.1rem !important; font-weight: 800 !important; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid #1e293b; padding-bottom: 5px; }
 
-/* SBL 카드 (밝은 테마용 경고 색상) */
+/* SBL 카드 */
 .sbl-card { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
 .sbl-title { color: #b91c1c !important; font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; border-bottom: 1px solid #fecaca; padding-bottom: 3px; }
 .sbl-text { color: #1e293b !important; font-size: 0.8rem; line-height: 1.4;}
@@ -581,14 +581,14 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Light Theme & Advanced Visualization)
+# 💡 Administrator (AI 종합 분석 대시보드 - Light Theme & 3D Donut v9)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
         
-    # 💡 1분 간격 자동 회전 (테스트용 단축)
+    # 💡 1분 간격 자동 회전 
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -762,7 +762,7 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o, h_oth = get_qty_metrics(df_6h)
 
-        # 💡 [도넛 차트 회전 (rotation=180, clockwise) 및 외부 레이블 적용]
+        # 💡 [3D 도넛 차트 레이블 외부 및 폰트 변경 (Other -> ETC/Shortage)]
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset, q_other):
             labels = ['Yield', 'Complete', 'Front', 'Rear', 'Offset', 'ETC/Shortage']
             values = [q_good, q_comp, q_front, q_rear, q_offset, q_other]
@@ -781,7 +781,7 @@ if st.session_state.current_page == "analysis":
                 textinfo='label+percent', textposition='outside', 
                 textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value+percent',
-                sort=False, direction='clockwise', rotation=180 # 양품율은 오른쪽, 불량률은 왼쪽 9시~12시 영역으로 강제 할당
+                sort=False, direction='clockwise', rotation=180 
             )])
             
             fig.update_layout(
@@ -790,7 +790,7 @@ if st.session_state.current_page == "analysis":
                                   x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                 showlegend=False,
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=100, r=100, t=60, b=20), # 레이블 잘림 방지 (좌우 마진 100px)
+                margin=dict(l=100, r=100, t=60, b=20),
                 height=350
             )
             return fig
@@ -809,16 +809,20 @@ if st.session_state.current_page == "analysis":
 
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(all_selected)].copy() if all_selected else pd.DataFrame()
 
-        # 💡 [LOT NO 문자열 원본 보존 로직 (.lstrip)]
+        # 💡 [데이터 정렬 로직 (시간 겹침 방지)]
         if not base_df_48h.empty:
-            base_df_48h = base_df_48h.sort_values(['DateTime'])
+            base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+            base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
             base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).astype(str).str.replace(r"^'", "", regex=True)
             base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [2. Graph] Light Theme, 차트 2개 분할 (Yield Line / Defect Bar)
+        # 💡 [2. Graph] Light Theme, 차트 분리 및 X축/범례 최적화
         st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:20px; font-size:1.5rem;'>2. Graph</h3>", unsafe_allow_html=True)
         
+        colors_map = ['#00E5FF', '#FF00FF', '#39FF14', '#FFA500', '#FF3333', '#9D00FF', '#00FFFF', '#FF1493', '#10B981']
+        model_color_dict = {mod: colors_map[i % len(colors_map)] for i, mod in enumerate(all_selected)}
+
         # --- 2-1. YIELD TREND (Line Chart) ---
         with st.container(border=True):
             fig_yld = go.Figure()
@@ -833,31 +837,50 @@ if st.session_state.current_page == "analysis":
                 for mod in display_std:
                     m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                     if m_df.empty: continue
-                    fig_yld.add_trace(go.Scatter(x=m_df['DateTime'], y=m_df['Yield_1'], name='양품율(%)(표준)', mode='lines+markers+text', text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='bottom center', textfont=dict(size=14, color='#1e293b', weight='bold'), line=dict(color='#3B82F6', width=3), marker=dict(size=12, color='#3B82F6'), hovertext=m_df['HoverText']))
+                    c1 = model_color_dict[mod]
+                    fig_yld.add_trace(go.Scatter(
+                        x=m_df.index, y=m_df['Yield_1'], name=f"[{mod}] Std", 
+                        mode='lines+markers+text', 
+                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
+                        textposition='bottom center', textfont=dict(size=14, color='#1e293b', weight='bold'), 
+                        line=dict(color=c1, width=3), marker=dict(size=12, color=c1), hovertext=m_df['HoverText']
+                    ))
                 for mod in display_inc:
                     m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
                     if m_df.empty: continue
-                    fig_yld.add_trace(go.Scatter(x=m_df['DateTime'], y=m_df['Yield_2'], name='양품율(전/배 포함)%', mode='lines+markers+text', text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='top center', textfont=dict(size=14, color='#1e293b', weight='bold'), line=dict(color='#F97316', width=3), marker=dict(size=12, color='#F97316'), hovertext=m_df['HoverText']))
+                    c1 = model_color_dict[mod]
+                    fig_yld.add_trace(go.Scatter(
+                        x=m_df.index, y=m_df['Yield_2'], name=f"[{mod}] Incl.", 
+                        mode='lines+markers+text', 
+                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
+                        textposition='top center', textfont=dict(size=14, color='#1e293b', weight='bold'), 
+                        line=dict(color=c1, width=3, dash='dash'), marker=dict(size=12, color=c1, symbol='diamond'), hovertext=m_df['HoverText']
+                    ))
 
             fig_yld.update_layout(
                 title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
-                margin=dict(l=30, r=30, t=50, b=30), height=350, hovermode='x unified'
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
+                margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
             )
-            fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', dtick=10800000, tickformat='%m-%d %H:%M')
+            
+            if not base_df_48h.empty:
+                x_labels_yld = [r['DateTime'].strftime('%m-%d %H:%M') for _, r in base_df_48h.iterrows()]
+                fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', tickmode='array', tickvals=base_df_48h.index, ticktext=x_labels_yld)
+            else:
+                fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
+                
             fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 100.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_yld, use_container_width=True)
             
-        # --- 2-2. DEFECT TREND (Bar Chart) - X축 균일 간격화 ---
+        # --- 2-2. DEFECT TREND (Bar Chart) ---
         with st.container(border=True):
             fig_def = go.Figure()
             
             if not base_df_48h.empty:
-                # Plotly가 시간 공백 없이 막대를 균일하게 그리도록 배열 값과 텍스트 생성
-                x_indices = list(range(len(base_df_48h)))
-                x_labels = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_48h.iterrows()]
+                x_indices = base_df_48h.index
+                x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_48h.iterrows()]
                 
                 fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df_48h['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df_48h['HoverText']))
                 fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df_48h['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
@@ -865,15 +888,19 @@ if st.session_state.current_page == "analysis":
                 fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_48h['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
 
             fig_def.update_layout(
-                barmode='stack',
+                barmode='stack', bargap=0.2, 
                 title=dict(text=f"■ DEFECT TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
-                margin=dict(l=30, r=30, t=50, b=30), height=350, hovermode='x unified'
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
+                margin=dict(l=30, r=150, t=50, b=50), height=400, hovermode='x unified'
             )
-            # X축 레이블을 사용자 정의(도장일+순서)로 강제 고정하여 균일한 막대 간격 유지
-            fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1', tickmode='array', tickvals=x_indices if not base_df_48h.empty else [], ticktext=x_labels if not base_df_48h.empty else [])
+            
+            if not base_df_48h.empty:
+                fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1', tickmode='array', tickvals=x_indices, ticktext=x_labels_def)
+            else:
+                fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1')
+                
             fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_def, use_container_width=True)
 
