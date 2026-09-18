@@ -167,65 +167,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# 💡 사이버펑크 네온 대시보드 CSS 적용 (아이콘 폰트 보호)
-analysis_theme_css = """
-<style>
-footer { display: none !important; } 
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
-body { overscroll-behavior-y: none !important; } 
-::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
-
-/* 딥 다크 네이비 그라데이션 배경 */
-[data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; }
-[data-testid="stSidebar"] { background-color: #02040A !important; border-right: 1px solid #1E3A8A !important; }
-
-/* 폰트 적용 시 Material Icon(화살표) 깨짐 방지 */
-h1, h2, h3, h4, h5, h6, p, div, span { font-family: 'Consolas', 'Courier New', monospace; color: #94A3B8; }
-.material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; }
-
-/* 사이버 네온 패널 디자인 */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(180deg, rgba(11,25,60,0.6) 0%, rgba(3,9,20,0.8) 100%) !important;
-    border: 1px solid #1E3A8A !important;
-    border-radius: 12px !important;
-    box-shadow: 0 0 15px rgba(0, 229, 255, 0.05) !important;
-    padding: 1.2rem !important;
-    margin-bottom: 0.8rem !important;
-    backdrop-filter: blur(10px);
-}
-
-/* 💡 Expander 화이트 픽스 및 우측 정렬 (arrow_right 깨짐 수정) */
-div[data-testid="stExpander"] { background-color: #030614 !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
-div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important; }
-div[data-testid="stExpander"] details summary:hover { background-color: rgba(0, 229, 255, 0.1) !important; }
-div[data-testid="stExpander"] details summary p { text-align: right !important; color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; width: 100%; margin-right: 10px; }
-
-/* 타이틀 및 라벨 텍스트 */
-.command-header { color: #00E5FF !important; font-weight: 900 !important; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
-.metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
-
-/* SBL 카드 */
-.sbl-card { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.5); border-left: 4px solid #EF4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
-.sbl-title { color: #EF4444 !important; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px;}
-.sbl-text { color: #E2E8F0 !important; font-size: 0.8rem; line-height: 1.3;}
-
-/* Blinking Live Dot */
-@keyframes blink { 0% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } 50% { opacity: 0.3; box-shadow: 0 0 5px #00E5FF; } 100% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } }
-.live-dot { height: 12px; width: 12px; background-color: #00E5FF; border-radius: 50%; display: inline-block; margin-right: 12px; margin-bottom: 2px; animation: blink 1.5s ease-in-out infinite; }
-
-/* Custom Selectbox - 배경 검정, 태그 블루(#3B82F6) 적용 */
-div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div { background-color: #000000 !important; border: 1px solid #1E3A8A !important; color: #00E5FF !important; border-radius: 6px; }
-div[data-testid="stMultiSelect"] span[data-baseweb="tag"] { background-color: #3B82F6 !important; color: #ffffff !important; font-weight: bold !important; border: none !important; }
-div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
-
-/* Buttons & Checkbox */
-div[data-testid="stButton"] button { background-color: rgba(30,58,138,0.2) !important; color: #38BDF8 !important; border: 1px solid #1E3A8A !important; border-radius: 6px !important; font-weight: bold !important; transition: all 0.3s ease; }
-div[data-testid="stButton"] button:hover { background-color: rgba(0, 229, 255, 0.1) !important; border-color: #00E5FF !important; box-shadow: 0 0 15px rgba(0, 229, 255, 0.3) !important; color: #ffffff !important; }
-div[data-testid="stCheckbox"] label { color: #00E5FF !important; font-weight: bold !important; }
-</style>
-"""
-
 input_theme_css_original = """
 <style>
 footer { display: none !important; } 
@@ -352,6 +293,64 @@ if st.session_state.current_page == "input":
         """, height=0, width=0
     )
 else:
+    # 💡 사이버펑크 네온 대시보드 CSS 적용
+    analysis_theme_css = """
+    <style>
+    footer { display: none !important; } 
+    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
+    body { overscroll-behavior-y: none !important; } 
+    ::-webkit-scrollbar { display: none; }
+    .block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
+
+    /* 딥 다크 네이비 그라데이션 배경 */
+    [data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; }
+    [data-testid="stSidebar"] { background-color: #02040A !important; border-right: 1px solid #1E3A8A !important; }
+
+    /* 폰트 적용 시 Material Icon(화살표) 깨짐 방지 */
+    h1, h2, h3, h4, h5, h6, p, div, span { font-family: 'Consolas', 'Courier New', monospace; color: #94A3B8; }
+    .material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; }
+
+    /* 사이버 네온 패널 디자인 */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(180deg, rgba(11,25,60,0.6) 0%, rgba(3,9,20,0.8) 100%) !important;
+        border: 1px solid #1E3A8A !important;
+        border-radius: 12px !important;
+        box-shadow: 0 0 15px rgba(0, 229, 255, 0.05) !important;
+        padding: 1.2rem !important;
+        margin-bottom: 0.8rem !important;
+        backdrop-filter: blur(10px);
+    }
+
+    /* 💡 Expander 화이트 픽스 및 우측 정렬 (arrow_right 깨짐 수정) */
+    div[data-testid="stExpander"] { background-color: #030614 !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
+    div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important; }
+    div[data-testid="stExpander"] details summary:hover { background-color: rgba(0, 229, 255, 0.1) !important; }
+    div[data-testid="stExpander"] details summary p { text-align: right !important; color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; width: 100%; margin-right: 10px; }
+
+    /* 타이틀 및 라벨 텍스트 */
+    .command-header { color: #00E5FF !important; font-weight: 900 !important; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
+    .metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
+
+    /* SBL 카드 */
+    .sbl-card { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.5); border-left: 4px solid #EF4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
+    .sbl-title { color: #EF4444 !important; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px;}
+    .sbl-text { color: #E2E8F0 !important; font-size: 0.8rem; line-height: 1.3;}
+
+    /* Blinking Live Dot */
+    @keyframes blink { 0% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } 50% { opacity: 0.3; box-shadow: 0 0 5px #00E5FF; } 100% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } }
+    .live-dot { height: 12px; width: 12px; background-color: #00E5FF; border-radius: 50%; display: inline-block; margin-right: 12px; margin-bottom: 2px; animation: blink 1.5s ease-in-out infinite; }
+
+    /* Custom Selectbox - 배경 검정, 태그 블루(#3B82F6) 적용 */
+    div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div { background-color: #000000 !important; border: 1px solid #1E3A8A !important; color: #00E5FF !important; border-radius: 6px; }
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] { background-color: #3B82F6 !important; color: #ffffff !important; font-weight: bold !important; border: none !important; }
+    div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div > div { color: #00E5FF !important; font-weight: bold !important; font-size: 1rem !important; }
+
+    /* Buttons & Checkbox */
+    div[data-testid="stButton"] button { background-color: rgba(30,58,138,0.2) !important; color: #38BDF8 !important; border: 1px solid #1E3A8A !important; border-radius: 6px !important; font-weight: bold !important; transition: all 0.3s ease; }
+    div[data-testid="stButton"] button:hover { background-color: rgba(0, 229, 255, 0.1) !important; border-color: #00E5FF !important; box-shadow: 0 0 15px rgba(0, 229, 255, 0.3) !important; color: #ffffff !important; }
+    div[data-testid="stCheckbox"] label { color: #00E5FF !important; font-weight: bold !important; }
+    </style>
+    """
     st.markdown(analysis_theme_css, unsafe_allow_html=True)
 
 def render_grid_buttons(options, state_key, columns, use_width=True):
@@ -606,7 +605,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v4)
+# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v5)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -681,7 +680,6 @@ if st.session_state.current_page == "analysis":
         df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         
-        # 도넛 차트를 위해 양품 수량을 안전하게 확보
         df['양품_Qty'] = df.get('양품수량', pd.Series([0]*len(df))).apply(safe_int)
         df['양품_FR_Qty'] = df.get('양품 수량(전/배 포함)', pd.Series([0]*len(df))).apply(safe_int)
         
@@ -746,7 +744,6 @@ if st.session_state.current_page == "analysis":
 
         models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
 
-        # 💡 Expander 타이틀 고정 (화살표 깨짐 방지) 및 1x2 배열
         with st.expander("TARGET MODEL SELECTION", expanded=True):
             exp_c1, exp_c2 = st.columns(2)
             with exp_c1:
@@ -756,7 +753,6 @@ if st.session_state.current_page == "analysis":
                 
         all_selected = list(set(selected_models_std + selected_models_inc))
 
-        # 💡 Auto Rotate 로직
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -766,9 +762,7 @@ if st.session_state.current_page == "analysis":
         else:
             display_std = selected_models_std
             display_inc = selected_models_inc
-            active_model = None
 
-        # 💡 정확한 3D Pie 수량 매핑 로직
         def get_qty_metrics(df_sub):
             if df_sub.empty: return 0, 0, 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
@@ -791,9 +785,9 @@ if st.session_state.current_page == "analysis":
         h_t, h_g, h_c, h_f, h_r, h_o, h_oth = get_qty_metrics(df_6h)
 
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset, q_other):
-            labels = ['Yield', 'Comp Defect', 'Front Defect', 'Rear Defect', 'Offset Defect', 'Other']
+            labels = ['Yield', 'Complete', 'Front', 'Rear', 'Offset', 'Other']
             values = [q_good, q_comp, q_front, q_rear, q_offset, q_other]
-            colors = ['#FFFF00', '#FF3366', '#3B82F6', '#22D3EE', '#F59E0B', '#94A3B8']
+            colors = ['#FFFF00', '#1E3A8A', '#FFC000', '#10B981', '#8B5CF6', '#94A3B8']
             
             l, v, c = [], [], []
             for label, val, color in zip(labels, values, colors):
@@ -805,7 +799,7 @@ if st.session_state.current_page == "analysis":
             fig = go.Figure(data=[go.Pie(
                 labels=l, values=v, hole=0.6,
                 marker=dict(colors=c, line=dict(color='#0B101E', width=2)),
-                textinfo='percent', textposition='inside',
+                textinfo='percent', textposition='inside', textfont=dict(color='white', weight='bold'),
                 hoverinfo='label+value+percent'
             )])
             
@@ -821,7 +815,6 @@ if st.session_state.current_page == "analysis":
             )
             return fig
 
-        # 💡 [3분할 도넛 차트 레이아웃]
         st.markdown("<br>", unsafe_allow_html=True)
         donut_c1, donut_c2, donut_c3 = st.columns(3)
         with donut_c1:
@@ -834,93 +827,52 @@ if st.session_state.current_page == "analysis":
             with st.container(border=True):
                 st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o, h_oth), use_container_width=True)
 
-        def get_neon_layout(title_text, y_title, show_x=True):
-            return dict(
-                title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=14)),
-                plot_bgcolor='#000000', paper_bgcolor='#000000', # 바탕 검정색 지정
-                font=dict(color='#94A3B8', family='monospace'),
-                xaxis=dict(showticklabels=show_x, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A'),
-                yaxis=dict(title=y_title, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A', zeroline=False),
-                hovermode='x unified',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
-            )
-
-        # 💡 다채로운 10색상 사이버펑크 팔레트
-        colors_map = ['#00E5FF', '#FF00FF', '#39FF14', '#FFA500', '#FF3333', '#9D00FF', '#FFFF00', '#00FFFF', '#FF1493', '#10B981']
-        model_color_dict = {mod: colors_map[i % len(colors_map)] for i, mod in enumerate(all_selected)}
-
         if not base_df.empty:
             base_df = base_df.sort_values(['DateTime'])
             base_df['LOT NO.'] = base_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df))).replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
             base_df['HoverText'] = base_df.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [1열 전체 폭] Yield Trend (블랙 배경, 텍스트 크기 상향)
+        # 💡 [1열 전체 폭] 통합 수율 및 불량률 트렌드 차트 (Dual Y-Axis Stacked Bar + Line)
         with st.container(border=True):
-            fig_yld = go.Figure()
+            fig_unified = make_subplots(specs=[[{"secondary_y": True}]])
             
-            y_min = 80.0
+            y_min = 50.0
             if not base_df.empty:
-                all_val = []
-                for mod in display_std: all_val.extend(base_df[base_df['모델명(MI)'] == mod]['Yield_1'].dropna().tolist())
-                for mod in display_inc: all_val.extend(base_df[base_df['모델명(MI)'] == mod]['Yield_2'].dropna().tolist())
+                all_val = base_df['Yield_1'].dropna().tolist() + base_df['Yield_2'].dropna().tolist()
                 if all_val:
                     actual_min = min(all_val)
-                    y_min = np.floor(actual_min / 10) * 10
-            
+                    y_min = max(0, np.floor((actual_min - 5) / 10) * 10) # 5% 여유 공간 확보
+            if y_min > 80: y_min = 80.0
+            range_span = 100.0 - y_min
+            if range_span < 20: range_span = 20
+
             if not base_df.empty:
-                for mod in display_std:
-                    m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
-                    if m_df.empty: continue
-                    c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(
-                        x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] Std", 
-                        mode='lines+markers+text', 
-                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=14, color=c1, weight='bold'),
-                        line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
-                    ))
-                for mod in display_inc:
-                    m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
-                    if m_df.empty: continue
-                    c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(
-                        x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] Incl.", 
-                        mode='lines+markers+text', 
-                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=14, color=c1, weight='bold'),
-                        line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
-                    ))
-                    
-            fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=350, margin=dict(l=30, r=30, t=40, b=30))
-            fig_yld.update_layout(yaxis=dict(range=[y_min, 100.0]), xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M'))
-            st.plotly_chart(fig_yld, use_container_width=True)
+                # 불량률 (Secondary Y-Axis) - 막대 차트 (전면:노랑, 배면:초록, 완전:다크네이비, 옵셋:보라)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
 
-        # 💡 [1x4 배열] 실선 & 백분율 텍스트가 적용된 4대 불량률 차트
-        with st.container(border=True):
-            dc1, dc2, dc3, dc4 = st.columns(4)
-            
-            def make_defect_chart(d_col, title):
-                f = go.Figure()
-                if not base_df.empty:
-                    for mod in list(set(display_std + display_inc)):
-                        m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=[d_col])
-                        if m_df.empty: continue
-                        c1 = model_color_dict[mod]
-                        f.add_trace(go.Scatter(
-                            x=m_df['DateTime'], y=m_df[d_col], name=mod, 
-                            mode='lines+markers+text', 
-                            text=m_df[d_col].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                            textposition='top center', textfont=dict(size=11, color=c1, weight='bold'),
-                            line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
-                        ))
-                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True))
-                f.update_layout(height=280, margin=dict(l=30, r=30, t=30, b=30), xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) 
-                return f
+                # 수율 (Primary Y-Axis) - 꺾은선 차트 (기본:파랑, 전/배포함:오렌지)
+                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_1'], name='양품율(%)(표준)', mode='lines+markers+text', text=base_df['Yield_1'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='bottom center', textfont=dict(size=12, color='#3B82F6', weight='bold'), line=dict(color='#3B82F6', width=2), marker=dict(size=6, color='#3B82F6'), hovertext=base_df['HoverText']), secondary_y=False)
+                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_2'], name='양품율(전/배 포함)%', mode='lines+markers+text', text=base_df['Yield_2'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='top center', textfont=dict(size=12, color='#F97316', weight='bold'), line=dict(color='#F97316', width=2), marker=dict(size=6, color='#F97316'), hovertext=base_df['HoverText']), secondary_y=False)
 
-            with dc1: st.plotly_chart(make_defect_chart('Def_Comp', "COMPLETE DEFECT"), use_container_width=True)
-            with dc2: st.plotly_chart(make_defect_chart('Def_Front', "FRONT DEFECT"), use_container_width=True)
-            with dc3: st.plotly_chart(make_defect_chart('Def_Rear', "REAR DEFECT"), use_container_width=True)
-            with dc4: st.plotly_chart(make_defect_chart('Def_Offset', "OFFSET DEFECT"), use_container_width=True)
+            fig_unified.update_layout(
+                barmode='stack',
+                title=dict(text=f"■ YIELD & DEFECT TREND", font=dict(color='#E2E8F0', size=16)),
+                plot_bgcolor='#000000', paper_bgcolor='#000000',
+                font=dict(color='#94A3B8', family='monospace'),
+                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color='#E2E8F0')),
+                margin=dict(l=30, r=30, t=50, b=30),
+                height=500,
+                hovermode='x unified'
+            )
+
+            fig_unified.update_xaxes(showgrid=True, gridcolor='rgba(255,255,255,0.05)', linecolor='#1E3A8A', dtick=10800000, tickformat='%m-%d %H:%M')
+            fig_unified.update_yaxes(title_text="양품율 (%)", range=[y_min, 100.0], showgrid=True, gridcolor='rgba(255,255,255,0.05)', linecolor='#1E3A8A', secondary_y=False)
+            fig_unified.update_yaxes(title_text="불량율 (%)", range=[0.0, range_span], showgrid=False, linecolor='#1E3A8A', secondary_y=True)
+
+            st.plotly_chart(fig_unified, use_container_width=True)
 
         # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템
         with st.container(border=True):
