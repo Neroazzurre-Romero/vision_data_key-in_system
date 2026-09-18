@@ -293,7 +293,7 @@ if st.session_state.current_page == "input":
         """, height=0, width=0
     )
 else:
-    # 💡 사이버펑크 네온 대시보드 CSS 적용
+    # 💡 사이버펑크 네온 대시보드 글로벌 폰트 통합 (Apple SD Gothic Neo, Malgun Gothic 적용)
     analysis_theme_css = """
     <style>
     footer { display: none !important; } 
@@ -302,13 +302,13 @@ else:
     ::-webkit-scrollbar { display: none; }
     .block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
-    /* 딥 다크 네이비 그라데이션 배경 */
+    /* 딥 다크 네이비 그라데이션 배경 및 전역 폰트 통합 */
     [data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; }
     [data-testid="stSidebar"] { background-color: #02040A !important; border-right: 1px solid #1E3A8A !important; }
 
-    /* 폰트 적용 시 Material Icon(화살표) 깨짐 방지 */
-    h1, h2, h3, h4, h5, h6, p, div, span { font-family: 'Consolas', 'Courier New', monospace; color: #94A3B8; }
-    .material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; }
+    /* 모든 텍스트에 글로벌 폰트 강제 적용 (가독성 향상) */
+    h1, h2, h3, h4, h5, h6, p, div, span { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; color: #94A3B8; margin-bottom: 2px; }
+    .material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; } /* 아이콘 깨짐 방지 */
 
     /* 사이버 네온 패널 디자인 */
     div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -321,7 +321,7 @@ else:
         backdrop-filter: blur(10px);
     }
 
-    /* 💡 Expander 화이트 픽스 및 우측 정렬 (arrow_right 깨짐 수정) */
+    /* 💡 Expander 우측 정렬 픽스 */
     div[data-testid="stExpander"] { background-color: #030614 !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
     div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important; }
     div[data-testid="stExpander"] details summary:hover { background-color: rgba(0, 229, 255, 0.1) !important; }
@@ -605,7 +605,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v5)
+# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v6)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -733,14 +733,15 @@ if st.session_state.current_page == "analysis":
             df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
             if not df_filtered.empty: df = df_filtered
             
+        # 💡 [48H 타임라인으로 축소] D-Day 및 D-1 (어제, 오늘 데이터만 타겟팅)
         now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
         target_end_date = now_kst.date() 
-        target_start_date = target_end_date - timedelta(days=2) 
+        target_start_date = target_end_date - timedelta(days=1) 
         yesterday_date = target_end_date - timedelta(days=1)
         
         df['DateOnly'] = df['DateTime'].dt.date
-        df_72h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
-        df_target = df_72h.copy() if not df_72h.empty else df.copy()
+        df_48h = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+        df_target = df_48h.copy() if not df_48h.empty else df.copy()
 
         models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
 
@@ -799,16 +800,16 @@ if st.session_state.current_page == "analysis":
             fig = go.Figure(data=[go.Pie(
                 labels=l, values=v, hole=0.6,
                 marker=dict(colors=c, line=dict(color='#0B101E', width=2)),
-                textinfo='percent', textposition='inside', textfont=dict(color='white', weight='bold'),
+                textinfo='percent', textposition='inside', textfont=dict(color='white', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value+percent'
             )])
             
             fig.update_layout(
-                title=dict(text=f"■ {title}", font=dict(color='#00E5FF', size=16), x=0.5, xanchor='center'),
+                title=dict(text=f"■ {title}", font=dict(color='#00E5FF', size=16, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
                 annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#94A3B8;'>Inspected</span>", 
-                                  x=0.5, y=0.5, font_size=24, font_color='#E2E8F0', showarrow=False)],
+                                  x=0.5, y=0.5, font_size=24, font_color='#E2E8F0', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                 showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(color='#E2E8F0', size=11)),
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(color='#E2E8F0', size=11, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif")),
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                 margin=dict(l=10, r=10, t=50, b=10),
                 height=320
@@ -819,7 +820,7 @@ if st.session_state.current_page == "analysis":
         donut_c1, donut_c2, donut_c3 = st.columns(3)
         with donut_c1:
             with st.container(border=True):
-                st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o, o_oth), use_container_width=True)
+                st.plotly_chart(make_donut_chart("OVERALL (48H)", o_t, o_g, o_c, o_f, o_r, o_o, o_oth), use_container_width=True)
         with donut_c2:
             with st.container(border=True):
                 st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o, y_oth), use_container_width=True)
@@ -827,12 +828,24 @@ if st.session_state.current_page == "analysis":
             with st.container(border=True):
                 st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o, h_oth), use_container_width=True)
 
+        # 💡 글로벌 차트 레이아웃 (폰트 통합: Apple SD Gothic Neo 적용)
+        def get_neon_layout(title_text, y_title, show_x=True):
+            return dict(
+                title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=16, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif")),
+                plot_bgcolor='#000000', paper_bgcolor='#000000', 
+                font=dict(color='#94A3B8', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
+                xaxis=dict(showticklabels=show_x, showgrid=True, gridcolor='rgba(255,255,255,0.05)', linecolor='#1E3A8A'),
+                yaxis=dict(title=y_title, showgrid=True, gridcolor='rgba(255,255,255,0.05)', linecolor='#1E3A8A', zeroline=False),
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"))
+            )
+
         if not base_df.empty:
             base_df = base_df.sort_values(['DateTime'])
             base_df['LOT NO.'] = base_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df))).replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
             base_df['HoverText'] = base_df.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [1열 전체 폭] 통합 수율 및 불량률 트렌드 차트 (Dual Y-Axis Stacked Bar + Line)
+        # 💡 [1열 전체 폭] 통합 수율 및 불량률 트렌드 차트 (Dual Y-Axis)
         with st.container(border=True):
             fig_unified = make_subplots(specs=[[{"secondary_y": True}]])
             
@@ -841,28 +854,26 @@ if st.session_state.current_page == "analysis":
                 all_val = base_df['Yield_1'].dropna().tolist() + base_df['Yield_2'].dropna().tolist()
                 if all_val:
                     actual_min = min(all_val)
-                    y_min = max(0, np.floor((actual_min - 5) / 10) * 10) # 5% 여유 공간 확보
+                    y_min = max(0, np.floor((actual_min - 5) / 10) * 10)
             if y_min > 80: y_min = 80.0
             range_span = 100.0 - y_min
             if range_span < 20: range_span = 20
 
             if not base_df.empty:
-                # 불량률 (Secondary Y-Axis) - 막대 차트 (전면:노랑, 배면:초록, 완전:다크네이비, 옵셋:보라)
-                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
-                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
-                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
-                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), hovertext=base_df['HoverText']), secondary_y=True)
+                fig_unified.add_trace(go.Bar(x=base_df['DateTime'], y=base_df['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), hovertext=base_df['HoverText']), secondary_y=True)
 
-                # 수율 (Primary Y-Axis) - 꺾은선 차트 (기본:파랑, 전/배포함:오렌지)
-                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_1'], name='양품율(%)(표준)', mode='lines+markers+text', text=base_df['Yield_1'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='bottom center', textfont=dict(size=12, color='#3B82F6', weight='bold'), line=dict(color='#3B82F6', width=2), marker=dict(size=6, color='#3B82F6'), hovertext=base_df['HoverText']), secondary_y=False)
-                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_2'], name='양품율(전/배 포함)%', mode='lines+markers+text', text=base_df['Yield_2'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='top center', textfont=dict(size=12, color='#F97316', weight='bold'), line=dict(color='#F97316', width=2), marker=dict(size=6, color='#F97316'), hovertext=base_df['HoverText']), secondary_y=False)
+                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_1'], name='양품율(%)(표준)', mode='lines+markers+text', text=base_df['Yield_1'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='bottom center', textfont=dict(size=14, color='#3B82F6', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), line=dict(color='#3B82F6', width=2), marker=dict(size=6, color='#3B82F6'), hovertext=base_df['HoverText']), secondary_y=False)
+                fig_unified.add_trace(go.Scatter(x=base_df['DateTime'], y=base_df['Yield_2'], name='양품율(전/배 포함)%', mode='lines+markers+text', text=base_df['Yield_2'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else ""), textposition='top center', textfont=dict(size=14, color='#F97316', weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), line=dict(color='#F97316', width=2), marker=dict(size=6, color='#F97316'), hovertext=base_df['HoverText']), secondary_y=False)
 
             fig_unified.update_layout(
                 barmode='stack',
-                title=dict(text=f"■ YIELD & DEFECT TREND", font=dict(color='#E2E8F0', size=16)),
+                title=dict(text=f"■ YIELD & DEFECT TREND", font=dict(color='#E2E8F0', size=16, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif")),
                 plot_bgcolor='#000000', paper_bgcolor='#000000',
-                font=dict(color='#94A3B8', family='monospace'),
-                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color='#E2E8F0')),
+                font=dict(color='#94A3B8', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
+                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color='#E2E8F0', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                 margin=dict(l=30, r=30, t=50, b=30),
                 height=500,
                 hovermode='x unified'
@@ -874,9 +885,9 @@ if st.session_state.current_page == "analysis":
 
             st.plotly_chart(fig_unified, use_container_width=True)
 
-        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템
+        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템 (48H)
         with st.container(border=True):
-            st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 72H)</div>", unsafe_allow_html=True)
+            st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 48H)</div>", unsafe_allow_html=True)
             sb1, sb2, sb3, sb4, sb5 = st.columns(5)
             
             def render_sbl_list(d_col, title, threshold, is_yield=False):
