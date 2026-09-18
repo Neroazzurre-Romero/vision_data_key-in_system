@@ -167,134 +167,7 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-input_theme_css = """
-<style>
-footer { display: none !important; } 
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
-body { overscroll-behavior-y: none !important; } 
-::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
-
-[data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; }
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #ffffff !important;
-    border-radius: 12px !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important;
-    padding: 1.5rem !important;
-    margin-bottom: 0.5rem !important;
-}
-div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
-
-div[data-testid="stButton"] button { 
-    height: 2.6rem !important; 
-    min-height: 2.6rem !important; 
-    max-height: 2.6rem !important;
-    font-size: 1.1rem !important; 
-    font-weight: bold !important; 
-    border-radius: 8px !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    background-color: #E7E6E6 !important; 
-    color: #000000 !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: none !important;
-    transition: all 0.2s ease;
-}
-div[data-testid="stButton"] button:hover, div[data-testid="stButton"] button:focus, div[data-testid="stButton"] button:active {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border-color: #1e293b !important;
-}
-div[data-testid="stButton"] button[kind="primary"] {
-    background-color: #1e293b !important;
-    color: #ffffff !important;
-    border: 1px solid #0f172a !important;
-    box-shadow: none !important;
-}
-div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
-
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-div[data-testid="stDateInput"] div[data-baseweb="input"] > div,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div {
-    min-height: 2.6rem !important;
-    border-radius: 8px !important;
-    background-color: #E7E6E6 !important;
-    border: 1px solid #cbd5e1 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
-    box-sizing: border-box !important;
-    transition: all 0.2s ease;
-}
-span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div,
-div[data-testid="stDateInput"] input,
-div[data-testid="stTextInput"] input {
-    min-height: 2.6rem !important;
-    font-size: 1.1rem !important;
-    font-weight: bold !important;
-    text-align: center !important;
-    color: #000000 !important; 
-    padding: 0 10px !important;
-    margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-sizing: border-box !important;
-    transition: color 0.2s ease;
-}
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child { display: flex !important; align-items: center !important; }
-div[data-baseweb="textarea"] textarea { 
-    font-size: 1.1rem !important; 
-    height: 70px !important;
-    min-height: 70px !important; 
-    max-height: 70px !important; 
-    background-color: #E7E6E6 !important; 
-    color: #000000 !important;
-    border: 1px solid #cbd5e1 !important; 
-    border-radius: 8px !important; 
-    padding: 15px !important;
-    transition: all 0.2s ease;
-}
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
-div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within {
-    background-color: #1e293b !important;
-    border-color: #1e293b !important;
-}
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div,
-div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input,
-div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input { color: #ffffff !important; }
-div[data-baseweb="textarea"]:focus-within textarea { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
-div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input { caret-color: transparent !important; cursor: pointer !important; }
-input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
-input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
-
-[data-testid="stSidebar"] { background-color: #0f172a !important; }
-[data-testid="stSidebar"] * { color: #f8fafc !important; }
-[data-testid="stSidebar"] .stButton > button { 
-    height: 48px !important; 
-    max-height: 48px !important;
-    justify-content: flex-start !important; 
-    padding-left: 15px !important; 
-    margin-bottom: 5px !important; 
-    border-radius: 6px !important; 
-    background-color: transparent !important;
-    border: 1px solid transparent !important; 
-    color: #8B9CB6 !important;
-    box-shadow: none !important;
-}
-[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
-[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
-[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
-div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
-</style>
-"""
-
-# 💡 사이버펑크 네온 대시보드 CSS 적용
+# 💡 사이버펑크 네온 대시보드 CSS 적용 (아이콘 폰트 보호)
 analysis_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -304,9 +177,12 @@ body { overscroll-behavior-y: none !important; }
 .block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
 /* 딥 다크 네이비 그라데이션 배경 */
-[data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
+[data-testid="stAppViewContainer"] { background: radial-gradient(circle at 50% 0%, #0A1930 0%, #030614 100%) !important; color: #E2E8F0 !important; }
 [data-testid="stSidebar"] { background-color: #02040A !important; border-right: 1px solid #1E3A8A !important; }
-[data-testid="stSidebar"] * { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; }
+
+/* 폰트 적용 시 Material Icon(화살표) 깨짐 방지 */
+h1, h2, h3, h4, h5, h6, p, div, span { font-family: 'Consolas', 'Courier New', monospace; color: #94A3B8; }
+.material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; }
 
 /* 사이버 네온 패널 디자인 */
 div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -319,23 +195,20 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     backdrop-filter: blur(10px);
 }
 
-/* 💡 Expander 화이트 픽스 및 우측 정렬 */
+/* 💡 Expander 화이트 픽스 및 우측 정렬 (arrow_right 깨짐 수정) */
 div[data-testid="stExpander"] { background-color: #030614 !important; border: 1px solid #1E3A8A !important; border-radius: 8px; }
-div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important;}
+div[data-testid="stExpander"] details summary { background-color: #0B101E !important; border-bottom: 1px solid #1E3A8A !important; padding: 10px 15px !important; }
 div[data-testid="stExpander"] details summary:hover { background-color: rgba(0, 229, 255, 0.1) !important; }
-div[data-testid="stExpander"] details summary p { text-align: right !important; color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; flex-grow: 1; margin-right: 10px;}
-div[data-testid="stExpander"] details summary svg { fill: #00E5FF !important; }
-
-h1, h2, h3, h4, h5, h6, p, span, div { color: #94A3B8 !important; font-family: 'Consolas', 'Courier New', monospace !important; margin-bottom: 2px; }
+div[data-testid="stExpander"] details summary p { text-align: right !important; color: #00E5FF !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; width: 100%; margin-right: 10px; }
 
 /* 타이틀 및 라벨 텍스트 */
 .command-header { color: #00E5FF !important; font-weight: 900 !important; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
-.metric-label { color: #38BDF8 !important; font-size: 0.9rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
+.metric-label { color: #38BDF8 !important; font-size: 1rem !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; border-bottom: 1px solid #1E3A8A; padding-bottom: 5px; }
 
 /* SBL 카드 */
 .sbl-card { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.5); border-left: 4px solid #EF4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
-.sbl-title { color: #EF4444 !important; font-weight: bold; font-size: 0.8rem; margin-bottom: 3px;}
-.sbl-text { color: #E2E8F0 !important; font-size: 0.75rem; line-height: 1.2;}
+.sbl-title { color: #EF4444 !important; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px;}
+.sbl-text { color: #E2E8F0 !important; font-size: 0.8rem; line-height: 1.3;}
 
 /* Blinking Live Dot */
 @keyframes blink { 0% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } 50% { opacity: 0.3; box-shadow: 0 0 5px #00E5FF; } 100% { opacity: 1; box-shadow: 0 0 15px #00E5FF; } }
@@ -353,8 +226,44 @@ div[data-testid="stCheckbox"] label { color: #00E5FF !important; font-weight: bo
 </style>
 """
 
+input_theme_css_original = """
+<style>
+footer { display: none !important; } 
+[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
+body { overscroll-behavior-y: none !important; } 
+::-webkit-scrollbar { display: none; }
+.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 95% !important; }
+[data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; }
+[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.5rem !important; }
+div[data-testid="stMarkdownContainer"] p strong { font-size: 1.1rem !important; font-weight: 800 !important; color: #1e293b !important; }
+div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6rem !important; max-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; border-radius: 8px !important; width: 100% !important; margin: 0 !important; padding: 0 !important; box-sizing: border-box !important; background-color: #E7E6E6 !important; color: #000000 !important; border: 1px solid #cbd5e1 !important; box-shadow: none !important; transition: all 0.2s ease; }
+div[data-testid="stButton"] button:hover, div[data-testid="stButton"] button:focus, div[data-testid="stButton"] button:active { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
+div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; box-shadow: none !important; }
+div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div, div[data-testid="stDateInput"] div[data-baseweb="input"] > div, div[data-testid="stTextInput"] div[data-baseweb="input"] > div { min-height: 2.6rem !important; border-radius: 8px !important; background-color: #E7E6E6 !important; border: 1px solid #cbd5e1 !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; box-sizing: border-box !important; transition: all 0.2s ease; }
+span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div, div[data-testid="stDateInput"] input, div[data-testid="stTextInput"] input { min-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; text-align: center !important; color: #000000 !important; padding: 0 10px !important; margin: 0 !important; background: transparent !important; border: none !important; box-sizing: border-box !important; transition: color 0.2s ease; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div:last-child { display: flex !important; align-items: center !important; }
+div[data-baseweb="textarea"] textarea { font-size: 1.1rem !important; height: 70px !important; min-height: 70px !important; max-height: 70px !important; background-color: #E7E6E6 !important; color: #000000 !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important; padding: 15px !important; transition: all 0.2s ease; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within, div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within, div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within { background-color: #1e293b !important; border-color: #1e293b !important; }
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within > div, div[data-testid="stDateInput"] div[data-baseweb="input"] > div:focus-within input, div[data-testid="stTextInput"] div[data-baseweb="input"] > div:focus-within input { color: #ffffff !important; }
+div[data-baseweb="textarea"]:focus-within textarea { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
+div[data-baseweb="select"] input, div[data-baseweb="datepicker"] input { caret-color: transparent !important; cursor: pointer !important; }
+input[placeholder*="SCAN APP"] { color: #000000 !important; font-weight: 900 !important; }
+input[placeholder*="SCAN APP"]::placeholder { color: #4b5563 !important; font-weight: bold !important; opacity: 0.8 !important; }
+[data-testid="stSidebar"] { background-color: #0f172a !important; }
+[data-testid="stSidebar"] * { color: #f8fafc !important; }
+[data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid transparent !important; color: #8B9CB6 !important; box-shadow: none !important; }
+[data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
+[data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
+[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
+div[data-testid="stCheckbox"] { display: flex; align-items: center; height: 2.6rem; padding-left: 10px; }
+</style>
+"""
+
 if st.session_state.current_page == "input":
-    st.markdown(input_theme_css, unsafe_allow_html=True)
+    st.markdown(input_theme_css_original, unsafe_allow_html=True)
     components.html(
         """
         <script>
@@ -697,7 +606,7 @@ def admin_auth_dialog():
             st.error("비밀번호가 일치하지 않습니다.")
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v3)
+# 💡 Administrator (AI 종합 분석 대시보드 - Cyberpunk Edition v4)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -772,12 +681,12 @@ if st.session_state.current_page == "analysis":
         df['배면불량_Qty'] = df.get('배면불량', pd.Series([0]*len(df))).apply(safe_int)
         df['옵셋불량_Qty'] = df.get('옵셋불량', pd.Series([0]*len(df))).apply(safe_int)
         
-        if df['Yield_1'].isna().all():
-            q_good = df.get('양품수량', pd.Series([0]*len(df))).apply(safe_int)
-            df['Yield_1'] = np.where(df['검사수량'] > 0, (q_good / df['검사수량']) * 100, np.nan)
-        if df['Yield_2'].isna().all():
-            q_good2 = df.get('양품 수량(전/배 포함)', pd.Series([0]*len(df))).apply(safe_int)
-            df['Yield_2'] = np.where(df['검사수량'] > 0, (q_good2 / df['검사수량']) * 100, np.nan)
+        # 도넛 차트를 위해 양품 수량을 안전하게 확보
+        df['양품_Qty'] = df.get('양품수량', pd.Series([0]*len(df))).apply(safe_int)
+        df['양품_FR_Qty'] = df.get('양품 수량(전/배 포함)', pd.Series([0]*len(df))).apply(safe_int)
+        
+        if df['Yield_1'].isna().all(): df['Yield_1'] = np.where(df['검사수량'] > 0, (df['양품_Qty'] / df['검사수량']) * 100, np.nan)
+        if df['Yield_2'].isna().all(): df['Yield_2'] = np.where(df['검사수량'] > 0, (df['양품_FR_Qty'] / df['검사수량']) * 100, np.nan)
 
         df['Def_Comp'] = df.get('완전불량율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         if df['Def_Comp'].isna().all(): df['Def_Comp'] = np.where(df['검사수량'] > 0, (df['완전불량_Qty'] / df['검사수량']) * 100, 0.0)
@@ -837,7 +746,8 @@ if st.session_state.current_page == "analysis":
 
         models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
 
-        with st.expander("▶ TARGET MODEL SELECTION (클릭하여 펴기/접기) ◀", expanded=True):
+        # 💡 Expander 타이틀 고정 (화살표 깨짐 방지) 및 1x2 배열
+        with st.expander("TARGET MODEL SELECTION", expanded=True):
             exp_c1, exp_c2 = st.columns(2)
             with exp_c1:
                 selected_models_std = st.multiselect("▶ 기본 1차 수율 (Standard)", models_available, default=models_available[:1] if models_available else [])
@@ -846,6 +756,7 @@ if st.session_state.current_page == "analysis":
                 
         all_selected = list(set(selected_models_std + selected_models_inc))
 
+        # 💡 Auto Rotate 로직
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -857,89 +768,76 @@ if st.session_state.current_page == "analysis":
             display_inc = selected_models_inc
             active_model = None
 
-        def get_kpi_metrics(df_sub):
-            if df_sub.empty: return 0, 0.0, 0.0, 0.0, 0.0, 0.0
-            t_inspected = df_sub['검사수량'].sum()
-            v_yields = []
-            for mod in display_std: v_yields.extend(df_sub[df_sub['모델명(MI)'] == mod]['Yield_1'].dropna().tolist())
-            for mod in display_inc: v_yields.extend(df_sub[df_sub['모델명(MI)'] == mod]['Yield_2'].dropna().tolist())
-            a_yield = np.mean(v_yields) if v_yields else 0.0
-            a_comp = df_sub['Def_Comp'].mean() if not df_sub['Def_Comp'].isna().all() else 0.0
-            a_front = df_sub['Def_Front'].mean() if not df_sub['Def_Front'].isna().all() else 0.0
-            a_rear = df_sub['Def_Rear'].mean() if not df_sub['Def_Rear'].isna().all() else 0.0
-            a_offset = df_sub['Def_Offset'].mean() if not df_sub['Def_Offset'].isna().all() else 0.0
-            return t_inspected, a_yield, a_comp, a_front, a_rear, a_offset
+        # 💡 정확한 3D Pie 수량 매핑 로직
+        def get_qty_metrics(df_sub):
+            if df_sub.empty: return 0, 0, 0, 0, 0, 0, 0
+            t_ins = df_sub['검사수량'].sum()
+            q_comp = df_sub['완전불량_Qty'].sum()
+            q_front = df_sub['전면불량_Qty'].sum()
+            q_rear = df_sub['배면불량_Qty'].sum()
+            q_offset = df_sub['옵셋불량_Qty'].sum()
+            q_good = 0
+            for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
+            for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
+            q_other = max(0, t_ins - (q_good + q_comp + q_front + q_rear + q_offset))
+            return t_ins, q_good, q_comp, q_front, q_rear, q_offset, q_other
 
         base_df = df_target[df_target['모델명(MI)'].isin(all_selected)].copy() if all_selected else pd.DataFrame()
         
-        t_ins, a_yld, a_cmp, a_fr, a_re, a_off = get_kpi_metrics(base_df)
-        
+        o_t, o_g, o_c, o_f, o_r, o_o, o_oth = get_qty_metrics(base_df)
         df_yesterday = base_df[base_df['DateOnly'] == yesterday_date].copy() if not base_df.empty else pd.DataFrame()
-        y_ins, y_yld, y_cmp, y_fr, y_re, y_off = get_kpi_metrics(df_yesterday)
-        
+        y_t, y_g, y_c, y_f, y_r, y_o, y_oth = get_qty_metrics(df_yesterday)
         df_6h = base_df[base_df['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df.empty else pd.DataFrame()
-        h_ins, h_yld, h_cmp, h_fr, h_re, h_off = get_kpi_metrics(df_6h)
+        h_t, h_g, h_c, h_f, h_r, h_o, h_oth = get_qty_metrics(df_6h)
 
-        def make_kpi_html(title, value, color="#00E5FF", theme="blue"):
-            if theme == "dark":
-                bg = "linear-gradient(90deg, rgba(80,80,80,0.6) 0%, rgba(0,0,0,1) 100%)"
-                border = "#FFC000"
-            else:
-                bg = "linear-gradient(90deg, rgba(30,58,138,0.3) 0%, rgba(3,9,20,0) 100%)"
-                border = "#00E5FF"
-                
-            return f"""
-            <div style="background: {bg}; border-left: 4px solid {border}; border-radius: 8px; padding: 10px; height: 100%; box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <div style="color: #94A3B8; font-size: 0.8rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 5px;">{title}</div>
-                <div style="color: {color}; font-size: 1.5rem; font-weight: 900; text-shadow: 0 0 8px rgba(0,0,0,0.5);">{value}</div>
-            </div>
-            """
+        def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset, q_other):
+            labels = ['Yield', 'Comp Defect', 'Front Defect', 'Rear Defect', 'Offset Defect', 'Other']
+            values = [q_good, q_comp, q_front, q_rear, q_offset, q_other]
+            colors = ['#FFFF00', '#FF3366', '#3B82F6', '#22D3EE', '#F59E0B', '#94A3B8']
+            
+            l, v, c = [], [], []
+            for label, val, color in zip(labels, values, colors):
+                if val > 0:
+                    l.append(label)
+                    v.append(val)
+                    c.append(color)
+                    
+            fig = go.Figure(data=[go.Pie(
+                labels=l, values=v, hole=0.6,
+                marker=dict(colors=c, line=dict(color='#0B101E', width=2)),
+                textinfo='percent', textposition='inside',
+                hoverinfo='label+value+percent'
+            )])
+            
+            fig.update_layout(
+                title=dict(text=f"■ {title}", font=dict(color='#00E5FF', size=16), x=0.5, xanchor='center'),
+                annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#94A3B8;'>Inspected</span>", 
+                                  x=0.5, y=0.5, font_size=24, font_color='#E2E8F0', showarrow=False)],
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(color='#E2E8F0', size=11)),
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=10, r=10, t=50, b=10),
+                height=320
+            )
+            return fig
 
-        kpi_ovr_col, kpi_ytd_col, kpi_6h_col = st.columns(3)
-        
-        with kpi_ovr_col:
+        # 💡 [3분할 도넛 차트 레이아웃]
+        st.markdown("<br>", unsafe_allow_html=True)
+        donut_c1, donut_c2, donut_c3 = st.columns(3)
+        with donut_c1:
             with st.container(border=True):
-                st.markdown("<div class='metric-label' style='text-align:center;'>■ OVERALL SUMMARY (72H)</div>", unsafe_allow_html=True)
-                r1c1, r1c2, r1c3 = st.columns(3)
-                r1c1.markdown(make_kpi_html("Total Inspected", f"{t_ins:,.0f}", theme="dark"), unsafe_allow_html=True)
-                r1c2.markdown(make_kpi_html("Yield", f"{a_yld:.1f}%", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
-                r1c3.markdown(make_kpi_html("Complete", f"{a_cmp:.1f}%", color="#FF3366", theme="dark"), unsafe_allow_html=True)
-                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-                r2c1, r2c2, r2c3 = st.columns(3)
-                r2c1.markdown(make_kpi_html("Front", f"{a_fr:.1f}%", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
-                r2c2.markdown(make_kpi_html("Rear", f"{a_re:.1f}%", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
-                r2c3.markdown(make_kpi_html("Offset", f"{a_off:.1f}%", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
-
-        with kpi_ytd_col:
+                st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o, o_oth), use_container_width=True)
+        with donut_c2:
             with st.container(border=True):
-                st.markdown("<div class='metric-label' style='text-align:center;'>■ YESTERDAY SUMMARY</div>", unsafe_allow_html=True)
-                r1c1, r1c2, r1c3 = st.columns(3)
-                r1c1.markdown(make_kpi_html("Total Inspected", f"{y_ins:,.0f}", theme="blue"), unsafe_allow_html=True)
-                r1c2.markdown(make_kpi_html("Yield", f"{y_yld:.1f}%", color="#FFFF00", theme="blue"), unsafe_allow_html=True)
-                r1c3.markdown(make_kpi_html("Complete", f"{y_cmp:.1f}%", color="#FF3366", theme="blue"), unsafe_allow_html=True)
-                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-                r2c1, r2c2, r2c3 = st.columns(3)
-                r2c1.markdown(make_kpi_html("Front", f"{y_fr:.1f}%", color="#3B82F6", theme="blue"), unsafe_allow_html=True)
-                r2c2.markdown(make_kpi_html("Rear", f"{y_re:.1f}%", color="#22D3EE", theme="blue"), unsafe_allow_html=True)
-                r2c3.markdown(make_kpi_html("Offset", f"{y_off:.1f}%", color="#F59E0B", theme="blue"), unsafe_allow_html=True)
-
-        with kpi_6h_col:
+                st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o, y_oth), use_container_width=True)
+        with donut_c3:
             with st.container(border=True):
-                st.markdown("<div class='metric-label' style='text-align:center;'>■ LAST 6 HOURS SUMMARY</div>", unsafe_allow_html=True)
-                r1c1, r1c2, r1c3 = st.columns(3)
-                r1c1.markdown(make_kpi_html("Total Inspected", f"{h_ins:,.0f}", theme="dark"), unsafe_allow_html=True)
-                r1c2.markdown(make_kpi_html("Yield", f"{h_yld:.1f}%", color="#FFFF00", theme="dark"), unsafe_allow_html=True)
-                r1c3.markdown(make_kpi_html("Complete", f"{h_cmp:.1f}%", color="#FF3366", theme="dark"), unsafe_allow_html=True)
-                st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-                r2c1, r2c2, r2c3 = st.columns(3)
-                r2c1.markdown(make_kpi_html("Front", f"{h_fr:.1f}%", color="#3B82F6", theme="dark"), unsafe_allow_html=True)
-                r2c2.markdown(make_kpi_html("Rear", f"{h_re:.1f}%", color="#22D3EE", theme="dark"), unsafe_allow_html=True)
-                r2c3.markdown(make_kpi_html("Offset", f"{h_off:.1f}%", color="#F59E0B", theme="dark"), unsafe_allow_html=True)
+                st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o, h_oth), use_container_width=True)
 
         def get_neon_layout(title_text, y_title, show_x=True):
             return dict(
                 title=dict(text=f"■ {title_text}", font=dict(color='#E2E8F0', size=14)),
-                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='#000000', paper_bgcolor='#000000', # 바탕 검정색 지정
                 font=dict(color='#94A3B8', family='monospace'),
                 xaxis=dict(showticklabels=show_x, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A'),
                 yaxis=dict(title=y_title, showgrid=True, gridcolor='rgba(30,58,138,0.3)', linecolor='#1E3A8A', zeroline=False),
@@ -947,6 +845,7 @@ if st.session_state.current_page == "analysis":
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#E2E8F0'))
             )
 
+        # 💡 다채로운 10색상 사이버펑크 팔레트
         colors_map = ['#00E5FF', '#FF00FF', '#39FF14', '#FFA500', '#FF3333', '#9D00FF', '#FFFF00', '#00FFFF', '#FF1493', '#10B981']
         model_color_dict = {mod: colors_map[i % len(colors_map)] for i, mod in enumerate(all_selected)}
 
@@ -955,7 +854,7 @@ if st.session_state.current_page == "analysis":
             base_df['LOT NO.'] = base_df.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df))).replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', None: 'UNKNOWN'}).fillna('UNKNOWN').astype(str)
             base_df['HoverText'] = base_df.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [1열 전체 폭] Yield Trend 
+        # 💡 [1열 전체 폭] Yield Trend (블랙 배경, 텍스트 크기 상향)
         with st.container(border=True):
             fig_yld = go.Figure()
             
@@ -977,8 +876,8 @@ if st.session_state.current_page == "analysis":
                         x=m_df['DateTime'], y=m_df['Yield_1'], name=f"[{mod}] Std", 
                         mode='lines+markers+text', 
                         text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=9, color=c1),
-                        line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
+                        textposition='top center', textfont=dict(size=14, color=c1, weight='bold'),
+                        line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                     ))
                 for mod in display_inc:
                     m_df = base_df[base_df['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
@@ -988,15 +887,15 @@ if st.session_state.current_page == "analysis":
                         x=m_df['DateTime'], y=m_df['Yield_2'], name=f"[{mod}] Incl.", 
                         mode='lines+markers+text', 
                         text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=9, color=c1),
-                        line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
+                        textposition='top center', textfont=dict(size=14, color=c1, weight='bold'),
+                        line=dict(color=c1, width=2), marker=dict(size=6, color=c1), hovertext=m_df['HoverText']
                     ))
                     
-            fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=300, margin=dict(l=30, r=30, t=40, b=30))
+            fig_yld.update_layout(**get_neon_layout("YIELD TREND", "YIELD (%)"), height=350, margin=dict(l=30, r=30, t=40, b=30))
             fig_yld.update_layout(yaxis=dict(range=[y_min, 100.0]), xaxis=dict(dtick=10800000, tickformat='%m-%d %H:%M'))
             st.plotly_chart(fig_yld, use_container_width=True)
 
-        # 💡 [1x4 배열] 실선 & 백분율 텍스트 적용된 불량률 트렌드 차트
+        # 💡 [1x4 배열] 실선 & 백분율 텍스트가 적용된 4대 불량률 차트
         with st.container(border=True):
             dc1, dc2, dc3, dc4 = st.columns(4)
             
@@ -1011,11 +910,11 @@ if st.session_state.current_page == "analysis":
                             x=m_df['DateTime'], y=m_df[d_col], name=mod, 
                             mode='lines+markers+text', 
                             text=m_df[d_col].apply(lambda x: f"{x:.1f}%") + "<br>" + m_df['LOT NO.'], 
-                            textposition='top center', textfont=dict(size=9, color=c1),
-                            line=dict(color=c1, width=2), marker=dict(size=4, color=c1), hovertext=m_df['HoverText']
+                            textposition='top center', textfont=dict(size=11, color=c1, weight='bold'),
+                            line=dict(color=c1, width=2), marker=dict(size=5, color=c1), hovertext=m_df['HoverText']
                         ))
-                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True), height=250, margin=dict(l=30, r=30, t=30, b=30))
-                f.update_layout(xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) 
+                f.update_layout(**get_neon_layout(title, "RATE (%)", show_x=True))
+                f.update_layout(height=280, margin=dict(l=30, r=30, t=30, b=30), xaxis=dict(dtick=21600000, tickformat='%m-%d %H:%M')) 
                 return f
 
             with dc1: st.plotly_chart(make_defect_chart('Def_Comp', "COMPLETE DEFECT"), use_container_width=True)
@@ -1023,20 +922,17 @@ if st.session_state.current_page == "analysis":
             with dc3: st.plotly_chart(make_defect_chart('Def_Rear', "REAR DEFECT"), use_container_width=True)
             with dc4: st.plotly_chart(make_defect_chart('Def_Offset', "OFFSET DEFECT"), use_container_width=True)
 
-        # 💡 [SBL 알림 이력] 5개 카드 배열
+        # 💡 [SBL 알림 이력] 1x5 배열 카드 시스템
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 72H)</div>", unsafe_allow_html=True)
             sb1, sb2, sb3, sb4, sb5 = st.columns(5)
             
             def render_sbl_list(d_col, title, threshold, is_yield=False):
                 html = f"<div class='sbl-title'>{title}</div>"
-                if base_df.empty:
-                    return html + "<div class='sbl-text'>No data.</div>"
+                if base_df.empty: return html + "<div class='sbl-text'>No data.</div>"
                 
-                if is_yield:
-                    sbl_df = base_df[(base_df[d_col] < threshold) & (base_df[d_col] > 0)].copy()
-                else:
-                    sbl_df = base_df[base_df[d_col] > threshold].copy()
+                if is_yield: sbl_df = base_df[(base_df[d_col] < threshold) & (base_df[d_col] > 0)].copy()
+                else: sbl_df = base_df[base_df[d_col] > threshold].copy()
                     
                 sbl_df = sbl_df.sort_values('DateTime', ascending=False).head(5)
                 
