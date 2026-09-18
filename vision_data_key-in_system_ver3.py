@@ -247,11 +247,8 @@ div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6r
 div[data-testid="stButton"] button:hover { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
-div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; }
-
-/* Number Input Box Customization */
-div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
-div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
+div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
+div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
@@ -604,10 +601,23 @@ if st.session_state.current_page == "analysis":
         admin_auth_dialog()
         st.stop()
         
-    # 💡 1분 단위 Auto Rotate 트리거
+    # 💡 1분 단위 Auto Rotate 트리거 및 H_TICK 버튼 완벽 숨김 처리
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
+        const hideBtn = () => {
+            const btns = window.parent.document.querySelectorAll('button');
+            btns.forEach(btn => {
+                if(btn.innerText.includes('H_TICK')) {
+                    btn.style.display = 'none';
+                    btn.style.pointerEvents = 'none';
+                    btn.style.position = 'absolute';
+                    if(btn.parentElement) btn.parentElement.style.display = 'none';
+                }
+            });
+        };
+        hideBtn(); setTimeout(hideBtn, 100);
+        
         setTimeout(function() {
             const btns = window.parent.document.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){
@@ -619,6 +629,12 @@ if st.session_state.current_page == "analysis":
         }, 60000); 
         </script>
         """, height=0)
+        
+        # UI 레이아웃에 간섭하지 않도록 컨테이너 안에 숨겨진 H_TICK 배치
+        with st.container():
+            if st.button("H_TICK", key="hidden_tick_btn"):
+                st.session_state.rotate_idx += 1
+                st.rerun()
 
     col1, col2, col3 = st.columns([0.5, 0.35, 0.15])
     with col1:
@@ -626,17 +642,10 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 히든 버튼을 체크박스 왼쪽 절대좌표로 완전히 숨김
-        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
+        c2_1, c2_2 = st.columns([1, 1])
         with c2_1:
-            st.markdown("<div style='position:absolute; left:-9999px;'>", unsafe_allow_html=True)
-            if st.button("H_TICK", key="hidden_tick_btn"):
-                st.session_state.rotate_idx += 1
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-        with c2_2:
             st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
-        with c2_3:
+        with c2_2:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -774,7 +783,7 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
-        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
+        # 💡 [Auto Rotate 필터링 적용]
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -827,15 +836,15 @@ if st.session_state.current_page == "analysis":
                 labels=l, values=v, hole=0.65,
                 marker=dict(colors=c, line=dict(color='#ffffff', width=2)),
                 textinfo='text', text=txt, textposition='outside', 
-                textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
+                textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value',
                 sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 할당
             )])
             
             fig.update_layout(
-                title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"), x=0.5, xanchor='center'),
+                title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
                 annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#64748b;'>Inspected</span>", 
-                                  x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", showarrow=False)],
+                                  x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                 showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                 margin=dict(l=120, r=120, t=60, b=20), # 좌우 마진을 크게 확보하여 레이블 잘림 방지
                 height=350
@@ -862,7 +871,7 @@ if st.session_state.current_page == "analysis":
             base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # 💡 [2. Graph] 꺾은선 실선(Solid) 및 막대그래프 2분할 (범례 우측)
+        # 💡 [2. Graph] Light Theme, 차트 2개 분리 및 범례 우측 이동
         st.markdown("<h3 style='color:#1e293b; font-weight:900; margin-top:20px; font-size:1.5rem;'>2. Graph</h3>", unsafe_allow_html=True)
 
         # --- 2-1. YIELD TREND (Line Chart) ---
