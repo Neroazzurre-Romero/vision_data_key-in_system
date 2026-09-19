@@ -249,6 +249,10 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
+
+/* Number Input Box Customization */
+div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
+div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
@@ -629,6 +633,12 @@ if st.session_state.current_page == "analysis":
         }, 60000); 
         </script>
         """, height=0)
+        
+        # UI 레이아웃에 간섭하지 않도록 컨테이너 안에 숨겨진 H_TICK 배치
+        with st.container():
+            if st.button("H_TICK", key="hidden_tick_btn"):
+                st.session_state.rotate_idx += 1
+                st.rerun()
 
     col1, col2, col3 = st.columns([0.5, 0.35, 0.15])
     with col1:
@@ -636,17 +646,10 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 히든 버튼을 체크박스 왼쪽 절대좌표로 완전히 숨김 (중복 제거)
-        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
+        c2_1, c2_2 = st.columns([0.5, 0.5])
         with c2_1:
-            st.markdown("<div style='position:absolute; left:-9999px;'>", unsafe_allow_html=True)
-            if st.button("H_TICK", key="hidden_tick_btn"):
-                st.session_state.rotate_idx += 1
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-        with c2_2:
             st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
-        with c2_3:
+        with c2_2:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -682,7 +685,7 @@ if st.session_state.current_page == "analysis":
             val_str = str(val).replace("'", "").strip()
             if val_str.endswith('.0'):
                 val_str = val_str[:-2]
-            if val_str.isdigit():
+            if val_str.isdigit() and len(val_str) > 0:
                 return val_str.zfill(5) # 무조건 5자리 텍스트 유지
             return val_str if val_str else 'UNKNOWN'
             
@@ -810,7 +813,7 @@ if st.session_state.current_page == "analysis":
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴)
+        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴하여 Unpack 에러 완벽 해결)
         def get_qty_metrics(df_sub):
             if df_sub.empty: return 0, 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
@@ -878,10 +881,19 @@ if st.session_state.current_page == "analysis":
 
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 [데이터 정렬 로직 (시간 겹침 방지)]
+        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 5자리 보존)]
         if not base_df_48h.empty:
             base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
             base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
+            # 숫자로 치환되는 것을 방지하기 위해 정규식으로 앞의 따옴표만 제거 후 5자리 zfill 처리
+            def clean_lot(val):
+                val = str(val).replace("'", "").strip()
+                if val.endswith('.0'): val = val[:-2]
+                if val.isdigit() and len(val) > 0:
+                    return val.zfill(5)
+                return val if val else 'UNKNOWN'
+            
+            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
         # 💡 [2. Graph] Light Theme, 차트 2개 분리 및 범례 우측 이동
@@ -1151,7 +1163,16 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 검사 구분</h4><br>", unsafe_allow_html=True)
                 render_grid_buttons(["1차 검사", "2차 검사", "3차 검사", "K 1차 검사", "Sample", "완불재검"], "category", 6)
 
-            render_nav_buttons(step, 3)
+            st.markdown("<br>", unsafe_allow_html=True)
+            c_nav = st.columns(6)
+            with c_nav[4]:
+                if st.button("⬅️ 이전", use_container_width=True):
+                    st.session_state.step -= 1
+                    st.rerun()
+            with c_nav[5]:
+                if st.button("다음 ➡️", use_container_width=True):
+                    st.session_state.step = 3
+                    st.rerun()
 
         elif step == 3:
             with st.container(border=True):
