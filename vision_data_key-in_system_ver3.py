@@ -597,15 +597,28 @@ def admin_auth_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
+# 💡 복구된 SBL 경고 팝업 다이얼로그 (동적 Limit 매개변수 적용)
+@st.dialog("🚨 SBL 관리 한계 초과 알림")
+def show_sbl_warning(defect_name, rate, limit_val):
+    st.markdown(f"""
+    <div style='text-align:center; padding: 20px; background-color: #fef2f2; border: 3px solid #ef4444; border-radius: 12px;'>
+        <h3 style='color: #b91c1c; margin-top: 0; font-weight: 900;'>[{defect_name}] SBL 기준치 초과!</h3>
+        <span style='font-size: 3.5rem; font-weight: 900; color: #ef4444;'>{rate:.1f}%</span><br><br>
+        <span style='color: #1e293b; font-size: 1.1rem; font-weight: bold;'>설정된 관리 기준({limit_val:.1f}%)을 초과했습니다.<br>즉시 관리자에게 보고하고 해당 LOT를 확인하세요.</span>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("확인 및 인지 완료 (닫기)", type="primary", use_container_width=True):
+        st.rerun()
+
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Version)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Clean Version)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
         
-    # 💡 1분 단위 Auto Rotate 트리거 및 H_TICK 버튼 완벽 숨김 처리
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -634,7 +647,6 @@ if st.session_state.current_page == "analysis":
         </script>
         """, height=0)
         
-        # UI 레이아웃에 간섭하지 않도록 컨테이너 안에 숨겨진 H_TICK 배치
         with st.container():
             if st.button("H_TICK", key="hidden_tick_btn"):
                 st.session_state.rotate_idx += 1
@@ -646,10 +658,12 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        c2_1, c2_2 = st.columns([0.5, 0.5])
+        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
         with c2_1:
-            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+            st.markdown("<div style='position:absolute; left:-9999px;'></div>", unsafe_allow_html=True)
         with c2_2:
+            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+        with c2_3:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -667,7 +681,6 @@ if st.session_state.current_page == "analysis":
     if df.empty: 
         st.warning("데이터베이스에 렌더링할 정보가 전혀 없습니다.")
     else:
-        # 데이터 전처리 (결측치 및 타입 캐스팅)
         def pct_to_float(x):
             try:
                 if pd.isna(x) or str(x).strip() == '': return np.nan
@@ -680,13 +693,13 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
-        # 💡 [LOT NO 문자열 원본 보존 로직 (.lstrip 및 zfill 적용)]
+        # 💡 LOT 5자리 텍스트 고정 (zfill)
         def parse_lot(val):
             val_str = str(val).replace("'", "").strip()
             if val_str.endswith('.0'):
                 val_str = val_str[:-2]
             if val_str.isdigit() and len(val_str) > 0:
-                return val_str.zfill(5) # 무조건 5자리 텍스트 유지
+                return val_str.zfill(5)
             return val_str if val_str else 'UNKNOWN'
             
         if 'LOT NO.' in df.columns:
@@ -774,7 +787,6 @@ if st.session_state.current_page == "analysis":
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
-            # 💡 [SBL 알람 기준치 실시간 설정]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>⚙️ SBL 알람 기준치 설정 (%)</div>", unsafe_allow_html=True)
             limit_cols = st.columns(7)
             with limit_cols[0]: st.session_state.sbl_limits['Yield_Default'] = st.number_input("양품(기본)", value=st.session_state.sbl_limits['Yield_Default'], step=0.1)
@@ -785,7 +797,6 @@ if st.session_state.current_page == "analysis":
             with limit_cols[5]: st.session_state.sbl_limits['Def_Rear'] = st.number_input("배면불량", value=st.session_state.sbl_limits['Def_Rear'], step=0.1)
             with limit_cols[6]: st.session_state.sbl_limits['Def_Offset'] = st.number_input("옵셋불량", value=st.session_state.sbl_limits['Def_Offset'], step=0.1)
             
-            # 💡 [컬러 피커 커스터마이징]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
             model_color_dict = {}
             if all_selected:
@@ -799,7 +810,6 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
-        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -813,7 +823,6 @@ if st.session_state.current_page == "analysis":
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴하여 Unpack 에러 완벽 해결)
         def get_qty_metrics(df_sub):
             if df_sub.empty: return 0, 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
@@ -832,7 +841,6 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-        # 💡 [3D 도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
         def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
             labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
             values = [q_good, q_comp, q_front, q_rear, q_offset]
@@ -844,7 +852,6 @@ if st.session_state.current_page == "analysis":
                     l.append(label)
                     v.append(val)
                     c.append(color)
-                    # 전체 검사수량 대비 절대 백분율 강제 적용
                     pct = (val / t_ins * 100) if t_ins > 0 else 0
                     txt.append(f"{label}<br>{pct:.1f}%")
                     
@@ -854,7 +861,7 @@ if st.session_state.current_page == "analysis":
                 textinfo='text', text=txt, textposition='outside', 
                 textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                 hoverinfo='label+value',
-                sort=False, direction='clockwise', rotation=270 # 불량률을 왼쪽 9시~12시 영역으로 강제 할당
+                sort=False, direction='clockwise', rotation=270 
             )])
             
             fig.update_layout(
@@ -863,40 +870,28 @@ if st.session_state.current_page == "analysis":
                                   x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                 showlegend=False,
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=120, r=120, t=60, b=20), # 레이블 외부 출력용 좌우 여백 확보
+                margin=dict(l=120, r=120, t=60, b=20), 
                 height=350
             )
             return fig
 
+        st.markdown("<br>", unsafe_allow_html=True)
         donut_c1, donut_c2, donut_c3 = st.columns(3)
         with donut_c1:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
         with donut_c2:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
         with donut_c3:
-            with st.container(border=True):
-                st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
+            with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
 
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 5자리 보존)]
         if not base_df_48h.empty:
             base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
             base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
-            # 숫자로 치환되는 것을 방지하기 위해 정규식으로 앞의 따옴표만 제거 후 5자리 zfill 처리
-            def clean_lot(val):
-                val = str(val).replace("'", "").strip()
-                if val.endswith('.0'): val = val[:-2]
-                if val.isdigit() and len(val) > 0:
-                    return val.zfill(5)
-                return val if val else 'UNKNOWN'
-            
-            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
+            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).astype(str).str.replace(r"^'", "", regex=True)
+            base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
-
-        # 💡 [2. Graph] Light Theme, 차트 2개 분리 및 범례 우측 이동
 
         # --- 2-1. YIELD TREND (Line Chart) ---
         with st.container(border=True):
@@ -904,8 +899,7 @@ if st.session_state.current_page == "analysis":
             y_min = 50.0
             if not base_df_48h.empty:
                 all_val = base_df_48h['Yield_1'].dropna().tolist() + base_df_48h['Yield_2'].dropna().tolist()
-                if all_val:
-                    y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
+                if all_val: y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
             if y_min > 80: y_min = 80.0
 
             if not base_df_48h.empty:
@@ -937,7 +931,7 @@ if st.session_state.current_page == "analysis":
                 plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                 font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
                 legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
-                margin=dict(l=30, r=200, t=70, b=50), height=400, hovermode='x unified' # Top 마진 증가
+                margin=dict(l=30, r=200, t=70, b=50), height=400, hovermode='x unified'
             )
             
             if not base_df_48h.empty:
@@ -946,7 +940,6 @@ if st.session_state.current_page == "analysis":
             else:
                 fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
                 
-            # 💡 [Y축 상단 스케일 105.0% 확보로 레이블 짤림 방지]
             fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 105.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_yld, use_container_width=True)
             
@@ -980,7 +973,6 @@ if st.session_state.current_page == "analysis":
             fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
             st.plotly_chart(fig_def, use_container_width=True)
 
-        # 💡 [SBL 알림 이력] 조건부 로직 완벽 연동
         with st.container(border=True):
             st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 48H)</div>", unsafe_allow_html=True)
             sb1, sb2, sb3, sb4, sb5 = st.columns(5)
@@ -1464,23 +1456,30 @@ elif st.session_state.current_page == "input":
                         st.session_state.numpad_buffer = val if val != "0" else ""
                         numpad_dialog("etc_def", "기타")
 
+            # 💡 [SBL 동적 알람 팝업 로직 적용]
             if total_qty > 0:
                 comp_rate = (st.session_state.get("comp_def", 0) / total_qty) * 100
                 front_rate = (st.session_state.get("front_def", 0) / total_qty) * 100
                 rear_rate = (st.session_state.get("rear_def", 0) / total_qty) * 100
                 offset_rate = (st.session_state.get("offset_def", 0) / total_qty) * 100
                 
-                if comp_rate > 5.0 and not st.session_state.get("comp_warned", False):
-                    show_sbl_warning("완전불량", comp_rate)
+                limit_c = st.session_state.sbl_limits.get('Def_Comp', 10.0)
+                limit_f = st.session_state.sbl_limits.get('Def_Front', 5.0)
+                limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
+                limit_o = st.session_state.sbl_limits.get('Def_Offset', 5.0)
+                
+                # 순차적 알람 팝업 처리 (여러 개 동시 초과 시 하나씩 띄움)
+                if comp_rate > limit_c and not st.session_state.get("comp_warned", False):
+                    show_sbl_warning("완전불량", comp_rate, limit_c)
                     st.session_state.comp_warned = True
-                if front_rate > 5.0 and not st.session_state.get("front_warned", False):
-                    show_sbl_warning("전면불량", front_rate)
+                elif front_rate > limit_f and not st.session_state.get("front_warned", False):
+                    show_sbl_warning("전면불량", front_rate, limit_f)
                     st.session_state.front_warned = True
-                if rear_rate > 5.0 and not st.session_state.get("rear_warned", False):
-                    show_sbl_warning("배면불량", rear_rate)
+                elif rear_rate > limit_r and not st.session_state.get("rear_warned", False):
+                    show_sbl_warning("배면불량", rear_rate, limit_r)
                     st.session_state.rear_warned = True
-                if offset_rate > 5.0 and not st.session_state.get("offset_warned", False):
-                    show_sbl_warning("옵셋불량", offset_rate)
+                elif offset_rate > limit_o and not st.session_state.get("offset_warned", False):
+                    show_sbl_warning("옵셋불량", offset_rate, limit_o)
                     st.session_state.offset_warned = True
 
             with st.container(border=True):
