@@ -612,13 +612,14 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Split Layout Version)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Clean Version)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
         
+    # 💡 10분(600,000ms) 단위 Auto Rotate 타이머
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -643,7 +644,7 @@ if st.session_state.current_page == "analysis":
                     break;
                 }
             }
-        }, 60000); 
+        }, 600000); 
         </script>
         """, height=0)
         
@@ -693,6 +694,7 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
+        # 💡 LOT 5자리 텍스트 고정 (zfill)
         def parse_lot(val):
             val_str = str(val).replace("'", "").strip()
             if val_str.endswith('.0'):
@@ -786,6 +788,7 @@ if st.session_state.current_page == "analysis":
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
+            # 💡 [SBL 알람 기준치 실시간 설정]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>⚙️ SBL 알람 기준치 설정 (%)</div>", unsafe_allow_html=True)
             limit_cols = st.columns(7)
             with limit_cols[0]: st.session_state.sbl_limits['Yield_Default'] = st.number_input("양품(기본)", value=st.session_state.sbl_limits['Yield_Default'], step=0.1)
@@ -796,6 +799,7 @@ if st.session_state.current_page == "analysis":
             with limit_cols[5]: st.session_state.sbl_limits['Def_Rear'] = st.number_input("배면불량", value=st.session_state.sbl_limits['Def_Rear'], step=0.1)
             with limit_cols[6]: st.session_state.sbl_limits['Def_Offset'] = st.number_input("옵셋불량", value=st.session_state.sbl_limits['Def_Offset'], step=0.1)
             
+            # 💡 [컬러 피커 커스터마이징 복구]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
             model_color_dict = {}
             if all_selected:
@@ -809,6 +813,7 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
+        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -821,43 +826,31 @@ if st.session_state.current_page == "analysis":
 
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
-        base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 보존)]
-        if not base_df_48h.empty:
-            base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
-            base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
-            def clean_lot(val):
-                val = str(val).replace("'", "").strip()
-                if val.endswith('.0'): val = val[:-2]
-                if val.isdigit() and len(val) > 0: return val.zfill(5)
-                return val if val else 'UNKNOWN'
-            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
-            base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
+        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴하여 Unpack 에러 원천 차단)
+        def get_qty_metrics(df_sub):
+            if df_sub.empty: return 0, 0, 0, 0, 0, 0
+            t_ins = df_sub['검사수량'].sum()
+            q_comp = df_sub['완전불량_Qty'].sum()
+            q_front = df_sub['전면불량_Qty'].sum()
+            q_rear = df_sub['배면불량_Qty'].sum()
+            q_offset = df_sub['옵셋불량_Qty'].sum()
+            q_good = 0
+            for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
+            for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
+            return t_ins, q_good, q_comp, q_front, q_rear, q_offset
+        
+        o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
+        df_yesterday = base_df_72h[base_df_72h['DateOnly'] == yesterday_date].copy() if not base_df_72h.empty else pd.DataFrame()
+        y_t, y_g, y_c, y_f, y_r, y_o = get_qty_metrics(df_yesterday)
+        df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
+        h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
         # 💡 [화면 분할 구조 적용 (75% vs 25%)]
         main_left_col, main_right_col = st.columns([0.76, 0.24])
         
         with main_left_col:
-            # 💡 [1. Aggregated Data] - 도넛 차트
-            def get_qty_metrics(df_sub):
-                if df_sub.empty: return 0, 0, 0, 0, 0, 0
-                t_ins = df_sub['검사수량'].sum()
-                q_comp = df_sub['완전불량_Qty'].sum()
-                q_front = df_sub['전면불량_Qty'].sum()
-                q_rear = df_sub['배면불량_Qty'].sum()
-                q_offset = df_sub['옵셋불량_Qty'].sum()
-                q_good = 0
-                for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
-                for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
-                return t_ins, q_good, q_comp, q_front, q_rear, q_offset
-            
-            o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
-            df_yesterday = base_df_72h[base_df_72h['DateOnly'] == yesterday_date].copy() if not base_df_72h.empty else pd.DataFrame()
-            y_t, y_g, y_c, y_f, y_r, y_o = get_qty_metrics(df_yesterday)
-            df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
-            h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
-
+            # 💡 [도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
             def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
                 labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
                 values = [q_good, q_comp, q_front, q_rear, q_offset]
@@ -869,6 +862,7 @@ if st.session_state.current_page == "analysis":
                         l.append(label)
                         v.append(val)
                         c.append(color)
+                        # 전체 검사수량 대비 절대 백분율 강제 적용
                         pct = (val / t_ins * 100) if t_ins > 0 else 0
                         txt.append(f"{label}<br>{pct:.1f}%")
                         
@@ -878,7 +872,7 @@ if st.session_state.current_page == "analysis":
                     textinfo='text', text=txt, textposition='outside', 
                     textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                     hoverinfo='label+value',
-                    sort=False, direction='clockwise', rotation=270 
+                    sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 강제 할당
                 )])
                 
                 fig.update_layout(
@@ -899,6 +893,14 @@ if st.session_state.current_page == "analysis":
                 with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
             with donut_c3:
                 with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
+
+            base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
+
+            # 💡 [데이터 정렬 로직 (소요시간 기준 및 LOT 원형 텍스트 보존)]
+            if not base_df_48h.empty:
+                base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
+                base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
             # --- 2-1. YIELD TREND (Line Chart) ---
             with st.container(border=True):
@@ -937,7 +939,7 @@ if st.session_state.current_page == "analysis":
                     title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                     plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                     font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), # 좁은 공간 활용을 위해 상단 수평 배치
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=30, r=30, t=70, b=50), height=400, hovermode='x unified'
                 )
                 
@@ -992,7 +994,7 @@ if st.session_state.current_page == "analysis":
                     sbl_items = []
                     for _, r in base_df_48h.iterrows():
                         mod = str(r.get('모델명(MI)', ''))
-                        lot = str(r.get('LOT NO.', '')).replace("'", "")
+                        lot = str(r.get('LOT NO.', ''))
                         t_str = r['DateTime'].strftime('%m-%d %H:%M')
                         
                         if is_yield:
