@@ -51,13 +51,14 @@ if "current_page" not in st.session_state: st.session_state.current_page = "inpu
 if "app_mode" not in st.session_state: st.session_state.app_mode = "START" 
 if "step" not in st.session_state: st.session_state.step = 1
 if "rotate_idx" not in st.session_state: st.session_state.rotate_idx = 0
+if "auto_rotate_active" not in st.session_state: st.session_state.auto_rotate_active = False # 💡 버튼형 토글 상태 저장용
 if "unlocked" in st.query_params:
     st.session_state.unlocked = True
     st.query_params.clear()
 
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
-# 💡 SBL Limit 초기값 세팅
+# 💡 SBL Limit 초기값 세팅 (세션 스테이트 보존)
 if "sbl_limits" not in st.session_state:
     st.session_state.sbl_limits = {
         "Yield_Default": 85.0,
@@ -179,7 +180,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# 💡 글로벌 테마 적용 (좌상단 화살표 삭제 및 전역 폰트 적용)
 global_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -227,9 +227,6 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
-/* 터치 간섭 방지 */
-div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
-div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
@@ -237,6 +234,7 @@ div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight:
 st.markdown(global_theme_css, unsafe_allow_html=True)
 
 if st.session_state.current_page == "input":
+    st.markdown("""<style>[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; }</style>""", unsafe_allow_html=True)
     components.html(
         """
         <script>
@@ -565,6 +563,17 @@ def timepad_dialog(field_key, display_name):
                     st.rerun()
             except ValueError: pass
 
+@st.dialog("🔒 관리자 인증")
+def admin_auth_dialog():
+    st.markdown("<div style='color:#94A3B8; margin-bottom:10px;'>분석 데이터를 확인하려면 관리자 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
+    pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력")
+    if st.button("✅ 확인", type="primary", use_container_width=True):
+        if pwd == "6233":
+            st.session_state.admin_authenticated = True
+            st.rerun()
+        else:
+            st.error("비밀번호가 일치하지 않습니다.")
+
 @st.dialog("🚨 SBL 관리 한계 초과 알림")
 def show_sbl_warning(defect_name, rate, limit_val):
     st.markdown(f"""
@@ -579,10 +588,9 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Sidebar Fix & Manual Rotate)
+# 💡 Administrator (AI 종합 분석 대시보드 - Auto Rotate Toggle Fix)
 # ==========================================
 if st.session_state.current_page == "analysis":
-    # 💡 분석 페이지 진입 시 사이드바 완전 차단 (X버튼 버그 해결용 풀스크린 인증창 적용)
     st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none !important; }
@@ -591,7 +599,6 @@ if st.session_state.current_page == "analysis":
     """, unsafe_allow_html=True)
 
     if not st.session_state.admin_authenticated:
-        # 팝업(Dialog) 대신 안전한 전체화면 컨테이너로 관리자 인증 구현
         st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
         col_sp1, col_auth, col_sp3 = st.columns([1, 1, 1])
         with col_auth:
@@ -616,8 +623,8 @@ if st.session_state.current_page == "analysis":
                             st.error("비밀번호가 일치하지 않습니다.")
         st.stop()
         
-    # 💡 10분 단위 Auto Rotate 트리거 로직 (Manual Rotate 버튼 클릭)
-    if st.session_state.get("auto_refresh_chk", False):
+    # 💡 10분 단위 Auto Rotate 트리거 로직 (자바스크립트로 수동 회전 버튼 자동 클릭)
+    if st.session_state.get("auto_rotate_active", False):
         components.html("""
         <script>
         setTimeout(function() {
@@ -632,24 +639,27 @@ if st.session_state.current_page == "analysis":
         </script>
         """, height=0, width=0)
 
-    # 💡 상단 헤더 영역 구성
     col1, col2, col3 = st.columns([0.45, 0.4, 0.15])
     with col1:
         st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>AI DEEP-DIVE COMMAND CENTER</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 히든 컬럼 삭제 및 Manual Rotate 버튼 신규 배치 (터치 간섭 원천차단)
+        # 💡 [터치 에러 완벽 해결] 체크박스 대신 버튼형 토글(Toggle) 적용
         c2_1, c2_2, c2_3 = st.columns([0.33, 0.33, 0.33])
         with c2_1:
-            st.checkbox("Auto Rotate (10m)", key="auto_refresh_chk")
+            btn_label = "⏸ Auto Rotate (ON)" if st.session_state.auto_rotate_active else "▶ Auto Rotate (OFF)"
+            btn_type = "primary" if st.session_state.auto_rotate_active else "secondary"
+            if st.button(btn_label, type=btn_type, use_container_width=True):
+                st.session_state.auto_rotate_active = not st.session_state.auto_rotate_active
+                st.rerun()
         with c2_2:
             if st.button("🔄 Manual Rotate", use_container_width=True):
                 st.session_state.rotate_idx += 1
                 st.rerun()
         with c2_3:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
-                if st.session_state.get("auto_refresh_chk"):
+                if st.session_state.get("auto_rotate_active"):
                     st.session_state.rotate_idx += 1
                 st.cache_data.clear()
                 st.rerun()
@@ -793,7 +803,7 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
-        if st.session_state.get("auto_refresh_chk", False) and all_selected:
+        if st.session_state.auto_rotate_active and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
             display_std = [active_model] if active_model in selected_models_std else []
@@ -1469,6 +1479,7 @@ elif st.session_state.current_page == "input":
                 limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
                 limit_o = st.session_state.sbl_limits.get('Def_Offset', 5.0)
                 
+                # 순차적 알람 팝업 처리
                 if comp_rate > limit_c and not st.session_state.get("comp_warned", False):
                     show_sbl_warning("완전불량", comp_rate, limit_c)
                     st.session_state.comp_warned = True
