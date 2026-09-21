@@ -58,7 +58,6 @@ if "unlocked" in st.query_params:
 
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
-# 💡 SBL Limit 및 기간 초기값 세팅 (세션 스테이트 보존)
 if "sbl_limits" not in st.session_state:
     st.session_state.sbl_limits = {
         "Yield_Default": 85.0,
@@ -69,6 +68,7 @@ if "sbl_limits" not in st.session_state:
         "Def_Rear": 5.0,
         "Def_Offset": 5.0
     }
+
 if "time_range" not in st.session_state:
     st.session_state.time_range = "48H"
 if "sel_std" not in st.session_state:
@@ -76,6 +76,7 @@ if "sel_std" not in st.session_state:
 if "sel_inc" not in st.session_state:
     st.session_state.sel_inc = []
 
+# 💡 K 체크박스 대신 clip_type 추가
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
     "shift_type": "주간", "worker": "작업자A",
@@ -84,9 +85,8 @@ default_state = {
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
     "painting_order": "", "painting_line": "A Line", 
-    "clip_val": "1", "clip_k": False,
-    "base_val": "1", "base_k": False,
-    "cover_val": "1", "cover_k": False,
+    "clip_val": "1", "clip_type": "일반",
+    "base_val": "1", "cover_val": "1",
     "assembler_val": "1호기",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
     "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
@@ -482,6 +482,41 @@ def load_universal_data():
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
         
+    # 💡 [KeyError 원천 차단] DateOnly 변수 조기 생성
+    def parse_dt(r):
+        d_val = str(r.get('날짜', '')).strip()
+        t_val = str(r.get('시작시간', '00:00')).strip()
+        if not d_val or d_val.lower() in ['nan', 'none']: return datetime(2026, 1, 1) 
+        t_clean = re.sub(r'[^\d]', '', str(t_val))
+        if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}:00"
+        elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}:00"
+        elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00:00"
+        else: t_str = "00:00:00"
+        try:
+            if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
+                return pd.to_datetime(f"{(datetime(1899, 12, 30) + timedelta(days=int(d_val))).strftime('%Y-%m-%d')} {t_str}", errors='coerce') or datetime(2026, 1, 1)
+            parts = re.split(r'[./-]', d_val)
+            if len(parts) == 3:
+                p1, p2, p3 = int(parts[0]), int(parts[1]), int(parts[2])
+                if p1 > 1000: return pd.to_datetime(f"{p1}-{p2:02d}-{p3:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
+                elif p3 > 1000: return pd.to_datetime(f"{p3}-{p1:02d}-{p2:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
+                else: return pd.to_datetime(f"20{p3:02d}-{p1:02d}-{p2:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
+            if len(parts) == 2:
+                return pd.to_datetime(f"2026-{int(parts[0]):02d}-{int(parts[1]):02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
+        except: pass
+        return datetime(2026, 1, 1) 
+        
+    parsed_dates = df.apply(parse_dt, axis=1)
+    missing_dates_idx = parsed_dates.isna()
+    if missing_dates_idx.any():
+        parsed_dates.loc[missing_dates_idx] = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
+    df['DateTime'] = pd.to_datetime(parsed_dates)
+    df['DateOnly'] = df['DateTime'].dt.date # DateOnly를 df가 생성되자마자 정의
+
+    if '구분' in df.columns:
+        df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
+        if not df_filtered.empty: df = df_filtered
+        
     return df[ext_cols + ['_sheet_row']]
 
 def save_data_append(df):
@@ -598,7 +633,7 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Active Time & UI Fix)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Version)
 # ==========================================
 if st.session_state.current_page == "analysis":
     st.markdown("""
@@ -633,7 +668,6 @@ if st.session_state.current_page == "analysis":
                             st.error("비밀번호가 일치하지 않습니다.")
         st.stop()
         
-    # 💡 10분 단위 Auto Rotate 트리거 로직
     if st.session_state.get("auto_rotate_active", False):
         components.html("""
         <script>
@@ -696,17 +730,6 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
-        def parse_lot(val):
-            val_str = str(val).replace("'", "").strip()
-            if val_str.endswith('.0'):
-                val_str = val_str[:-2]
-            if val_str.isdigit() and len(val_str) > 0:
-                return val_str.zfill(5)
-            return val_str if val_str else 'UNKNOWN'
-            
-        if 'LOT NO.' in df.columns:
-            df['LOT NO.'] = df['LOT NO.'].apply(parse_lot)
-
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['검사수량'] = df.get('검사 수량', pd.Series([0]*len(df))).apply(safe_int)
@@ -735,43 +758,9 @@ if st.session_state.current_page == "analysis":
 
         if '모델명(MI)' not in df.columns or df['모델명(MI)'].replace('', np.nan).isna().all(): df['모델명(MI)'] = 'ALL_MODELS'
         
-        def parse_dt(r):
-            d_val = str(r.get('날짜', '')).strip()
-            t_val = str(r.get('시작시간', '00:00')).strip()
-            if not d_val or d_val.lower() in ['nan', 'none']: return datetime(2026, 1, 1) 
-            t_clean = re.sub(r'[^\d]', '', str(t_val))
-            if len(t_clean) >= 4: t_str = f"{t_clean[:2]}:{t_clean[2:4]}:00"
-            elif len(t_clean) == 3: t_str = f"0{t_clean[:1]}:{t_clean[1:3]}:00"
-            elif len(t_clean) in [1, 2]: t_str = f"{t_clean.zfill(2)}:00:00"
-            else: t_str = "00:00:00"
-            try:
-                if d_val.isdigit() and 40000 <= int(d_val) <= 50000:
-                    return pd.to_datetime(f"{(datetime(1899, 12, 30) + timedelta(days=int(d_val))).strftime('%Y-%m-%d')} {t_str}", errors='coerce') or datetime(2026, 1, 1)
-                parts = re.split(r'[./-]', d_val)
-                if len(parts) == 3:
-                    p1, p2, p3 = int(parts[0]), int(parts[1]), int(parts[2])
-                    if p1 > 1000: return pd.to_datetime(f"{p1}-{p2:02d}-{p3:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
-                    elif p3 > 1000: return pd.to_datetime(f"{p3}-{p1:02d}-{p2:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
-                    else: return pd.to_datetime(f"20{p3:02d}-{p1:02d}-{p2:02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
-                if len(parts) == 2:
-                    return pd.to_datetime(f"2026-{int(parts[0]):02d}-{int(parts[1]):02d} {t_str}", errors='coerce') or datetime(2026, 1, 1)
-            except: pass
-            return datetime(2026, 1, 1) 
-            
-        parsed_dates = df.apply(parse_dt, axis=1)
-        missing_dates_idx = parsed_dates.isna()
-        if missing_dates_idx.any():
-            parsed_dates.loc[missing_dates_idx] = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
-        df['DateTime'] = pd.to_datetime(parsed_dates)
-        
-        if '구분' in df.columns:
-            df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
-            if not df_filtered.empty: df = df_filtered
-            
         now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
         target_end_date = now_kst.date() 
 
-        # 💡 [동적 데이터 기간 필터링 로직 추가]
         with st.expander("TARGET MODEL SELECTION ▼", expanded=True):
             st.markdown("<div style='margin-bottom:5px; font-weight:bold; color:#1e293b;'>⏳ 데이터 조회 기간</div>", unsafe_allow_html=True)
             time_range = st.radio("조회 기간", ["48H", "72H", "96H"], index=0, horizontal=True, label_visibility="collapsed", key='time_range_radio')
@@ -1219,36 +1208,26 @@ elif st.session_state.current_page == "input":
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.write("")
-                with c2: 
+                with c2:
                     st.markdown("**CLIP**")
-                    c2_1, c2_2 = st.columns([0.45, 0.55])
-                    with c2_1:
+                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(st.session_state.get("clip_type", "일반")), horizontal=True, label_visibility="collapsed")
+                    if st.session_state.clip_type == "일반":
                         c_val = st.session_state.get("clip_val", "1")
                         if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("clip_val", "CLIP")
-                    with c2_2:
-                        st.checkbox("K", key="clip_k")
-                with c3: 
+                with c3:
                     st.markdown("**BASE**")
-                    c3_1, c3_2 = st.columns([0.45, 0.55])
-                    with c3_1:
-                        b_val = st.session_state.get("base_val", "1")
-                        if st.button(str(b_val) if b_val != "" else "입력", key="btn_base", use_container_width=True):
-                            st.session_state.numpad_buffer = ""
-                            numpad_dialog("base_val", "BASE")
-                    with c3_2:
-                        st.checkbox("K", key="base_k")
-                with c4: 
+                    b_val = st.session_state.get("base_val", "1")
+                    if st.button(str(b_val) if b_val != "" else "입력", key="btn_base", use_container_width=True):
+                        st.session_state.numpad_buffer = ""
+                        numpad_dialog("base_val", "BASE")
+                with c4:
                     st.markdown("**COVER**")
-                    c4_1, c4_2 = st.columns([0.45, 0.55])
-                    with c4_1:
-                        cv_val = st.session_state.get("cover_val", "1")
-                        if st.button(str(cv_val) if cv_val != "" else "입력", key="btn_cover", use_container_width=True):
-                            st.session_state.numpad_buffer = ""
-                            numpad_dialog("cover_val", "COVER")
-                    with c4_2:
-                        st.checkbox("K", key="cover_k")
+                    cv_val = st.session_state.get("cover_val", "1")
+                    if st.button(str(cv_val) if cv_val != "" else "입력", key="btn_cover", use_container_width=True):
+                        st.session_state.numpad_buffer = ""
+                        numpad_dialog("cover_val", "COVER")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 조립기 정보</h4><br>", unsafe_allow_html=True)
@@ -1281,13 +1260,14 @@ elif st.session_state.current_page == "input":
                             fmt_assembler = a_val.replace("호기", "") if a_val != "선택안함" else ""
                             fmt_worker = st.session_state.get("worker", "")
                             
-                            c_val = st.session_state.get("clip_val", "")
-                            b_val = st.session_state.get("base_val", "")
-                            cv_val = st.session_state.get("cover_val", "")
-                            
-                            fmt_clip = f"K{c_val}" if st.session_state.get("clip_k") and c_val != "" else str(c_val)
-                            fmt_base = f"K{b_val}" if st.session_state.get("base_k") and b_val != "" else str(b_val)
-                            fmt_cover = f"K{cv_val}" if st.session_state.get("cover_k") and cv_val != "" else str(cv_val)
+                            # 💡 K 체크박스 대신 라디오 버튼 로직 처리
+                            if st.session_state.get("clip_type", "일반") == "일반":
+                                fmt_clip = str(st.session_state.get("clip_val", ""))
+                            else:
+                                fmt_clip = st.session_state.get("clip_type", "")
+                                
+                            fmt_base = str(st.session_state.get("base_val", ""))
+                            fmt_cover = str(st.session_state.get("cover_val", ""))
                             
                             lot_in = st.session_state.get("lot_input_field", "")
                             fmt_lot = f"'{lot_in}" if lot_in else ""
