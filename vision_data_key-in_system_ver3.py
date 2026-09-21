@@ -53,7 +53,7 @@ if "step" not in st.session_state: st.session_state.step = 1
 if "rotate_idx" not in st.session_state: st.session_state.rotate_idx = 0
 if "auto_rotate_active" not in st.session_state: st.session_state.auto_rotate_active = False 
 
-# 💡 다이렉트 링크(Direct Link) 접속 처리
+# 💡 외부 링크 다이렉트 접속 시 뷰어 모드 자동 진입 처리
 if "viewer" in st.query_params:
     if st.query_params["viewer"] == "true":
         st.session_state.current_page = "viewer"
@@ -246,42 +246,23 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
+/* 💡 외부 뷰어 링크 버튼 전용 CSS */
+div[data-testid="stLinkButton"] a {
+    display: flex !important; justify-content: center !important; align-items: center !important;
+    background-color: #1e293b !important; color: #FFC000 !important;
+    height: 7.2rem !important; min-height: 7.2rem !important; max-height: 7.2rem !important;
+    border-radius: 8px !important; font-size: 1.4rem !important; font-weight: 900 !important;
+    text-decoration: none !important; border: 1px solid #0f172a !important;
+}
+
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 div[data-testid="stRadio"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
-
 div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
-
-SHARED_CONFIG_FILE = "shared_viewer_config.json"
-
-def save_shared_config():
-    config = {
-        "time_range": st.session_state.get("time_range", "48H"),
-        "sel_std": st.session_state.get("sel_std", []),
-        "sel_inc": st.session_state.get("sel_inc", []),
-        "sbl_limits": st.session_state.get("sbl_limits", {}),
-        "model_color_dict": {mod: st.session_state.get(f"color_pref_{mod}", '#3B82F6') for mod in set(st.session_state.get("sel_std", []) + st.session_state.get("sel_inc", []))},
-        "auto_rotate_active": st.session_state.get("auto_rotate_active", False)
-    }
-    with open(SHARED_CONFIG_FILE, "w") as f:
-        json.dump(config, f)
-
-def load_shared_config():
-    if os.path.exists(SHARED_CONFIG_FILE):
-        with open(SHARED_CONFIG_FILE, "r") as f:
-            return json.load(f)
-    return None
-
-@st.dialog("📡 대시보드 외부 공유 활성화")
-def share_dashboard_dialog():
-    st.markdown("현재 설정된 데이터 조회 기간, 선택된 모델, SBL 기준치 정보를 외부로 송출합니다.<br><br><b>💡 다이렉트 링크 공유 방법:</b><br>현재 접속 중인 URL의 맨 끝부분에 `/?viewer=true` 를 추가하여 임원/품질팀에게 전달하세요.", unsafe_allow_html=True)
-    if st.button("공유 활성화 및 저장", type="primary", use_container_width=True):
-        save_shared_config()
-        st.success("✅ 공유가 활성화되었습니다. (뷰어 접속 비밀번호: 7777)")
 
 if st.session_state.current_page == "input":
     st.markdown("""<style>[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; }</style>""", unsafe_allow_html=True)
@@ -308,7 +289,7 @@ if st.session_state.current_page == "input":
                         btn.style.setProperty('font-size', '1.2rem', 'important');
                         btn.style.setProperty('margin-top', '0px', 'important');
                     }
-                    if (text.trim() === 'ADMIN' || text.trim() === 'VIEWER') { 
+                    if (text.trim() === 'ADMIN') { 
                         btn.style.setProperty('background', '#1e293b', 'important');
                         btn.style.setProperty('background-color', '#1e293b', 'important');
                         btn.style.setProperty('color', '#FFC000', 'important');
@@ -316,7 +297,7 @@ if st.session_state.current_page == "input":
                         btn.style.setProperty('height', '7.2rem', 'important');
                         btn.style.setProperty('min-height', '7.2rem', 'important');
                         btn.style.setProperty('max-height', '7.2rem', 'important');
-                        btn.style.setProperty('font-size', '1.2rem', 'important');
+                        btn.style.setProperty('font-size', '1.4rem', 'important');
                         btn.style.setProperty('font-weight', '900', 'important');
                     }
                 });
@@ -421,6 +402,43 @@ def get_sheet():
             st.error(f"🚨 '{TAB_NAME}' 시트 탭을 찾을 수 없습니다: {e}")
             return doc.sheet1
     return None
+
+# 💡 외부 뷰어와 설정을 공유하기 위해 구글 시트에 Config를 저장/로드하는 기능
+def save_shared_config():
+    config = {
+        "time_range": st.session_state.get("time_range", "48H"),
+        "sel_std": st.session_state.get("sel_std", []),
+        "sel_inc": st.session_state.get("sel_inc", []),
+        "sbl_limits": st.session_state.get("sbl_limits", {}),
+        "model_color_dict": {mod: st.session_state.get(f"color_pref_{mod}", '#3B82F6') for mod in set(st.session_state.get("sel_std", []) + st.session_state.get("sel_inc", []))},
+        "auto_rotate_active": st.session_state.get("auto_rotate_active", False)
+    }
+    doc = get_spreadsheet_doc()
+    if doc:
+        try:
+            ws = doc.worksheet("VIEWER_CONFIG")
+        except Exception:
+            ws = doc.add_worksheet(title="VIEWER_CONFIG", rows=2, cols=2)
+        ws.update_acell('A1', json.dumps(config))
+
+def load_shared_config():
+    doc = get_spreadsheet_doc()
+    if doc:
+        try:
+            ws = doc.worksheet("VIEWER_CONFIG")
+            val = ws.acell('A1').value
+            if val:
+                return json.loads(val)
+        except Exception:
+            return None
+    return None
+
+@st.dialog("📡 대시보드 외부 공유 활성화")
+def share_dashboard_dialog():
+    st.markdown("현재 설정된 데이터 조회 기간, 선택된 모델, SBL 기준치 정보를 뷰어용으로 송출합니다.<br><br><b>💡 다이렉트 링크 공유 방법:</b><br>생성하신 뷰어용 스트림릿 링크 뒤에 `/?viewer=true` 를 붙여 임원/품질팀에게 전달하세요.", unsafe_allow_html=True)
+    if st.button("공유 활성화 및 저장", type="primary", use_container_width=True):
+        save_shared_config()
+        st.success("✅ 공유가 활성화되었습니다. (뷰어 접속 비밀번호: 7777)")
 
 @st.cache_data(ttl=15)
 def load_universal_data():
@@ -720,9 +738,9 @@ if st.session_state.current_page == "viewer":
                 st.rerun()
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("RETURN", type="primary", use_container_width=True, key="viewer_return"):
-            st.session_state.current_page = "input"
-            st.session_state.viewer_authenticated = False
+        # 💡 링크를 통해 다이렉트로 들어온 뷰어를 위한 새로고침(Return 대체) 버튼
+        if st.button("RELOAD", type="primary", use_container_width=True, key="viewer_return"):
+            st.cache_data.clear()
             st.rerun()
             
     df = load_universal_data().copy()
@@ -1047,10 +1065,10 @@ elif st.session_state.current_page == "input":
             unsafe_allow_html=True
         )
     with top_c2:
+        # 💡 다른 스트림릿으로 다이렉트 이동하는 외부 뷰어 링크 적용
         b1, b2 = st.columns(2)
         with b1:
-            if st.button("VIEWER", use_container_width=True):
-                viewer_auth_dialog()
+            st.link_button("VIEWER", "https://visiondatakey-inviewer.streamlit.app/?viewer=true", use_container_width=True) # 👈 이 부분의 URL을 생성하신 뷰어용 스트림릿 주소로 변경하세요!
         with b2:
             if st.button("ADMIN", use_container_width=True, type="primary"):
                 st.session_state.current_page = "analysis"
@@ -1218,19 +1236,21 @@ elif st.session_state.current_page == "input":
                 with c2: 
                     st.markdown("**CLIP**")
                     clip_type = st.session_state.get("clip_type", "일반")
+                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(clip_type), horizontal=True, label_visibility="collapsed")
                     c_val = st.session_state.get("clip_val", "1")
                     if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
                         st.session_state.numpad_buffer = ""
                         numpad_dialog("clip_val", "CLIP")
-                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(clip_type), horizontal=True, label_visibility="collapsed")
                 with c3: 
                     st.markdown("**BASE**")
+                    st.markdown("<br>", unsafe_allow_html=True) # 줄맞춤용 여백
                     b_val = st.session_state.get("base_val", "1")
                     if st.button(str(b_val) if b_val != "" else "입력", key="btn_base", use_container_width=True):
                         st.session_state.numpad_buffer = ""
                         numpad_dialog("base_val", "BASE")
                 with c4: 
                     st.markdown("**COVER**")
+                    st.markdown("<br>", unsafe_allow_html=True) # 줄맞춤용 여백
                     cv_val = st.session_state.get("cover_val", "1")
                     if st.button(str(cv_val) if cv_val != "" else "입력", key="btn_cover", use_container_width=True):
                         st.session_state.numpad_buffer = ""
