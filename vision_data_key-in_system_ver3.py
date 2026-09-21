@@ -597,7 +597,7 @@ def admin_auth_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
-# 💡 복구된 SBL 경고 팝업 다이얼로그
+# 💡 SBL 경고 팝업 다이얼로그 (동적 Limit 매개변수 연동)
 @st.dialog("🚨 SBL 관리 한계 초과 알림")
 def show_sbl_warning(defect_name, rate, limit_val):
     st.markdown(f"""
@@ -612,14 +612,14 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Clean Version)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Split Layout & Tablet Fix)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
         admin_auth_dialog()
         st.stop()
         
-    # 💡 10분(600,000ms) 단위 Auto Rotate 타이머
+    # 💡 10분 단위 Auto Rotate 트리거 및 H_TICK 버튼 완벽 숨김 처리
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
@@ -627,14 +627,11 @@ if st.session_state.current_page == "analysis":
             const btns = window.parent.document.querySelectorAll('button');
             btns.forEach(btn => {
                 if(btn.innerText.includes('H_TICK')) {
-                    btn.style.display = 'none';
-                    btn.style.pointerEvents = 'none';
-                    btn.style.position = 'absolute';
-                    if(btn.parentElement) btn.parentElement.style.display = 'none';
+                    btn.style.setProperty('display', 'none', 'important');
                 }
             });
         };
-        hideBtn(); setTimeout(hideBtn, 100);
+        hideBtn(); setTimeout(hideBtn, 50); setTimeout(hideBtn, 500);
         
         setTimeout(function() {
             const btns = window.parent.document.querySelectorAll('button');
@@ -646,12 +643,15 @@ if st.session_state.current_page == "analysis":
             }
         }, 600000); 
         </script>
-        """, height=0)
-        
-        with st.container():
-            if st.button("H_TICK", key="hidden_tick_btn"):
-                st.session_state.rotate_idx += 1
-                st.rerun()
+        """, height=0, width=0)
+
+    # 💡 태블릿 터치 간섭 문제 해결을 위해 히든 버튼을 사이드바 맨 아래 보이지 않는 영역으로 완전 분리
+    with st.sidebar:
+        st.markdown("<div style='display:none;'>", unsafe_allow_html=True)
+        if st.button("H_TICK", key="hidden_tick_btn"):
+            st.session_state.rotate_idx += 1
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([0.5, 0.35, 0.15])
     with col1:
@@ -659,12 +659,11 @@ if st.session_state.current_page == "analysis":
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        c2_1, c2_2, c2_3 = st.columns([0.1, 0.9, 1])
+        # 💡 투명한 유령 컬럼(0.1 비율) 제거. 태블릿에서도 체크박스가 정상 클릭됨
+        c2_1, c2_2 = st.columns([1, 1])
         with c2_1:
-            st.markdown("<div style='position:absolute; left:-9999px;'></div>", unsafe_allow_html=True)
-        with c2_2:
             st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
-        with c2_3:
+        with c2_2:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -788,7 +787,6 @@ if st.session_state.current_page == "analysis":
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
-            # 💡 [SBL 알람 기준치 실시간 설정]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>⚙️ SBL 알람 기준치 설정 (%)</div>", unsafe_allow_html=True)
             limit_cols = st.columns(7)
             with limit_cols[0]: st.session_state.sbl_limits['Yield_Default'] = st.number_input("양품(기본)", value=st.session_state.sbl_limits['Yield_Default'], step=0.1)
@@ -799,7 +797,6 @@ if st.session_state.current_page == "analysis":
             with limit_cols[5]: st.session_state.sbl_limits['Def_Rear'] = st.number_input("배면불량", value=st.session_state.sbl_limits['Def_Rear'], step=0.1)
             with limit_cols[6]: st.session_state.sbl_limits['Def_Offset'] = st.number_input("옵셋불량", value=st.session_state.sbl_limits['Def_Offset'], step=0.1)
             
-            # 💡 [컬러 피커 커스터마이징 복구]
             st.markdown("<div style='margin-top:10px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>🎨 모델별 차트 색상 지정</div>", unsafe_allow_html=True)
             model_color_dict = {}
             if all_selected:
@@ -813,7 +810,6 @@ if st.session_state.current_page == "analysis":
                         st.session_state[k] = picked
                         model_color_dict[mod] = picked
 
-        # 💡 [Auto Rotate 필터링 적용] 활성화 시 단일 모델만 차트에 반영
         if st.session_state.get("auto_refresh_chk", False) and all_selected:
             current_idx = st.session_state.rotate_idx % len(all_selected)
             active_model = all_selected[current_idx]
@@ -827,7 +823,6 @@ if st.session_state.current_page == "analysis":
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-        # 💡 통합 수량 집계 함수 (오로지 6개의 값만 리턴하여 Unpack 에러 원천 차단)
         def get_qty_metrics(df_sub):
             if df_sub.empty: return 0, 0, 0, 0, 0, 0
             t_ins = df_sub['검사수량'].sum()
@@ -846,11 +841,9 @@ if st.session_state.current_page == "analysis":
         df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-        # 💡 [화면 분할 구조 적용 (75% vs 25%)]
         main_left_col, main_right_col = st.columns([0.76, 0.24])
         
         with main_left_col:
-            # 💡 [도넛 차트 레이블 한글화 및 좌측 정렬 (rotation=270, clockwise)]
             def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
                 labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
                 values = [q_good, q_comp, q_front, q_rear, q_offset]
@@ -862,7 +855,6 @@ if st.session_state.current_page == "analysis":
                         l.append(label)
                         v.append(val)
                         c.append(color)
-                        # 전체 검사수량 대비 절대 백분율 강제 적용
                         pct = (val / t_ins * 100) if t_ins > 0 else 0
                         txt.append(f"{label}<br>{pct:.1f}%")
                         
@@ -872,7 +864,7 @@ if st.session_state.current_page == "analysis":
                     textinfo='text', text=txt, textposition='outside', 
                     textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
                     hoverinfo='label+value',
-                    sort=False, direction='clockwise', rotation=270 # 불량률을 9시~12시 영역으로 강제 할당
+                    sort=False, direction='clockwise', rotation=270 
                 )])
                 
                 fig.update_layout(
@@ -881,11 +873,12 @@ if st.session_state.current_page == "analysis":
                                       x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
                     showlegend=False,
                     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                    margin=dict(l=60, r=60, t=50, b=20), # 분할 영역 크기에 맞춘 여백 최적화
+                    margin=dict(l=60, r=60, t=50, b=20), 
                     height=350
                 )
                 return fig
 
+            st.markdown("<br>", unsafe_allow_html=True) # 텍스트 타이틀 완전히 삭제, 여백으로 교체
             donut_c1, donut_c2, donut_c3 = st.columns(3)
             with donut_c1:
                 with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
@@ -896,10 +889,15 @@ if st.session_state.current_page == "analysis":
 
             base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
-            # 💡 [데이터 정렬 로직 (소요시간 기준 및 LOT 원형 텍스트 보존)]
             if not base_df_48h.empty:
                 base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                 base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
+                def clean_lot(val):
+                    val = str(val).replace("'", "").strip()
+                    if val.endswith('.0'): val = val[:-2]
+                    if val.isdigit() and len(val) > 0: return val.zfill(5)
+                    return val if val else 'UNKNOWN'
+                base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
                 base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
             # --- 2-1. YIELD TREND (Line Chart) ---
@@ -939,7 +937,7 @@ if st.session_state.current_page == "analysis":
                     title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                     plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                     font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
                     margin=dict(l=30, r=30, t=70, b=50), height=400, hovermode='x unified'
                 )
                 
@@ -994,7 +992,7 @@ if st.session_state.current_page == "analysis":
                     sbl_items = []
                     for _, r in base_df_48h.iterrows():
                         mod = str(r.get('모델명(MI)', ''))
-                        lot = str(r.get('LOT NO.', ''))
+                        lot = str(r.get('LOT NO.', '')).replace("'", "")
                         t_str = r['DateTime'].strftime('%m-%d %H:%M')
                         
                         if is_yield:
@@ -1016,7 +1014,6 @@ if st.session_state.current_page == "analysis":
                             html += f"<div class='sbl-card'><div class='sbl-text'>[{item['Time']}] {item['Mod']}<br>LOT: {item['Lot']}<br><span style='color:#b91c1c; font-weight:bold;'>Value: {item['Val']:.1f}%</span> <span style='font-size:0.7rem; color:#64748b;'>(Limit: {item['Limit']:.1f}%)</span></div></div>"
                     return html
                 
-                # 우측 영역 내 스크롤이 가능하도록 고정 높이 컨테이너 적용
                 html_combined = f"""
                 <div style='max-height: 1100px; overflow-y: auto; padding-right: 5px; margin-bottom: 10px;'>
                     {render_sbl_list('Yield_1', "Yield SBL List", is_yield=True)}
@@ -1476,19 +1473,18 @@ elif st.session_state.current_page == "input":
                         st.session_state.numpad_buffer = val if val != "0" else ""
                         numpad_dialog("etc_def", "기타")
 
-            # 💡 [SBL 동적 알람 팝업 로직 적용]
             if total_qty > 0:
                 comp_rate = (st.session_state.get("comp_def", 0) / total_qty) * 100
                 front_rate = (st.session_state.get("front_def", 0) / total_qty) * 100
                 rear_rate = (st.session_state.get("rear_def", 0) / total_qty) * 100
                 offset_rate = (st.session_state.get("offset_def", 0) / total_qty) * 100
                 
+                # 💡 입력 창에서 알람 발동 시 대시보드(분석) 세팅의 Limit 값을 가져와서 비교
                 limit_c = st.session_state.sbl_limits.get('Def_Comp', 10.0)
                 limit_f = st.session_state.sbl_limits.get('Def_Front', 5.0)
                 limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
                 limit_o = st.session_state.sbl_limits.get('Def_Offset', 5.0)
                 
-                # 순차적 알람 팝업 처리
                 if comp_rate > limit_c and not st.session_state.get("comp_warned", False):
                     show_sbl_warning("완전불량", comp_rate, limit_c)
                     st.session_state.comp_warned = True
