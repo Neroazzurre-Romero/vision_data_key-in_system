@@ -597,7 +597,7 @@ def admin_auth_dialog():
         else:
             st.error("비밀번호가 일치하지 않습니다.")
 
-# 💡 복구된 SBL 경고 팝업 다이얼로그 (동적 Limit 매개변수 적용)
+# 💡 복구된 SBL 경고 팝업 다이얼로그
 @st.dialog("🚨 SBL 관리 한계 초과 알림")
 def show_sbl_warning(defect_name, rate, limit_val):
     st.markdown(f"""
@@ -612,7 +612,7 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Clean Version)
+# 💡 Administrator (AI 종합 분석 대시보드 - Split Layout Version)
 # ==========================================
 if st.session_state.current_page == "analysis":
     if not st.session_state.admin_authenticated:
@@ -693,7 +693,6 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
-        # 💡 LOT 5자리 텍스트 고정 (zfill)
         def parse_lot(val):
             val_str = str(val).replace("'", "").strip()
             if val_str.endswith('.0'):
@@ -822,195 +821,214 @@ if st.session_state.current_page == "analysis":
 
         active_models_list = list(set(display_std + display_inc))
         base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
-
-        def get_qty_metrics(df_sub):
-            if df_sub.empty: return 0, 0, 0, 0, 0, 0
-            t_ins = df_sub['검사수량'].sum()
-            q_comp = df_sub['완전불량_Qty'].sum()
-            q_front = df_sub['전면불량_Qty'].sum()
-            q_rear = df_sub['배면불량_Qty'].sum()
-            q_offset = df_sub['옵셋불량_Qty'].sum()
-            q_good = 0
-            for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
-            for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
-            return t_ins, q_good, q_comp, q_front, q_rear, q_offset
-        
-        o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
-        df_yesterday = base_df_72h[base_df_72h['DateOnly'] == yesterday_date].copy() if not base_df_72h.empty else pd.DataFrame()
-        y_t, y_g, y_c, y_f, y_r, y_o = get_qty_metrics(df_yesterday)
-        df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
-        h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
-
-        def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
-            labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
-            values = [q_good, q_comp, q_front, q_rear, q_offset]
-            colors = ['#3B82F6', '#1E3A8A', '#FFC000', '#10B981', '#8B5CF6']
-            
-            l, v, c, txt = [], [], [], []
-            for label, val, color in zip(labels, values, colors):
-                if val > 0:
-                    l.append(label)
-                    v.append(val)
-                    c.append(color)
-                    pct = (val / t_ins * 100) if t_ins > 0 else 0
-                    txt.append(f"{label}<br>{pct:.1f}%")
-                    
-            fig = go.Figure(data=[go.Pie(
-                labels=l, values=v, hole=0.65,
-                marker=dict(colors=c, line=dict(color='#ffffff', width=2)),
-                textinfo='text', text=txt, textposition='outside', 
-                textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
-                hoverinfo='label+value',
-                sort=False, direction='clockwise', rotation=270 
-            )])
-            
-            fig.update_layout(
-                title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
-                annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#64748b;'>Inspected</span>", 
-                                  x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
-                showlegend=False,
-                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=120, r=120, t=60, b=20), 
-                height=350
-            )
-            return fig
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        donut_c1, donut_c2, donut_c3 = st.columns(3)
-        with donut_c1:
-            with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
-        with donut_c2:
-            with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
-        with donut_c3:
-            with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
-
         base_df_48h = df_48h[df_48h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
+        # 💡 [데이터 정렬 로직 (시간 겹침 방지 및 LOT 문자열 원본 보존)]
         if not base_df_48h.empty:
             base_df_48h['소요시간_num'] = pd.to_numeric(base_df_48h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
             base_df_48h = base_df_48h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
-            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).astype(str).str.replace(r"^'", "", regex=True)
-            base_df_48h['LOT NO.'] = base_df_48h['LOT NO.'].replace({'': 'UNKNOWN', 'nan': 'UNKNOWN', 'None': 'UNKNOWN'}).fillna('UNKNOWN')
+            def clean_lot(val):
+                val = str(val).replace("'", "").strip()
+                if val.endswith('.0'): val = val[:-2]
+                if val.isdigit() and len(val) > 0: return val.zfill(5)
+                return val if val else 'UNKNOWN'
+            base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
             base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-        # --- 2-1. YIELD TREND (Line Chart) ---
-        with st.container(border=True):
-            fig_yld = go.Figure()
-            y_min = 50.0
-            if not base_df_48h.empty:
-                all_val = base_df_48h['Yield_1'].dropna().tolist() + base_df_48h['Yield_2'].dropna().tolist()
-                if all_val: y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
-            if y_min > 80: y_min = 80.0
+        # 💡 [화면 분할 구조 적용 (75% vs 25%)]
+        main_left_col, main_right_col = st.columns([0.76, 0.24])
+        
+        with main_left_col:
+            # 💡 [1. Aggregated Data] - 도넛 차트
+            def get_qty_metrics(df_sub):
+                if df_sub.empty: return 0, 0, 0, 0, 0, 0
+                t_ins = df_sub['검사수량'].sum()
+                q_comp = df_sub['완전불량_Qty'].sum()
+                q_front = df_sub['전면불량_Qty'].sum()
+                q_rear = df_sub['배면불량_Qty'].sum()
+                q_offset = df_sub['옵셋불량_Qty'].sum()
+                q_good = 0
+                for mod in display_std: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_Qty'].sum()
+                for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
+                return t_ins, q_good, q_comp, q_front, q_rear, q_offset
+            
+            o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
+            df_yesterday = base_df_72h[base_df_72h['DateOnly'] == yesterday_date].copy() if not base_df_72h.empty else pd.DataFrame()
+            y_t, y_g, y_c, y_f, y_r, y_o = get_qty_metrics(df_yesterday)
+            df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
+            h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
-            if not base_df_48h.empty:
-                for mod in display_std:
-                    m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
-                    if m_df.empty: continue
-                    c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(
-                        x=m_df.index, y=m_df['Yield_1'], name=f"[{mod}] 양품율(기본)", 
-                        mode='lines+markers+text', 
-                        text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
-                        textposition='bottom center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
-                        line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='circle'), hovertext=m_df['HoverText']
-                    ))
-                for mod in display_inc:
-                    m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
-                    if m_df.empty: continue
-                    c1 = model_color_dict[mod]
-                    fig_yld.add_trace(go.Scatter(
-                        x=m_df.index, y=m_df['Yield_2'], name=f"[{mod}] 양품율(포함)", 
-                        mode='lines+markers+text', 
-                        text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
-                        textposition='top center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
-                        line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='diamond'), hovertext=m_df['HoverText']
-                    ))
+            def make_donut_chart(title, t_ins, q_good, q_comp, q_front, q_rear, q_offset):
+                labels = ['양품율', '완전불량', '전면불량', '배면불량', '옵셋불량']
+                values = [q_good, q_comp, q_front, q_rear, q_offset]
+                colors = ['#3B82F6', '#1E3A8A', '#FFC000', '#10B981', '#8B5CF6']
+                
+                l, v, c, txt = [], [], [], []
+                for label, val, color in zip(labels, values, colors):
+                    if val > 0:
+                        l.append(label)
+                        v.append(val)
+                        c.append(color)
+                        pct = (val / t_ins * 100) if t_ins > 0 else 0
+                        txt.append(f"{label}<br>{pct:.1f}%")
+                        
+                fig = go.Figure(data=[go.Pie(
+                    labels=l, values=v, hole=0.65,
+                    marker=dict(colors=c, line=dict(color='#ffffff', width=2)),
+                    textinfo='text', text=txt, textposition='outside', 
+                    textfont=dict(color='#0f172a', weight='bold', size=13, family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"),
+                    hoverinfo='label+value',
+                    sort=False, direction='clockwise', rotation=270 
+                )])
+                
+                fig.update_layout(
+                    title=dict(text=f"■ {title}", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"), x=0.5, xanchor='center'),
+                    annotations=[dict(text=f"{t_ins:,.0f}<br><span style='font-size:12px; color:#64748b;'>Inspected</span>", 
+                                      x=0.5, y=0.5, font_size=26, font_color='#1e293b', font_family="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif", showarrow=False)],
+                    showlegend=False,
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=60, r=60, t=50, b=20), # 분할 영역 크기에 맞춘 여백 최적화
+                    height=350
+                )
+                return fig
 
-            fig_yld.update_layout(
-                title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
-                plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
-                font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
-                margin=dict(l=30, r=200, t=70, b=50), height=400, hovermode='x unified'
-            )
-            
-            if not base_df_48h.empty:
-                x_labels_yld = [r['DateTime'].strftime('%m-%d %H:%M') for _, r in base_df_48h.iterrows()]
-                fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', tickmode='array', tickvals=base_df_48h.index, ticktext=x_labels_yld)
-            else:
-                fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
-                
-            fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 105.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
-            st.plotly_chart(fig_yld, use_container_width=True)
-            
-        # --- 2-2. DEFECT TREND (Bar Chart) ---
-        with st.container(border=True):
-            fig_def = go.Figure()
-            
-            if not base_df_48h.empty:
-                x_indices = base_df_48h.index
-                x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_48h.iterrows()]
-                
-                fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df_48h['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df_48h['HoverText']))
-                fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df_48h['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
-                fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df_48h['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
-                fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_48h['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
+            donut_c1, donut_c2, donut_c3 = st.columns(3)
+            with donut_c1:
+                with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
+            with donut_c2:
+                with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
+            with donut_c3:
+                with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
 
-            fig_def.update_layout(
-                barmode='stack', bargap=0.2, 
-                title=dict(text=f"■ DEFECT TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
-                plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
-                font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01),
-                margin=dict(l=30, r=200, t=50, b=50), height=400, hovermode='x unified'
-            )
-            
-            if not base_df_48h.empty:
-                fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1', tickmode='array', tickvals=x_indices, ticktext=x_labels_def)
-            else:
-                fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1')
-                
-            fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
-            st.plotly_chart(fig_def, use_container_width=True)
+            # --- 2-1. YIELD TREND (Line Chart) ---
+            with st.container(border=True):
+                fig_yld = go.Figure()
+                y_min = 50.0
+                if not base_df_48h.empty:
+                    all_val = base_df_48h['Yield_1'].dropna().tolist() + base_df_48h['Yield_2'].dropna().tolist()
+                    if all_val: y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
+                if y_min > 80: y_min = 80.0
 
-        with st.container(border=True):
-            st.markdown("<div class='metric-label'>■ SBL ALERT HISTORY (Recent 48H)</div>", unsafe_allow_html=True)
-            sb1, sb2, sb3, sb4, sb5 = st.columns(5)
-            
-            def render_sbl_list(d_col, title, is_yield=False):
-                html = f"<div class='sbl-title'>{title}</div>"
-                if base_df_48h.empty: return html + "<div class='sbl-text'>No data.</div>"
+                if not base_df_48h.empty:
+                    for mod in display_std:
+                        m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
+                        if m_df.empty: continue
+                        c1 = model_color_dict[mod]
+                        fig_yld.add_trace(go.Scatter(
+                            x=m_df.index, y=m_df['Yield_1'], name=f"[{mod}] 양품율(기본)", 
+                            mode='lines+markers+text', 
+                            text=m_df['Yield_1'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
+                            textposition='bottom center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
+                            line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='circle'), hovertext=m_df['HoverText']
+                        ))
+                    for mod in display_inc:
+                        m_df = base_df_48h[base_df_48h['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
+                        if m_df.empty: continue
+                        c1 = model_color_dict[mod]
+                        fig_yld.add_trace(go.Scatter(
+                            x=m_df.index, y=m_df['Yield_2'], name=f"[{mod}] 양품율(포함)", 
+                            mode='lines+markers+text', 
+                            text=m_df['Yield_2'].apply(lambda x: f"{x:.1f}%") + "<br>LOT: " + m_df['LOT NO.'], 
+                            textposition='top center', textfont=dict(size=13, color='#1e293b', weight='bold'), 
+                            line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='diamond'), hovertext=m_df['HoverText']
+                        ))
+
+                fig_yld.update_layout(
+                    title=dict(text=f"■ YIELD TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
+                    plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
+                    font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), # 좁은 공간 활용을 위해 상단 수평 배치
+                    margin=dict(l=30, r=30, t=70, b=50), height=400, hovermode='x unified'
+                )
                 
-                sbl_items = []
-                for _, r in base_df_48h.iterrows():
-                    mod = str(r.get('모델명(MI)', ''))
-                    lot = str(r.get('LOT NO.', ''))
-                    t_str = r['DateTime'].strftime('%H:%M')
-                    
-                    if is_yield:
-                        val = r['Yield_2'] if mod in display_inc else r['Yield_1']
-                        limit = st.session_state.sbl_limits.get(f'Yield_{mod}', st.session_state.sbl_limits['Yield_Default'])
-                        if pd.notna(val) and 0 < val < limit:
-                            sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
-                    else:
-                        val = r[d_col]
-                        limit = st.session_state.sbl_limits.get(d_col, 5.0)
-                        if pd.notna(val) and val > limit:
-                            sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
-                
-                if not sbl_items:
-                    html += "<div class='sbl-text'>No alerts.</div>"
+                if not base_df_48h.empty:
+                    x_labels_yld = [r['DateTime'].strftime('%m-%d %H:%M') for _, r in base_df_48h.iterrows()]
+                    fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', tickmode='array', tickvals=base_df_48h.index, ticktext=x_labels_yld)
                 else:
-                    sbl_items = sorted(sbl_items, key=lambda x: x['Time'], reverse=True)[:5]
-                    for item in sbl_items:
-                        html += f"<div class='sbl-card'><div class='sbl-text'>[{item['Time']}] {item['Mod']}<br>LOT: {item['Lot']}<br><b>Value: {item['Val']:.1f}%</b> (Limit: {item['Limit']:.1f}%)</div></div>"
-                return html
+                    fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
+                    
+                fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 105.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
+                st.plotly_chart(fig_yld, use_container_width=True)
+                
+            # --- 2-2. DEFECT TREND (Bar Chart) ---
+            with st.container(border=True):
+                fig_def = go.Figure()
+                
+                if not base_df_48h.empty:
+                    x_indices = base_df_48h.index
+                    x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_48h.iterrows()]
+                    
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df_48h['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df_48h['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df_48h['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df_48h['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_48h['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_48h['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_48h['HoverText']))
 
-            with sb1: st.markdown(render_sbl_list('Yield_1', "Yield SBL List", is_yield=True), unsafe_allow_html=True)
-            with sb2: st.markdown(render_sbl_list('Def_Comp', "Comp Defect", is_yield=False), unsafe_allow_html=True)
-            with sb3: st.markdown(render_sbl_list('Def_Front', "Front Defect", is_yield=False), unsafe_allow_html=True)
-            with sb4: st.markdown(render_sbl_list('Def_Rear', "Rear Defect", is_yield=False), unsafe_allow_html=True)
-            with sb5: st.markdown(render_sbl_list('Def_Offset', "Offset Defect", is_yield=False), unsafe_allow_html=True)
+                fig_def.update_layout(
+                    barmode='stack', bargap=0.2, 
+                    title=dict(text=f"■ DEFECT TREND (48H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
+                    plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
+                    font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(l=30, r=30, t=50, b=50), height=400, hovermode='x unified'
+                )
+                
+                if not base_df_48h.empty:
+                    fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1', tickmode='array', tickvals=x_indices, ticktext=x_labels_def)
+                else:
+                    fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1')
+                    
+                fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
+                st.plotly_chart(fig_def, use_container_width=True)
+
+        # 💡 [SBL 우측 분할 화면 영역] 
+        with main_right_col:
+            with st.container(border=True):
+                st.markdown("<div class='metric-label' style='margin-top:5px; font-size:1.2rem;'>■ RECENT 48H ALERTS</div>", unsafe_allow_html=True)
+                
+                def render_sbl_list(d_col, title, is_yield=False):
+                    html = f"<div class='sbl-title' style='margin-top:10px;'>{title}</div>"
+                    if base_df_48h.empty: return html + "<div class='sbl-text'>No data.</div>"
+                    
+                    sbl_items = []
+                    for _, r in base_df_48h.iterrows():
+                        mod = str(r.get('모델명(MI)', ''))
+                        lot = str(r.get('LOT NO.', '')).replace("'", "")
+                        t_str = r['DateTime'].strftime('%m-%d %H:%M')
+                        
+                        if is_yield:
+                            val = r['Yield_2'] if mod in display_inc else r['Yield_1']
+                            limit = st.session_state.sbl_limits.get(f'Yield_{mod}', st.session_state.sbl_limits['Yield_Default'])
+                            if pd.notna(val) and 0 < val < limit:
+                                sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
+                        else:
+                            val = r[d_col]
+                            limit = st.session_state.sbl_limits.get(d_col, 5.0)
+                            if pd.notna(val) and val > limit:
+                                sbl_items.append({'Time': t_str, 'Mod': mod, 'Lot': lot, 'Val': val, 'Limit': limit})
+                    
+                    if not sbl_items:
+                        html += "<div class='sbl-text' style='color:#64748b !important; padding-bottom:5px;'>No alerts detected.</div>"
+                    else:
+                        sbl_items = sorted(sbl_items, key=lambda x: x['Time'], reverse=True)[:5]
+                        for item in sbl_items:
+                            html += f"<div class='sbl-card'><div class='sbl-text'>[{item['Time']}] {item['Mod']}<br>LOT: {item['Lot']}<br><span style='color:#b91c1c; font-weight:bold;'>Value: {item['Val']:.1f}%</span> <span style='font-size:0.7rem; color:#64748b;'>(Limit: {item['Limit']:.1f}%)</span></div></div>"
+                    return html
+                
+                # 우측 영역 내 스크롤이 가능하도록 고정 높이 컨테이너 적용
+                html_combined = f"""
+                <div style='max-height: 1100px; overflow-y: auto; padding-right: 5px; margin-bottom: 10px;'>
+                    {render_sbl_list('Yield_1', "Yield SBL List", is_yield=True)}
+                    <hr style='margin: 15px 0; border-color: #cbd5e1;'>
+                    {render_sbl_list('Def_Comp', "Complete Defect", is_yield=False)}
+                    <hr style='margin: 15px 0; border-color: #cbd5e1;'>
+                    {render_sbl_list('Def_Front', "Front Defect", is_yield=False)}
+                    <hr style='margin: 15px 0; border-color: #cbd5e1;'>
+                    {render_sbl_list('Def_Rear', "Rear Defect", is_yield=False)}
+                    <hr style='margin: 15px 0; border-color: #cbd5e1;'>
+                    {render_sbl_list('Def_Offset', "Offset Defect", is_yield=False)}
+                </div>
+                """
+                st.markdown(html_combined, unsafe_allow_html=True)
 
 # ==========================================
 # Main Input App
@@ -1468,7 +1486,7 @@ elif st.session_state.current_page == "input":
                 limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
                 limit_o = st.session_state.sbl_limits.get('Def_Offset', 5.0)
                 
-                # 순차적 알람 팝업 처리 (여러 개 동시 초과 시 하나씩 띄움)
+                # 순차적 알람 팝업 처리
                 if comp_rate > limit_c and not st.session_state.get("comp_warned", False):
                     show_sbl_warning("완전불량", comp_rate, limit_c)
                     st.session_state.comp_warned = True
