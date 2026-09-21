@@ -200,7 +200,6 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# 💡 글로벌 CSS: 사이드바 아이콘 깨짐 방지 완벽 처리
 global_theme_css = """
 <style>
 footer { display: none !important; } 
@@ -255,6 +254,7 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
+/* 💡 외부 뷰어 링크 버튼 전용 CSS */
 div[data-testid="stLinkButton"] a {
     display: flex !important; justify-content: center !important; align-items: center !important;
     background-color: #1e293b !important; color: #FFC000 !important;
@@ -266,14 +266,110 @@ div[data-testid="stLinkButton"] a {
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 div[data-testid="stRadio"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
-
 div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
 
-# 💡 헬퍼 함수 선언부
+# 💡 페이지 이동 시 멈춤(Freezing) 방지를 위해 자바스크립트 타이머 및 해제(Disconnect) 로직 추가
+if st.session_state.current_page == "input":
+    st.markdown("""<style>[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; }</style>""", unsafe_allow_html=True)
+    components.html(
+        """
+        <script>
+        if (window.parent && !window.parent.appPluginLoadedFull) {
+            window.parent.appPluginLoadedFull = true;
+            const formatNavButtons = () => {
+                if (!window.parent.document) return;
+                const buttons = window.parent.document.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    const text = btn.innerText || "";
+                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
+                        btn.style.setProperty('background', '#305496', 'important');
+                        btn.style.setProperty('background-color', '#305496', 'important');
+                        btn.style.setProperty('border', '1px solid #203864', 'important');
+                        btn.style.setProperty('color', '#ffffff', 'important');
+                        btn.style.setProperty('box-shadow', 'none', 'important');
+                    }
+                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
+                        btn.style.setProperty('height', '70px', 'important'); 
+                        btn.style.setProperty('max-height', '70px', 'important');
+                        btn.style.setProperty('font-size', '1.2rem', 'important');
+                        btn.style.setProperty('margin-top', '0px', 'important');
+                    }
+                    if (text.trim() === 'ADMINISTRATOR' || text.trim() === 'VIEWER') { 
+                        btn.style.setProperty('background', '#1e293b', 'important');
+                        btn.style.setProperty('background-color', '#1e293b', 'important');
+                        btn.style.setProperty('color', '#FFC000', 'important');
+                        btn.style.setProperty('border', '1px solid #0f172a', 'important');
+                        btn.style.setProperty('height', '7.2rem', 'important');
+                        btn.style.setProperty('min-height', '7.2rem', 'important');
+                        btn.style.setProperty('max-height', '7.2rem', 'important');
+                        btn.style.setProperty('font-size', '1.4rem', 'important');
+                        btn.style.setProperty('font-weight', '900', 'important');
+                    }
+                });
+            };
+            const styleScanner = () => {
+                if (!window.parent.document) return;
+                window.parent.document.querySelectorAll('input').forEach(el => {
+                    if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
+                        el.style.setProperty('font-size', '1.2rem', 'important');
+                        el.style.setProperty('font-weight', '900', 'important');
+                        let parentDiv = el.parentElement;
+                        let grandParent = el.closest('div[data-baseweb="input"]');
+                        if (parentDiv) parentDiv.style.setProperty('border', 'none', 'important');
+                        if (grandParent) grandParent.style.setProperty('border', '2px solid #eab308', 'important');
+                        if (!el.getAttribute('data-scanner-listener')) {
+                            el.setAttribute('data-scanner-listener', 'true');
+                            el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
+                            el.addEventListener('blur', () => { el.removeAttribute('data-focused'); });
+                        }
+                        if (el.getAttribute('data-focused')) {
+                            el.style.setProperty('color', '#ffffff', 'important');
+                            if (parentDiv) parentDiv.style.setProperty('background-color', '#1e293b', 'important');
+                            if (grandParent) grandParent.style.setProperty('background-color', '#1e293b', 'important');
+                        } else {
+                            el.style.setProperty('color', '#000000', 'important');
+                            if (parentDiv) parentDiv.style.setProperty('background-color', '#fef08a', 'important');
+                            if (grandParent) grandParent.style.setProperty('background-color', '#fef08a', 'important');
+                        }
+                    }
+                });
+            };
+            const disableKeyboard = () => {
+                if (!window.parent.document) return;
+                const inputs = window.parent.document.querySelectorAll('input');
+                inputs.forEach(el => {
+                    const placeholder = el.getAttribute('placeholder') || '';
+                    const ariaLabel = el.getAttribute('aria-label') || '';
+                    const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
+                    const isDatepicker = el.closest('div[data-baseweb="datepicker"]') !== null;
+                    if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
+                        ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
+                        isDropdown || isDatepicker) {
+                        el.setAttribute('inputmode', 'none');
+                        el.setAttribute('readonly', 'readonly');
+                        el.addEventListener('focus', function(e) { e.target.blur(); });
+                    }
+                });
+            };
+            
+            let tOut = null;
+            const observer = new MutationObserver(() => { 
+                if (tOut) clearTimeout(tOut);
+                tOut = setTimeout(() => { disableKeyboard(); formatNavButtons(); styleScanner(); }, 50);
+            });
+            if (window.parent.document.body) { 
+                observer.observe(window.parent.document.body, { childList: true, subtree: true }); 
+            }
+            window.addEventListener('unload', () => { observer.disconnect(); });
+        }
+        </script>
+        """, height=0, width=0
+    )
+
 def render_grid_buttons(options, state_key, columns, use_width=True):
     rows = [options[i:i+columns] for i in range(0, len(options), columns)]
     for row_opts in rows:
@@ -1402,7 +1498,7 @@ elif st.session_state.current_page == "input":
     with top_c2:
         b1, b2 = st.columns(2)
         with b1:
-            st.link_button("VIEWER", "https://visiondatakey-inviewer.streamlit.app/?viewer=true", use_container_width=True)
+            st.link_button("VIEWER", "https://vision-data-viewer-zfmhextlbuluocyrbjzquz.streamlit.app/?viewer=true", use_container_width=True)
         with b2:
             if st.button("ADMINISTRATOR", use_container_width=True, type="primary"):
                 st.session_state.current_page = "analysis"
