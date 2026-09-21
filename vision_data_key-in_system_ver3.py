@@ -57,7 +57,7 @@ if "unlocked" in st.query_params:
 
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
-# 💡 SBL Limit 초기값 세팅 (세션 스테이트 보존)
+# 💡 SBL Limit 초기값 세팅
 if "sbl_limits" not in st.session_state:
     st.session_state.sbl_limits = {
         "Yield_Default": 85.0,
@@ -179,19 +179,18 @@ if not st.session_state.unlocked:
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
-# 💡 빛나는 네이비/화이트 ERP 라이트 테마
+# 💡 글로벌 테마 적용 (좌상단 화살표 삭제 및 전역 폰트 적용)
 global_theme_css = """
 <style>
 footer { display: none !important; } 
-[data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; opacity: 1 !important; z-index: 99999 !important; }
+/* 💡 좌상단 접기 화살표 영구 삭제 및 터치 간섭 방지 */
+[data-testid="collapsedControl"] { display: none !important; pointer-events: none !important; }
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
 .block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
-/* 전역 폰트 통합 */
 h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
 
-/* 배경 밝게, 포인트 컬러 남색(#1e293b) */
 [data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; color: #1e293b !important; }
 [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #cbd5e1 !important; }
 [data-testid="stSidebar"] * { color: #f8fafc !important; }
@@ -201,56 +200,36 @@ h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo'
 [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
 [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
 
-/* 카드 디자인 */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #ffffff !important;
-    border-radius: 12px !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important;
-    padding: 1.5rem !important;
-    margin-bottom: 0.8rem !important;
-}
+div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
 
-/* Expander 사이드바 네이비 색상 및 화살표 에러 완벽 해결 */
 div[data-testid="stExpander"] { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; }
 div[data-testid="stExpander"] details summary { background-color: #0f172a !important; border-bottom: 1px solid #0f172a !important; padding: 10px 15px !important; }
 div[data-testid="stExpander"] details summary:hover { background-color: #1e293b !important; }
 div[data-testid="stExpander"] details summary p { text-align: right !important; color: #ffffff !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; width: 100%; margin-right: 10px; }
-div[data-testid="stExpander"] details summary svg, 
-div[data-testid="stExpander"] details summary .material-symbols-rounded,
-div[data-testid="stExpander"] details summary span[class*="st-icon"] { 
-    display: none !important; 
-    font-size: 0px !important; 
-    color: transparent !important; 
-}
+div[data-testid="stExpander"] details summary svg { display: none !important; }
 
-/* 타이틀 및 라벨 텍스트 */
 .command-header { color: #1e293b !important; font-weight: 900 !important; letter-spacing: 1px; }
 .metric-label { color: #1e293b !important; font-size: 1.1rem !important; font-weight: 800 !important; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid #1e293b; padding-bottom: 5px; }
 
-/* SBL 카드 */
 .sbl-card { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 6px; padding: 10px; margin-bottom: 5px; }
 .sbl-title { color: #b91c1c !important; font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; border-bottom: 1px solid #fecaca; padding-bottom: 3px; }
 .sbl-text { color: #1e293b !important; font-size: 0.8rem; line-height: 1.4;}
 
-/* Blinking Live Dot */
 @keyframes blink { 0% { opacity: 1; box-shadow: 0 0 10px #3b82f6; } 50% { opacity: 0.3; box-shadow: 0 0 2px #3b82f6; } 100% { opacity: 1; box-shadow: 0 0 10px #3b82f6; } }
 .live-dot { height: 12px; width: 12px; background-color: #3b82f6; border-radius: 50%; display: inline-block; margin-right: 12px; margin-bottom: 2px; animation: blink 1.5s ease-in-out infinite; }
 
-/* Custom Selectbox */
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stMultiSelect"] span[data-baseweb="tag"] { background-color: #1e293b !important; color: #ffffff !important; font-weight: bold !important; border: none !important; }
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div > div { color: #1e293b !important; font-weight: bold !important; font-size: 1rem !important; }
 
-/* Buttons & Checkbox */
 div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; border-radius: 8px !important; background-color: #E7E6E6 !important; color: #000000 !important; border: 1px solid #cbd5e1 !important; transition: all 0.2s ease; }
 div[data-testid="stButton"] button:hover { background-color: #1e293b !important; color: #ffffff !important; border-color: #1e293b !important; }
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
+
+/* 터치 간섭 방지 */
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
-
-/* Number Input Box Customization */
 div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
@@ -586,18 +565,6 @@ def timepad_dialog(field_key, display_name):
                     st.rerun()
             except ValueError: pass
 
-@st.dialog("🔒 관리자 인증")
-def admin_auth_dialog():
-    st.markdown("<div style='color:#94A3B8; margin-bottom:10px;'>분석 데이터를 확인하려면 관리자 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
-    pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력")
-    if st.button("✅ 확인", type="primary", use_container_width=True):
-        if pwd == "6233":
-            st.session_state.admin_authenticated = True
-            st.rerun()
-        else:
-            st.error("비밀번호가 일치하지 않습니다.")
-
-# 💡 SBL 경고 팝업 다이얼로그 (동적 Limit 매개변수 연동)
 @st.dialog("🚨 SBL 관리 한계 초과 알림")
 def show_sbl_warning(defect_name, rate, limit_val):
     st.markdown(f"""
@@ -612,31 +579,51 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Split Layout & Tablet Fix)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Sidebar Fix & Manual Rotate)
 # ==========================================
 if st.session_state.current_page == "analysis":
+    # 💡 분석 페이지 진입 시 사이드바 완전 차단 (X버튼 버그 해결용 풀스크린 인증창 적용)
+    st.markdown("""
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="collapsedControl"] { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     if not st.session_state.admin_authenticated:
-        admin_auth_dialog()
+        # 팝업(Dialog) 대신 안전한 전체화면 컨테이너로 관리자 인증 구현
+        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+        col_sp1, col_auth, col_sp3 = st.columns([1, 1, 1])
+        with col_auth:
+            with st.container(border=True):
+                st.markdown("<h3 style='text-align:center; color:#1e293b; font-weight:900;'>🔒 관리자 인증</h3>", unsafe_allow_html=True)
+                st.markdown("<div style='text-align:center; color:#64748b; margin-bottom:20px; font-weight:bold;'>분석 데이터를 확인하려면 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
+                pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력")
+                st.markdown("<br>", unsafe_allow_html=True)
+                btn_c1, btn_c2 = st.columns(2)
+                with btn_c1:
+                    if st.button("⬅️ 돌아가기", use_container_width=True):
+                        st.session_state.current_page = "input"
+                        st.session_state.app_mode = "START"
+                        st.session_state.step = 1
+                        st.rerun()
+                with btn_c2:
+                    if st.button("✅ 확인", type="primary", use_container_width=True):
+                        if pwd == "6233":
+                            st.session_state.admin_authenticated = True
+                            st.rerun()
+                        else:
+                            st.error("비밀번호가 일치하지 않습니다.")
         st.stop()
         
-    # 💡 10분 단위 Auto Rotate 트리거 및 H_TICK 버튼 완벽 숨김 처리
+    # 💡 10분 단위 Auto Rotate 트리거 로직 (Manual Rotate 버튼 클릭)
     if st.session_state.get("auto_refresh_chk", False):
         components.html("""
         <script>
-        const hideBtn = () => {
-            const btns = window.parent.document.querySelectorAll('button');
-            btns.forEach(btn => {
-                if(btn.innerText.includes('H_TICK')) {
-                    btn.style.setProperty('display', 'none', 'important');
-                }
-            });
-        };
-        hideBtn(); setTimeout(hideBtn, 50); setTimeout(hideBtn, 500);
-        
         setTimeout(function() {
             const btns = window.parent.document.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){
-                if(btns[i].innerText.includes('H_TICK')){
+                if(btns[i].innerText.includes('Manual Rotate')){
                     btns[i].click();
                     break;
                 }
@@ -645,25 +632,22 @@ if st.session_state.current_page == "analysis":
         </script>
         """, height=0, width=0)
 
-    # 💡 태블릿 터치 간섭 문제 해결을 위해 히든 버튼을 사이드바 맨 아래 보이지 않는 영역으로 완전 분리
-    with st.sidebar:
-        st.markdown("<div style='display:none;'>", unsafe_allow_html=True)
-        if st.button("H_TICK", key="hidden_tick_btn"):
-            st.session_state.rotate_idx += 1
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([0.5, 0.35, 0.15])
+    # 💡 상단 헤더 영역 구성
+    col1, col2, col3 = st.columns([0.45, 0.4, 0.15])
     with col1:
         st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>AI DEEP-DIVE COMMAND CENTER</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: #3b82f6; font-size: 0.85rem; margin-bottom: 15px;'>Real-time analysis pipeline active.</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        # 💡 투명한 유령 컬럼(0.1 비율) 제거. 태블릿에서도 체크박스가 정상 클릭됨
-        c2_1, c2_2 = st.columns([1, 1])
+        # 💡 히든 컬럼 삭제 및 Manual Rotate 버튼 신규 배치 (터치 간섭 원천차단)
+        c2_1, c2_2, c2_3 = st.columns([0.33, 0.33, 0.33])
         with c2_1:
-            st.checkbox("Auto Rotate (1m)", key="auto_refresh_chk")
+            st.checkbox("Auto Rotate (10m)", key="auto_refresh_chk")
         with c2_2:
+            if st.button("🔄 Manual Rotate", use_container_width=True):
+                st.session_state.rotate_idx += 1
+                st.rerun()
+        with c2_3:
             if st.button("🔄 REFRESH DATA", use_container_width=True):
                 if st.session_state.get("auto_refresh_chk"):
                     st.session_state.rotate_idx += 1
@@ -693,7 +677,6 @@ if st.session_state.current_page == "analysis":
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
 
-        # 💡 LOT 5자리 텍스트 고정 (zfill)
         def parse_lot(val):
             val_str = str(val).replace("'", "").strip()
             if val_str.endswith('.0'):
@@ -878,7 +861,7 @@ if st.session_state.current_page == "analysis":
                 )
                 return fig
 
-            st.markdown("<br>", unsafe_allow_html=True) # 텍스트 타이틀 완전히 삭제, 여백으로 교체
+            st.markdown("<br>", unsafe_allow_html=True)
             donut_c1, donut_c2, donut_c3 = st.columns(3)
             with donut_c1:
                 with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
@@ -899,6 +882,8 @@ if st.session_state.current_page == "analysis":
                     return val if val else 'UNKNOWN'
                 base_df_48h['LOT NO.'] = base_df_48h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_48h))).apply(clean_lot)
                 base_df_48h['HoverText'] = base_df_48h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
+
+            st.markdown("<br>", unsafe_allow_html=True)
 
             # --- 2-1. YIELD TREND (Line Chart) ---
             with st.container(border=True):
@@ -980,7 +965,6 @@ if st.session_state.current_page == "analysis":
                 fig_def.update_yaxes(title_text="불량율 (%)", showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
                 st.plotly_chart(fig_def, use_container_width=True)
 
-        # 💡 [SBL 우측 분할 화면 영역] 
         with main_right_col:
             with st.container(border=True):
                 st.markdown("<div class='metric-label' style='margin-top:5px; font-size:1.2rem;'>■ RECENT 48H ALERTS</div>", unsafe_allow_html=True)
@@ -1473,13 +1457,13 @@ elif st.session_state.current_page == "input":
                         st.session_state.numpad_buffer = val if val != "0" else ""
                         numpad_dialog("etc_def", "기타")
 
+            # 💡 [SBL 동적 알람 팝업 로직 적용]
             if total_qty > 0:
                 comp_rate = (st.session_state.get("comp_def", 0) / total_qty) * 100
                 front_rate = (st.session_state.get("front_def", 0) / total_qty) * 100
                 rear_rate = (st.session_state.get("rear_def", 0) / total_qty) * 100
                 offset_rate = (st.session_state.get("offset_def", 0) / total_qty) * 100
                 
-                # 💡 입력 창에서 알람 발동 시 대시보드(분석) 세팅의 Limit 값을 가져와서 비교
                 limit_c = st.session_state.sbl_limits.get('Def_Comp', 10.0)
                 limit_f = st.session_state.sbl_limits.get('Def_Front', 5.0)
                 limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
