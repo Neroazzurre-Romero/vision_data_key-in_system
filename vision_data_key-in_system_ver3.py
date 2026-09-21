@@ -76,7 +76,6 @@ if "sel_std" not in st.session_state:
 if "sel_inc" not in st.session_state:
     st.session_state.sel_inc = []
 
-# 💡 K 체크박스 대신 clip_type 추가
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
     "shift_type": "주간", "worker": "작업자A",
@@ -232,7 +231,6 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
-/* 터치 간섭 방지 및 UI 일체감 개선 */
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 div[data-testid="stRadio"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
@@ -482,7 +480,7 @@ def load_universal_data():
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
         
-    # 💡 [KeyError 원천 차단] DateOnly 변수 조기 생성
+    # 💡 [KeyError 원천 차단] DateOnly 변수 조기 생성 및 반환에 포함
     def parse_dt(r):
         d_val = str(r.get('날짜', '')).strip()
         t_val = str(r.get('시작시간', '00:00')).strip()
@@ -511,13 +509,13 @@ def load_universal_data():
     if missing_dates_idx.any():
         parsed_dates.loc[missing_dates_idx] = [datetime(2026, 1, 1) + timedelta(minutes=i) for i in range(missing_dates_idx.sum())]
     df['DateTime'] = pd.to_datetime(parsed_dates)
-    df['DateOnly'] = df['DateTime'].dt.date # DateOnly를 df가 생성되자마자 정의
+    df['DateOnly'] = df['DateTime'].dt.date 
 
     if '구분' in df.columns:
         df_filtered = df[df['구분'].fillna('').astype(str).str.contains('1차', na=False)]
         if not df_filtered.empty: df = df_filtered
         
-    return df[ext_cols + ['_sheet_row']]
+    return df[ext_cols + ['_sheet_row', 'DateTime', 'DateOnly']]
 
 def save_data_append(df):
     sheet = get_sheet()
@@ -633,7 +631,7 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Version)
+# 💡 Administrator (AI 종합 분석 대시보드)
 # ==========================================
 if st.session_state.current_page == "analysis":
     st.markdown("""
@@ -729,6 +727,17 @@ if st.session_state.current_page == "analysis":
                 if pd.isna(x) or str(x).strip() == '': return 0
                 return int(float(str(x).replace(',', '').strip()))
             except: return 0
+
+        def parse_lot(val):
+            val_str = str(val).replace("'", "").strip()
+            if val_str.endswith('.0'):
+                val_str = val_str[:-2]
+            if val_str.isdigit() and len(val_str) > 0:
+                return val_str.zfill(5)
+            return val_str if val_str else 'UNKNOWN'
+            
+        if 'LOT NO.' in df.columns:
+            df['LOT NO.'] = df['LOT NO.'].apply(parse_lot)
 
         df['Yield_1'] = df.get('양품율', pd.Series([np.nan]*len(df))).apply(pct_to_float)
         df['Yield_2'] = df.get('양품율(전/배 포함)', pd.Series([np.nan]*len(df))).apply(pct_to_float)
@@ -1208,21 +1217,24 @@ elif st.session_state.current_page == "input":
                 c1, c2, c3, c4 = st.columns(4)
                 with c1: 
                     st.write("")
-                with c2:
+                with c2: 
                     st.markdown("**CLIP**")
-                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(st.session_state.get("clip_type", "일반")), horizontal=True, label_visibility="collapsed")
-                    if st.session_state.clip_type == "일반":
+                    clip_type = st.session_state.get("clip_type", "일반")
+                    if clip_type == "일반":
                         c_val = st.session_state.get("clip_val", "1")
                         if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
                             st.session_state.numpad_buffer = ""
                             numpad_dialog("clip_val", "CLIP")
-                with c3:
+                    else:
+                        st.button(clip_type, key="btn_clip_disabled", disabled=True, use_container_width=True)
+                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(clip_type), horizontal=True, label_visibility="collapsed")
+                with c3: 
                     st.markdown("**BASE**")
                     b_val = st.session_state.get("base_val", "1")
                     if st.button(str(b_val) if b_val != "" else "입력", key="btn_base", use_container_width=True):
                         st.session_state.numpad_buffer = ""
                         numpad_dialog("base_val", "BASE")
-                with c4:
+                with c4: 
                     st.markdown("**COVER**")
                     cv_val = st.session_state.get("cover_val", "1")
                     if st.button(str(cv_val) if cv_val != "" else "입력", key="btn_cover", use_container_width=True):
@@ -1260,7 +1272,6 @@ elif st.session_state.current_page == "input":
                             fmt_assembler = a_val.replace("호기", "") if a_val != "선택안함" else ""
                             fmt_worker = st.session_state.get("worker", "")
                             
-                            # 💡 K 체크박스 대신 라디오 버튼 로직 처리
                             if st.session_state.get("clip_type", "일반") == "일반":
                                 fmt_clip = str(st.session_state.get("clip_val", ""))
                             else:
@@ -1400,7 +1411,7 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4><br>", unsafe_allow_html=True)
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
-                    st.markdown("**검사 수량 (자동)**")
+                    st.markdown("**검 세 수량 (자동)**")
                     st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
                 with q2: 
                     st.markdown("**양품수량**")
