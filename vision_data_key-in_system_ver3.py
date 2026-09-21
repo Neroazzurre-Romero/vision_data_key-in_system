@@ -58,7 +58,7 @@ if "unlocked" in st.query_params:
 
 if "admin_authenticated" not in st.session_state: st.session_state.admin_authenticated = False
 
-# 💡 SBL Limit 초기값 세팅 (세션 스테이트 보존)
+# 💡 SBL Limit 및 기간 초기값 세팅 (세션 스테이트 보존)
 if "sbl_limits" not in st.session_state:
     st.session_state.sbl_limits = {
         "Yield_Default": 85.0,
@@ -69,6 +69,12 @@ if "sbl_limits" not in st.session_state:
         "Def_Rear": 5.0,
         "Def_Offset": 5.0
     }
+if "time_range" not in st.session_state:
+    st.session_state.time_range = "48H"
+if "sel_std" not in st.session_state:
+    st.session_state.sel_std = []
+if "sel_inc" not in st.session_state:
+    st.session_state.sel_inc = []
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
@@ -183,7 +189,6 @@ if not st.session_state.unlocked:
 global_theme_css = """
 <style>
 footer { display: none !important; } 
-/* 💡 좌상단 접기 화살표 영구 삭제 및 터치 간섭 방지 */
 [data-testid="collapsedControl"] { display: none !important; pointer-events: none !important; }
 body { overscroll-behavior-y: none !important; } 
 ::-webkit-scrollbar { display: none; }
@@ -227,9 +232,11 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
-/* 터치 간섭 방지 */
+/* 터치 간섭 방지 및 UI 일체감 개선 */
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
+div[data-testid="stRadio"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
+
 div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
 div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
 </style>
@@ -591,7 +598,7 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드 - Final Version with 72H)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Active Time & UI Fix)
 # ==========================================
 if st.session_state.current_page == "analysis":
     st.markdown("""
@@ -626,6 +633,7 @@ if st.session_state.current_page == "analysis":
                             st.error("비밀번호가 일치하지 않습니다.")
         st.stop()
         
+    # 💡 10분 단위 Auto Rotate 트리거 로직
     if st.session_state.get("auto_rotate_active", False):
         components.html("""
         <script>
@@ -762,20 +770,33 @@ if st.session_state.current_page == "analysis":
             
         now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
         target_end_date = now_kst.date() 
-        target_start_date_72h = target_end_date - timedelta(days=2) 
-        yesterday_date = target_end_date - timedelta(days=1)
-        
-        df['DateOnly'] = df['DateTime'].dt.date
-        df_72h = df[(df['DateOnly'] >= target_start_date_72h) & (df['DateOnly'] <= target_end_date)].copy()
-        
-        models_available = sorted(df_72h['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_72h.columns else []
 
+        # 💡 [동적 데이터 기간 필터링 로직 추가]
         with st.expander("TARGET MODEL SELECTION ▼", expanded=True):
+            st.markdown("<div style='margin-bottom:5px; font-weight:bold; color:#1e293b;'>⏳ 데이터 조회 기간</div>", unsafe_allow_html=True)
+            time_range = st.radio("조회 기간", ["48H", "72H", "96H"], index=0, horizontal=True, label_visibility="collapsed", key='time_range_radio')
+            
+            if time_range == "48H": days_sub = 1
+            elif time_range == "72H": days_sub = 2
+            else: days_sub = 3
+            
+            target_start_date = target_end_date - timedelta(days=days_sub)
+            df_target = df[(df['DateOnly'] >= target_start_date) & (df['DateOnly'] <= target_end_date)].copy()
+            
+            models_available = sorted(df_target['모델명(MI)'].replace('', np.nan).dropna().unique().tolist()) if '모델명(MI)' in df_target.columns else []
+
+            st.session_state.sel_std = [m for m in st.session_state.sel_std if m in models_available]
+            st.session_state.sel_inc = [m for m in st.session_state.sel_inc if m in models_available]
+
+            opt_std = [m for m in models_available if m not in st.session_state.sel_inc]
+            opt_inc = [m for m in models_available if m not in st.session_state.sel_std]
+            
+            st.markdown("<div style='margin-top:10px; margin-bottom:5px; font-weight:bold; color:#1e293b; border-top:1px solid #cbd5e1; padding-top:10px;'>📊 모델 선택</div>", unsafe_allow_html=True)
             exp_c1, exp_c2 = st.columns(2)
             with exp_c1:
-                selected_models_std = st.multiselect("▶ 기본 1차 수율 (Standard)", models_available, default=models_available[:1] if models_available else [])
+                selected_models_std = st.multiselect("▶ 기본 1차 수율 (Standard)", opt_std, default=st.session_state.sel_std, key='sel_std')
             with exp_c2:
-                selected_models_inc = st.multiselect("▶ 전/배 포함 수율 (Incl. F/R)", models_available, default=[])
+                selected_models_inc = st.multiselect("▶ 전/배 포함 수율 (Incl. F/R)", opt_inc, default=st.session_state.sel_inc, key='sel_inc')
                 
             all_selected = list(set(selected_models_std + selected_models_inc))
             
@@ -813,7 +834,7 @@ if st.session_state.current_page == "analysis":
             display_inc = selected_models_inc
 
         active_models_list = list(set(display_std + display_inc))
-        base_df_72h = df_72h[df_72h['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
+        base_df_active = df_target[df_target['모델명(MI)'].isin(active_models_list)].copy() if active_models_list else pd.DataFrame()
 
         def get_qty_metrics(df_sub):
             if df_sub.empty: return 0, 0, 0, 0, 0, 0
@@ -827,10 +848,11 @@ if st.session_state.current_page == "analysis":
             for mod in display_inc: q_good += df_sub[df_sub['모델명(MI)'] == mod]['양품_FR_Qty'].sum()
             return t_ins, q_good, q_comp, q_front, q_rear, q_offset
         
-        o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_72h)
-        df_yesterday = base_df_72h[base_df_72h['DateOnly'] == yesterday_date].copy() if not base_df_72h.empty else pd.DataFrame()
+        yesterday_date = now_kst.date() - timedelta(days=1)
+        o_t, o_g, o_c, o_f, o_r, o_o = get_qty_metrics(base_df_active)
+        df_yesterday = base_df_active[base_df_active['DateOnly'] == yesterday_date].copy() if not base_df_active.empty else pd.DataFrame()
         y_t, y_g, y_c, y_f, y_r, y_o = get_qty_metrics(df_yesterday)
-        df_6h = base_df_72h[base_df_72h['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_72h.empty else pd.DataFrame()
+        df_6h = base_df_active[base_df_active['DateTime'] >= (now_kst - timedelta(hours=6))].copy() if not base_df_active.empty else pd.DataFrame()
         h_t, h_g, h_c, h_f, h_r, h_o = get_qty_metrics(df_6h)
 
         main_left_col, main_right_col = st.columns([0.76, 0.24])
@@ -870,40 +892,37 @@ if st.session_state.current_page == "analysis":
                 )
                 return fig
 
-            st.markdown("<br>", unsafe_allow_html=True)
             donut_c1, donut_c2, donut_c3 = st.columns(3)
             with donut_c1:
-                with st.container(border=True): st.plotly_chart(make_donut_chart("OVERALL (72H)", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
+                with st.container(border=True): st.plotly_chart(make_donut_chart(f"OVERALL ({time_range})", o_t, o_g, o_c, o_f, o_r, o_o), use_container_width=True)
             with donut_c2:
                 with st.container(border=True): st.plotly_chart(make_donut_chart("YESTERDAY", y_t, y_g, y_c, y_f, y_r, y_o), use_container_width=True)
             with donut_c3:
                 with st.container(border=True): st.plotly_chart(make_donut_chart("LAST 6 HOURS", h_t, h_g, h_c, h_f, h_r, h_o), use_container_width=True)
 
-            if not base_df_72h.empty:
-                base_df_72h['소요시간_num'] = pd.to_numeric(base_df_72h['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
-                base_df_72h = base_df_72h.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
+            if not base_df_active.empty:
+                base_df_active['소요시간_num'] = pd.to_numeric(base_df_active['소요시간'].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                base_df_active = base_df_active.sort_values(['DateTime', '소요시간_num'], ascending=[True, True]).reset_index(drop=True)
                 def clean_lot(val):
                     val = str(val).replace("'", "").strip()
                     if val.endswith('.0'): val = val[:-2]
                     if val.isdigit() and len(val) > 0: return val.zfill(5)
                     return val if val else 'UNKNOWN'
-                base_df_72h['LOT NO.'] = base_df_72h.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_72h))).apply(clean_lot)
-                base_df_72h['HoverText'] = base_df_72h.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
+                base_df_active['LOT NO.'] = base_df_active.get('LOT NO.', pd.Series(['UNKNOWN']*len(base_df_active))).apply(clean_lot)
+                base_df_active['HoverText'] = base_df_active.apply(lambda r: f"[{r.get('모델명(MI)', '')}]<br>Time: {r['DateTime'].strftime('%Y-%m-%d %H:%M')}<br>LOT: {r['LOT NO.']}", axis=1)
 
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # --- 2-1. YIELD TREND (Line Chart - 72H) ---
+            # --- 2-1. YIELD TREND (Line Chart) ---
             with st.container(border=True):
                 fig_yld = go.Figure()
                 y_min = 50.0
-                if not base_df_72h.empty:
-                    all_val = base_df_72h['Yield_1'].dropna().tolist() + base_df_72h['Yield_2'].dropna().tolist()
+                if not base_df_active.empty:
+                    all_val = base_df_active['Yield_1'].dropna().tolist() + base_df_active['Yield_2'].dropna().tolist()
                     if all_val: y_min = max(0, np.floor((min(all_val) - 5) / 10) * 10)
                 if y_min > 80: y_min = 80.0
 
-                if not base_df_72h.empty:
+                if not base_df_active.empty:
                     for mod in display_std:
-                        m_df = base_df_72h[base_df_72h['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
+                        m_df = base_df_active[base_df_active['모델명(MI)'] == mod].dropna(subset=['Yield_1'])
                         if m_df.empty: continue
                         c1 = model_color_dict[mod]
                         fig_yld.add_trace(go.Scatter(
@@ -914,7 +933,7 @@ if st.session_state.current_page == "analysis":
                             line=dict(color=c1, width=3, dash='solid'), marker=dict(size=12, color=c1, symbol='circle'), hovertext=m_df['HoverText']
                         ))
                     for mod in display_inc:
-                        m_df = base_df_72h[base_df_72h['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
+                        m_df = base_df_active[base_df_active['모델명(MI)'] == mod].dropna(subset=['Yield_2'])
                         if m_df.empty: continue
                         c1 = model_color_dict[mod]
                         fig_yld.add_trace(go.Scatter(
@@ -926,45 +945,45 @@ if st.session_state.current_page == "analysis":
                         ))
 
                 fig_yld.update_layout(
-                    title=dict(text=f"■ YIELD TREND (72H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
+                    title=dict(text=f"■ YIELD TREND ({time_range})", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                     plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                     font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
                     margin=dict(l=30, r=30, t=70, b=50), height=400, hovermode='x unified'
                 )
                 
-                if not base_df_72h.empty:
-                    x_labels_yld = [r['DateTime'].strftime('%m-%d %H:%M') for _, r in base_df_72h.iterrows()]
-                    fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', tickmode='array', tickvals=base_df_72h.index, ticktext=x_labels_yld)
+                if not base_df_active.empty:
+                    x_labels_yld = [r['DateTime'].strftime('%m-%d %H:%M') for _, r in base_df_active.iterrows()]
+                    fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1', tickmode='array', tickvals=base_df_active.index, ticktext=x_labels_yld)
                 else:
                     fig_yld.update_xaxes(showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
                     
                 fig_yld.update_yaxes(title_text="양품율 (%)", range=[y_min, 105.0], showgrid=True, gridcolor='#e2e8f0', linecolor='#cbd5e1')
                 st.plotly_chart(fig_yld, use_container_width=True)
                 
-            # --- 2-2. DEFECT TREND (Bar Chart - 72H) ---
+            # --- 2-2. DEFECT TREND (Bar Chart) ---
             with st.container(border=True):
                 fig_def = go.Figure()
                 
-                if not base_df_72h.empty:
-                    x_indices = base_df_72h.index
-                    x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_72h.iterrows()]
+                if not base_df_active.empty:
+                    x_indices = base_df_active.index
+                    x_labels_def = [f"{r.get('도장일','')}<br>[{r.get('도장순서','')}]" for _, r in base_df_active.iterrows()]
                     
-                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_72h['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df_72h['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df_72h['HoverText']))
-                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_72h['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df_72h['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_72h['HoverText']))
-                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_72h['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df_72h['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_72h['HoverText']))
-                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_72h['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_72h['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_72h['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_active['Def_Front'], name='전면 불량율(%)', marker_color='#FFC000', text=base_df_active['Def_Front'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#000000', weight='bold'), hovertext=base_df_active['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_active['Def_Rear'], name='배면 불량율(%)', marker_color='#10B981', text=base_df_active['Def_Rear'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_active['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_active['Def_Comp'], name='완전 불량율(%)', marker_color='#1E3A8A', text=base_df_active['Def_Comp'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_active['HoverText']))
+                    fig_def.add_trace(go.Bar(x=x_indices, y=base_df_active['Def_Offset'], name='옵셋 불량율(%)', marker_color='#8B5CF6', text=base_df_active['Def_Offset'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) and x>0 else ""), textposition='inside', textfont=dict(color='#ffffff', weight='bold'), hovertext=base_df_active['HoverText']))
 
                 fig_def.update_layout(
                     barmode='stack', bargap=0.2, 
-                    title=dict(text=f"■ DEFECT TREND (72H)", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
+                    title=dict(text=f"■ DEFECT TREND ({time_range})", font=dict(color='#1e293b', size=16, weight='bold', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif")),
                     plot_bgcolor='#ffffff', paper_bgcolor='#ffffff',
                     font=dict(color='#1e293b', family="'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=30, r=30, t=50, b=50), height=400, hovermode='x unified'
                 )
                 
-                if not base_df_72h.empty:
+                if not base_df_active.empty:
                     fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1', tickmode='array', tickvals=x_indices, ticktext=x_labels_def)
                 else:
                     fig_def.update_xaxes(showgrid=False, linecolor='#cbd5e1')
@@ -974,14 +993,14 @@ if st.session_state.current_page == "analysis":
 
         with main_right_col:
             with st.container(border=True):
-                st.markdown("<div class='metric-label' style='margin-top:5px; font-size:1.2rem;'>■ RECENT 72H ALERTS</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='metric-label' style='margin-top:5px; font-size:1.2rem;'>■ RECENT {time_range} ALERTS</div>", unsafe_allow_html=True)
                 
                 def render_sbl_list(d_col, title, is_yield=False):
                     html = f"<div class='sbl-title' style='margin-top:10px;'>{title}</div>"
-                    if base_df_72h.empty: return html + "<div class='sbl-text'>No data.</div>"
+                    if base_df_active.empty: return html + "<div class='sbl-text'>No data.</div>"
                     
                     sbl_items = []
-                    for _, r in base_df_72h.iterrows():
+                    for _, r in base_df_active.iterrows():
                         mod = str(r.get('모델명(MI)', ''))
                         lot = str(r.get('LOT NO.', '')).replace("'", "")
                         t_str = r['DateTime'].strftime('%m-%d %H:%M')
@@ -1464,7 +1483,6 @@ elif st.session_state.current_page == "input":
                         st.session_state.numpad_buffer = val if val != "0" else ""
                         numpad_dialog("etc_def", "기타")
 
-            # 💡 [SBL 동적 알람 팝업 로직 적용]
             if total_qty > 0:
                 comp_rate = (st.session_state.get("comp_def", 0) / total_qty) * 100
                 front_rate = (st.session_state.get("front_def", 0) / total_qty) * 100
@@ -1476,7 +1494,6 @@ elif st.session_state.current_page == "input":
                 limit_r = st.session_state.sbl_limits.get('Def_Rear', 5.0)
                 limit_o = st.session_state.sbl_limits.get('Def_Offset', 5.0)
                 
-                # 순차적 알람 팝업 처리
                 if comp_rate > limit_c and not st.session_state.get("comp_warned", False):
                     show_sbl_warning("완전불량", comp_rate, limit_c)
                     st.session_state.comp_warned = True
