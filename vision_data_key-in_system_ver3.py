@@ -212,6 +212,28 @@ div[data-testid="stExpander"] details summary:hover { background-color: #1e293b 
 div[data-testid="stExpander"] details summary p { text-align: right !important; color: #ffffff !important; font-weight: 900 !important; font-size: 1.1rem !important; letter-spacing: 1px; width: 100%; margin-right: 10px; }
 div[data-testid="stExpander"] details summary svg { display: none !important; }
 
+/* 💡 Material Icon 텍스트(keyboard_double_arrow_right 등) 노출 방지 및 커스텀 아이콘 대체 */
+[data-testid="collapsedControl"] span, 
+[data-testid="collapsedControl"] svg,
+[data-testid="stSidebarCollapseButton"] span,
+[data-testid="stSidebarCollapseButton"] svg {
+    display: none !important;
+    color: transparent !important;
+    font-size: 0px !important;
+}
+[data-testid="collapsedControl"] button::before {
+    content: '☰';
+    font-size: 24px;
+    color: #1e293b;
+    visibility: visible;
+}
+[data-testid="stSidebarCollapseButton"] button::before {
+    content: '✖';
+    font-size: 20px;
+    color: #f8fafc;
+    visibility: visible;
+}
+
 .command-header { color: #1e293b !important; font-weight: 900 !important; letter-spacing: 1px; }
 .metric-label { color: #1e293b !important; font-size: 1.1rem !important; font-weight: 800 !important; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid #1e293b; padding-bottom: 5px; }
 
@@ -231,6 +253,7 @@ div[data-testid="stButton"] button:hover { background-color: #1e293b !important;
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 
+/* 터치 간섭 방지 및 UI 일체감 개선 */
 div[data-testid="stCheckbox"] { pointer-events: auto !important; z-index: 10 !important; }
 div[data-testid="stCheckbox"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
 div[data-testid="stRadio"] label { color: #1e293b !important; font-weight: bold !important; cursor: pointer !important; }
@@ -480,7 +503,6 @@ def load_universal_data():
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
         
-    # 💡 [KeyError 원천 차단] DateOnly 변수 조기 생성 및 반환에 포함
     def parse_dt(r):
         d_val = str(r.get('날짜', '')).strip()
         t_val = str(r.get('시작시간', '00:00')).strip()
@@ -606,17 +628,6 @@ def timepad_dialog(field_key, display_name):
                     st.rerun()
             except ValueError: pass
 
-@st.dialog("🔒 관리자 인증")
-def admin_auth_dialog():
-    st.markdown("<div style='color:#94A3B8; margin-bottom:10px;'>분석 데이터를 확인하려면 관리자 비밀번호를 입력하세요.</div>", unsafe_allow_html=True)
-    pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력")
-    if st.button("✅ 확인", type="primary", use_container_width=True):
-        if pwd == "6233":
-            st.session_state.admin_authenticated = True
-            st.rerun()
-        else:
-            st.error("비밀번호가 일치하지 않습니다.")
-
 @st.dialog("🚨 SBL 관리 한계 초과 알림")
 def show_sbl_warning(defect_name, rate, limit_val):
     st.markdown(f"""
@@ -631,13 +642,13 @@ def show_sbl_warning(defect_name, rate, limit_val):
         st.rerun()
 
 # ==========================================
-# 💡 Administrator (AI 종합 분석 대시보드)
+# 💡 Administrator (AI 종합 분석 대시보드 - Final Active Time & UI Fix)
 # ==========================================
 if st.session_state.current_page == "analysis":
     st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="collapsedControl"] { display: none !important; }
+        [data-testid="collapsedControl"] { display: none !important; pointer-events: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1220,13 +1231,10 @@ elif st.session_state.current_page == "input":
                 with c2: 
                     st.markdown("**CLIP**")
                     clip_type = st.session_state.get("clip_type", "일반")
-                    if clip_type == "일반":
-                        c_val = st.session_state.get("clip_val", "1")
-                        if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
-                            st.session_state.numpad_buffer = ""
-                            numpad_dialog("clip_val", "CLIP")
-                    else:
-                        st.button(clip_type, key="btn_clip_disabled", disabled=True, use_container_width=True)
+                    c_val = st.session_state.get("clip_val", "1")
+                    if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
+                        st.session_state.numpad_buffer = ""
+                        numpad_dialog("clip_val", "CLIP")
                     st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(clip_type), horizontal=True, label_visibility="collapsed")
                 with c3: 
                     st.markdown("**BASE**")
@@ -1272,10 +1280,12 @@ elif st.session_state.current_page == "input":
                             fmt_assembler = a_val.replace("호기", "") if a_val != "선택안함" else ""
                             fmt_worker = st.session_state.get("worker", "")
                             
-                            if st.session_state.get("clip_type", "일반") == "일반":
-                                fmt_clip = str(st.session_state.get("clip_val", ""))
+                            clip_t = st.session_state.get("clip_type", "일반")
+                            clip_v = str(st.session_state.get("clip_val", ""))
+                            if clip_t == "일반":
+                                fmt_clip = clip_v
                             else:
-                                fmt_clip = st.session_state.get("clip_type", "")
+                                fmt_clip = f"{clip_t}-{clip_v}" if clip_v else clip_t
                                 
                             fmt_base = str(st.session_state.get("base_val", ""))
                             fmt_cover = str(st.session_state.get("cover_val", ""))
@@ -1411,7 +1421,7 @@ elif st.session_state.current_page == "input":
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 수량 등록</h4><br>", unsafe_allow_html=True)
                 q1, q2, q3, q4 = st.columns(4)
                 with q1: 
-                    st.markdown("**검 세 수량 (자동)**")
+                    st.markdown("**검사 수량 (자동)**")
                     st.text_input("검사 수량", value=f"{total_qty:,}", disabled=True, label_visibility="collapsed")
                 with q2: 
                     st.markdown("**양품수량**")
