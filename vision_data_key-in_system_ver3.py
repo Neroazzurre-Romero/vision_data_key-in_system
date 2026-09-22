@@ -30,10 +30,10 @@ def get_image_base64(base_name):
         pass
     return None
 
-# 💡 시스템 상태 초기화
+# 💡 시스템 인증 상태 초기화
 if "main_authenticated" not in st.session_state: st.session_state.main_authenticated = False
 
-# 💡 프리미엄 UI 및 [메뉴/배지 숨김 처리 CSS]
+# 💡 프리미엄 UI 및 [메뉴/뱃지 숨김 처리 CSS]
 global_theme_css = """
 <style>
 /* 🚫 Streamlit 기본 상단 헤더, 메뉴, 툴바 완벽 은닉 */
@@ -69,10 +69,10 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
 
-# 🛡️ 전역 방어막: 로그인 화면을 포함한 "모든 페이지"에서 Manage App 및 프로필 뱃지 원천 차단
+# 🛡️ 전역 방어막: 로그인 화면 및 메인 화면 전체에서 Manage App 및 프로필 뱃지 원천 차단 + 투명 오버레이
 badge_killer_script = """
 <script>
-const nukeManageApp = () => {
+const setupBadgeBlocker = () => {
     let docs = [document];
     try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
     try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
@@ -104,14 +104,14 @@ const nukeManageApp = () => {
         } catch(e) {}
     });
 };
-nukeManageApp();
-setInterval(nukeManageApp, 100); 
+setupBadgeBlocker();
+setInterval(setupBadgeBlocker, 100); 
 </script>
 """
 components.html(badge_killer_script, height=0, width=0)
 
 # ==========================================
-# 💡 메인 시스템 전용 로그인 페이지 (logo.png 적용)
+# 💡 [비밀번호 인증 화면 (logo.png 적용)]
 # ==========================================
 if not st.session_state.main_authenticated:
     st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
@@ -127,7 +127,7 @@ if not st.session_state.main_authenticated:
             pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력", key="main_pwd")
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("✅ 접속", type="primary", use_container_width=True, key="main_confirm"):
-                if pwd == "7777":  # 필요 시 메인 시스템 비밀번호로 변경 가능
+                if pwd == "7777":  # 인증 비밀번호 ("7777")
                     st.session_state.main_authenticated = True
                     st.rerun()
                 else:
@@ -135,9 +135,18 @@ if not st.session_state.main_authenticated:
     st.stop()
 
 # ==========================================
-# 💡 메인 데이터 입력 및 관리 시스템 본문 영역
+# 💡 [언락(인증) 후 진입하는 메인 데이터 키인 시스템 화면]
 # ==========================================
 st.markdown("<div class='command-header' style='font-size: 1.8rem; margin-bottom: 20px;'>📝 VISION DATA KEY-IN WIZARD</div>", unsafe_allow_html=True)
 
-# 여기에 기존에 작성하셨던 데이터 입력 폼, 구글 시트 연동, 설정 관리(VIEWER_CONFIG 저장 등) 코드를 이어 붙여 사용하시면 됩니다.
-st.success("🎉 인증이 완료되었습니다. 안전하게 데이터를 입력하고 관리하세요!")
+# 상단에 로그아웃(잠금) 버튼 배치
+col_top1, col_top2 = st.columns([0.85, 0.15])
+with col_top2:
+    if st.button("🔒 시스템 잠금", use_container_width=True):
+        st.session_state.main_authenticated = False
+        st.rerun()
+
+# -------------------------------------------------------------------------
+# 여기에 실제 데이터 입력 폼, 구글 시트 연동 및 위저드 로직 코드를 작성하시면 됩니다.
+# -------------------------------------------------------------------------
+st.info("💡 인증이 성공적으로 완료되었습니다. 데이터를 입력하고 구글 시트에 반영하세요.")
