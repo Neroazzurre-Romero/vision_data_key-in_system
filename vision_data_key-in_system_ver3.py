@@ -26,7 +26,7 @@ except ImportError:
 worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -199,6 +199,7 @@ def load_universal_data():
             mapped_std_cols.add(matched_col)
 
     df = df.rename(columns=rename_dict)
+    
     ext_cols = EXCEL_COLUMNS + ['옵셋불량율']
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
@@ -357,6 +358,48 @@ def render_grid_buttons(options, state_key, columns, use_width=True):
                         st.session_state[state_key] = opt
                         st.rerun()
 
+
+# ==========================================
+# 💡 최상단 DOM Nuke 스크립트 (가장 먼저 실행되어 배지 및 텍스트 겹침 삭제)
+# ==========================================
+nuke_script = """
+<script>
+const nukeUI = () => {
+    const pDoc = window.parent.document;
+    if(!pDoc) return;
+    
+    // 1. Manage App, 배지, 외부 툴바 강제 투명화 및 숨김
+    pDoc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(el => {
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('opacity', '0', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
+    });
+    pDoc.querySelectorAll('iframe[src*="badge"]').forEach(el => { 
+        el.style.setProperty('display', 'none', 'important'); 
+        el.style.setProperty('width', '0', 'important'); 
+        el.style.setProperty('height', '0', 'important'); 
+    });
+    
+    // 2. 히든 트리거 버튼들 완벽 은닉
+    pDoc.querySelectorAll('button').forEach(btn => {
+        if(btn.innerText.includes('HIDDEN')) {
+            const container = btn.closest('div[data-testid="stButton"]');
+            if(container) {
+                container.style.setProperty('display', 'none', 'important');
+                container.style.setProperty('position', 'absolute', 'important');
+                container.style.setProperty('opacity', '0', 'important');
+                container.style.setProperty('height', '0px', 'important');
+                container.style.setProperty('width', '0px', 'important');
+            }
+        }
+    });
+};
+nukeUI();
+setInterval(nukeUI, 50);
+</script>
+"""
+components.html(nuke_script, height=0, width=0)
+
 # ==========================================
 # 💡 세션 상태 및 설정 동기화
 # ==========================================
@@ -386,7 +429,7 @@ default_state = {
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
     "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
     "painting_order": "", "painting_line": "A Line", 
-    "clip_val": "1", "clip_type": "일반",
+    "clip_type": "일반", "clip_val": "1",
     "base_val": "1", "cover_val": "1",
     "assembler_val": "1호기",
     "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
@@ -399,34 +442,16 @@ for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 # ==========================================
-# 🛡️ 전역 CSS (깜빡임 완벽 차단 & UI 최적화)
+# 🛡️ 전역 CSS (모든 화면 공통 적용)
 # ==========================================
 global_theme_css = """
 <style>
 /* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
-header[data-testid="stHeader"] { display: none !important; }
-#MainMenu { display: none !important; visibility: hidden !important; }
-[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
+header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
+header[data-testid="stHeader"] > div:nth-child(2),
+[data-testid="stToolbar"],
+[data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
-
-/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 (1차 CSS 방어) */
-[data-testid="manage-app-button"],
-[data-testid="stAppDeployButton"],
-.stDeployButton,
-div[class^="viewerBadge"],
-div[class*="viewerBadge"],
-#creatorBadge {
-    display: none !important; opacity: 0 !important; visibility: hidden !important;
-    z-index: -1000 !important; pointer-events: none !important;
-}
-
-/* iframe 텍스트 깜빡임 방지 (크기 0으로 축소) */
-iframe[title="streamlit_components.components.html"] {
-    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important;
-}
-
-/* 히든 버튼 완전 은닉 (DOM 상에서 존재를 감춤) */
-.hidden-btn { display: none !important; visibility: hidden !important; height: 0px !important; width: 0px !important; overflow: hidden !important; position: absolute !important; z-index: -9999 !important; }
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
 ::-webkit-scrollbar { display: none; }
@@ -445,11 +470,26 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
 
-/* 🛡️ CSS 우측 하단 절대 방어막 (클릭 불가) */
+/* 🛡️ CSS를 활용한 우측 하단 절대 방어막 (클릭 불가) */
 .stApp::after {
-    content: "" !important; position: fixed !important; bottom: 0 !important; right: 0 !important; width: 300px !important; height: 150px !important;
-    background: transparent !important; z-index: 2147483647 !important; pointer-events: auto !important; cursor: default !important;
+    content: "" !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 300px !important;
+    height: 150px !important;
+    background: transparent !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    cursor: default !important;
 }
+
+/* 💡 사이드바 텍스트 _double_ 겹침 완벽 차단 */
+[data-testid="collapsedControl"] { display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; background: transparent !important; z-index: 999999 !important; }
+[data-testid="collapsedControl"] svg, [data-testid="collapsedControl"] span { display: none !important; opacity: 0 !important; font-size: 0px !important; color: transparent !important; }
+[data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; display: block !important; position: absolute !important; }
+[data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
+[data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
@@ -476,14 +516,8 @@ if not st.session_state.unlocked:
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
-        # 💡 히든 버튼 완전 격리
-        hidden_container = st.empty()
-        with hidden_container.container():
-            st.markdown("<div class='hidden-btn'>", unsafe_allow_html=True)
-            if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
-                st.session_state.unlocked = True
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+        # 💡 트리거 버튼
+        st.button("UNLOCK_SYSTEM_BTN_HIDDEN")
             
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
@@ -543,8 +577,8 @@ if not st.session_state.unlocked:
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
-        # 스크립트 실행 박스를 높이 0으로 처리해 화면 밀림 방지
-        components.html(slider_html, height=100, width=0)
+        # 스크립트 실행 박스를 적정 높이로 처리하여 슬라이더 표시
+        components.html(slider_html, height=90, width=0)
         
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
@@ -567,19 +601,13 @@ if st.session_state.sys_menu != "exit":
             st.rerun()
             
     # 💡 플로팅 EXIT 버튼용 히든 트리거 완전 격리
-    hidden_exit_container = st.empty()
-    with hidden_exit_container.container():
-        st.markdown("<div class='hidden-btn'>", unsafe_allow_html=True)
-        if st.button("HIDDEN_EXIT_TRIGGER"):
-            st.session_state.sys_menu = "exit"
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.button("HIDDEN_EXIT_TRIGGER")
 
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD
+# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 100% 화이트닝)
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -593,9 +621,6 @@ if st.session_state.sys_menu == "keyin":
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover p { color: #ffffff !important; }
     
-    /* 기본 숨김 해제 */
-    [data-testid="collapsedControl"] { display: none !important; }
-    
     /* 폼 영역 디자인 */
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
     div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; }
@@ -605,7 +630,7 @@ if st.session_state.sys_menu == "keyin":
     </style>
     """, unsafe_allow_html=True)
     
-    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 재배치 적용)
+    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 분리 적용)
     with st.sidebar:
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
@@ -641,6 +666,11 @@ if st.session_state.sys_menu == "keyin":
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
+            st.rerun()
+            
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 관리자 기능</h4><br>", unsafe_allow_html=True)
+        if st.button("⚙️ ADMINISTRATOR", type="secondary", use_container_width=True):
+            st.session_state.sys_menu = "admin"
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
@@ -774,7 +804,7 @@ if st.session_state.sys_menu == "keyin":
                     if st.button(str(c_val) if c_val != "" else "입력", key="btn_clip", use_container_width=True):
                         st.session_state.numpad_buffer = ""
                         numpad_dialog("clip_val", "CLIP")
-                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], index=["일반", "K1", "K2", "K3"].index(clip_type), horizontal=True, label_visibility="collapsed")
+                    st.session_state.clip_type = st.radio("CLIP 옵션", ["일반", "K1", "K2", "K3"], key="clip_type", horizontal=True, label_visibility="collapsed")
                 with c3: 
                     st.markdown("**BASE**")
                     b_val = st.session_state.get("base_val", "1")
@@ -1182,7 +1212,7 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # 💡 [데이터 수정] 모드 최적화 (비밀번호 및 내역 남기기)
+    # 💡 [데이터 수정] 
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1202,7 +1232,7 @@ if st.session_state.sys_menu == "keyin":
                         
                         c1, c2 = st.columns(2)
                         with c1:
-                            edit_pwd = st.text_input("수정 비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력 (6233)")
+                            edit_pwd = st.text_input("수정 비밀번호 입력", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1218,7 +1248,6 @@ if st.session_state.sys_menu == "keyin":
                             column_config={"LOT NO.": st.column_config.TextColumn("LOT NO.")}
                         )
                         st.markdown("<br>", unsafe_allow_html=True)
-                        edit_reason = st.text_input("📝 수정 사유 (수정 내역은 비고란에 자동으로 추가됩니다)", placeholder="예: 양품수량 오기입 수정")
                         
                         if st.button("Data 수정 적용", type="primary", use_container_width=True):
                             sheet = get_sheet()
@@ -1228,12 +1257,6 @@ if st.session_state.sys_menu == "keyin":
                                     old_row = display_df.loc[idx].fillna("").astype(str).tolist()
                                     new_row = edited_df.loc[idx].fillna("").astype(str).tolist()
                                     if old_row != new_row:
-                                        if edit_reason:
-                                            memo_idx = EXCEL_COLUMNS.index('비고') if '비고' in EXCEL_COLUMNS else -1
-                                            if memo_idx != -1:
-                                                existing_memo = new_row[memo_idx]
-                                                new_memo = f"{existing_memo} | [수정] {edit_reason}".strip(" |")
-                                                new_row[memo_idx] = new_memo
                                         gspread_row = df_history.loc[idx, '_sheet_row']
                                         sheet.update(values=[new_row], range_name=f'A{gspread_row}')
                                         changed = True
@@ -1259,7 +1282,6 @@ elif st.session_state.sys_menu == "admin":
     df = load_universal_data()
     all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
     
-    # 💡 모델 중복 선택 방지 로직 (Dynamic Options)
     opt_std = [m for m in all_models if m not in st.session_state.sel_inc]
     opt_inc = [m for m in all_models if m not in st.session_state.sel_std]
     
@@ -1280,7 +1302,6 @@ elif st.session_state.sys_menu == "admin":
             st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
             sbl_limits = config.get("sbl_limits", {})
             
-            # 💡 각 모델별 양품율 SBL 세분화 적용
             sbl_yield_def = st.number_input("📉 양품율 SBL (기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
             sbl_yield_cen = st.number_input("📉 양품율 SBL (Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
             sbl_yield_mem = st.number_input("📉 양품율 SBL (MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
@@ -1651,10 +1672,12 @@ elif st.session_state.sys_menu == "viewer":
 
 
 # ==========================================
-# 🚀 [라우팅 4] EXIT (시스템 안전 종료)
+# 🚀 [라우팅 4] EXIT (시스템 완전 종료)
 # ==========================================
 elif st.session_state.sys_menu == "exit":
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    
+    # 완전히 브라우저 탭을 닫거나 안전 종료 화면으로 덮어씌움
     exit_script = """
     <script>
     setTimeout(function() {
@@ -1672,7 +1695,7 @@ elif st.session_state.sys_menu == "exit":
     components.html(exit_script, height=0, width=0)
 
 # ==========================================
-# 🛡️ 최하단: 화면 렌더링 완료 후 깜빡임 없는 스크립트 실행 (Flashing 방지)
+# 🛡️ 최하단: 화면 렌더링 완료 후 깜빡임 없는 DOM 제어 스크립트 실행
 # ==========================================
 bottom_js = f"""
 <script>
@@ -1707,10 +1730,10 @@ if (pDoc) {{
         if (!exitBtn) {{
             exitBtn = pDoc.createElement('div');
             exitBtn.id = 'custom-exit-toggle';
-            exitBtn.innerHTML = '<span style="font-size:1.4rem; line-height:1;">🚪</span> <span style="margin-top:2px;">EXIT</span>';
-            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#ef4444; color:#ffffff; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; border:2px solid #fca5a5; transition:all 0.2s; font-family:sans-serif;';
-            exitBtn.onmouseover = () => {{ exitBtn.style.background = '#dc2626'; }};
-            exitBtn.onmouseout = () => {{ exitBtn.style.background = '#ef4444'; }};
+            exitBtn.innerHTML = '<span style="font-size:1.2rem; font-weight:900;">EXIT</span>';
+            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#7f1d1d; color:#ffffff; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; border:2px solid #991b1b; transition:all 0.2s; font-family:sans-serif; letter-spacing:1px;';
+            exitBtn.onmouseover = () => {{ exitBtn.style.background = '#5f1616'; }};
+            exitBtn.onmouseout = () => {{ exitBtn.style.background = '#7f1d1d'; }};
             exitBtn.onclick = function() {{
                 const btns = pDoc.querySelectorAll('button');
                 for(let b of btns) {{ if(b.innerText.includes('HIDDEN_EXIT_TRIGGER')) {{ b.click(); break; }} }}
@@ -1735,7 +1758,7 @@ if (pDoc) {{
         {'setTimeout(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 
-    // 💡 3. Streamlit Cloud UI 철저한 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
+    // 💡 3. Streamlit Cloud UI 및 히든 버튼 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
     const nukeNode = (el) => {{ if(el && el.parentNode) el.parentNode.removeChild(el); }};
     const destroyStreamlitUI = () => {{
         let docs = [document];
@@ -1754,6 +1777,21 @@ if (pDoc) {{
                         if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
                     }}
                 }});
+                
+                // 💡 히든 트리거 버튼 완벽 투명화 (공간 차지 방지)
+                doc.querySelectorAll('button').forEach(btn => {{
+                    if(btn.innerText.includes('HIDDEN')) {{
+                        const container = btn.closest('div[data-testid="stButton"]');
+                        if(container) {{
+                            container.style.setProperty('display', 'none', 'important');
+                            container.style.setProperty('position', 'absolute', 'important');
+                            container.style.setProperty('opacity', '0', 'important');
+                            container.style.setProperty('height', '0px', 'important');
+                            container.style.setProperty('width', '0px', 'important');
+                        }}
+                    }}
+                }});
+                
             }} catch(e) {{}}
         }});
     }};
