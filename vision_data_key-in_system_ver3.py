@@ -199,6 +199,7 @@ def load_universal_data():
             mapped_std_cols.add(matched_col)
 
     df = df.rename(columns=rename_dict)
+    
     ext_cols = EXCEL_COLUMNS + ['옵셋불량율']
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
@@ -605,13 +606,13 @@ if st.session_state.sys_menu == "keyin":
     </style>
     """, unsafe_allow_html=True)
     
-    # 💡 커스텀 플로팅 사이드바 토글 및 스캐너 설정
+    # 💡 커스텀 플로팅 사이드바 토글 및 스캐너, 버튼 색상 변경 설정
     components.html(
         """
         <script>
         const pDoc = window.parent.document;
         
-        // 커스텀 토글 버튼 생성
+        // 커스텀 사이드바 토글 버튼 생성
         let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
         if (!toggleBtn) {
             toggleBtn = pDoc.createElement('div');
@@ -621,10 +622,17 @@ if st.session_state.sys_menu == "keyin":
             toggleBtn.onmouseover = () => { toggleBtn.style.background = '#3b82f6'; toggleBtn.style.borderColor = '#ffffff'; };
             toggleBtn.onmouseout = () => { toggleBtn.style.background = '#1e293b'; toggleBtn.style.borderColor = '#cbd5e1'; };
             toggleBtn.onclick = function() {
-                const closedBtn = pDoc.querySelector('[data-testid="collapsedControl"]');
-                const openBtn = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
-                if (openBtn) { openBtn.click(); }
-                else if (closedBtn) { closedBtn.click(); }
+                // Streamlit 1.x 버전의 사이드바 제어 DOM 추적
+                const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
+                const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
+                
+                if (collapseDiv && collapseDiv.getBoundingClientRect().width > 0) {
+                    const btn = collapseDiv.querySelector('button') || collapseDiv;
+                    btn.click();
+                } else if (expandDiv) {
+                    const btn = expandDiv.querySelector('button') || expandDiv;
+                    btn.click();
+                }
             };
             pDoc.body.appendChild(toggleBtn);
         }
@@ -632,6 +640,7 @@ if st.session_state.sys_menu == "keyin":
 
         if (!window.parent.appPluginLoadedFull) {
             window.parent.appPluginLoadedFull = true;
+            
             const formatNavButtons = () => {
                 const buttons = pDoc.querySelectorAll('button');
                 buttons.forEach(btn => {
@@ -640,6 +649,10 @@ if st.session_state.sys_menu == "keyin":
                         btn.style.setProperty('background', '#305496', 'important');
                         btn.style.setProperty('border', '1px solid #203864', 'important');
                         btn.style.setProperty('color', '#ffffff', 'important');
+                        
+                        // 하위 p태그의 글자색도 무조건 흰색으로 덮어쓰기
+                        const pTag = btn.querySelector('p');
+                        if(pTag) pTag.style.setProperty('color', '#ffffff', 'important');
                     }
                     if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
                         btn.style.setProperty('height', '70px', 'important'); 
@@ -647,6 +660,7 @@ if st.session_state.sys_menu == "keyin":
                     }
                 });
             };
+            
             const styleScanner = () => {
                 pDoc.querySelectorAll('input').forEach(el => {
                     if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
@@ -673,6 +687,7 @@ if st.session_state.sys_menu == "keyin":
                     }
                 });
             };
+            
             const disableKeyboard = () => {
                 pDoc.querySelectorAll('input').forEach(el => {
                     const placeholder = el.getAttribute('placeholder') || '';
@@ -1303,6 +1318,7 @@ if st.session_state.sys_menu == "keyin":
                             st.info("수정된 항목이 없습니다.")
             else:
                 st.caption("저장된 데이터가 없습니다.")
+
 
 # ==========================================
 # 🚀 [라우팅 2] VIEWER 모드
