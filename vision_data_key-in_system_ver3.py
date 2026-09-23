@@ -554,25 +554,21 @@ if not st.session_state.unlocked:
 
 
 # ==========================================
-# 💡 최상단 통합 네비게이션
+# 💡 최상단 3단 통합 네비게이션
 # ==========================================
 if st.session_state.sys_menu != "exit":
     st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA KEY-IN SYSTEM</h2>", unsafe_allow_html=True)
 
-    m_col1, m_col2, m_col3, m_col4 = st.columns([0.25, 0.25, 0.25, 0.25])
+    m_col1, m_col2, m_col3 = st.columns([0.33, 0.34, 0.33])
     with m_col1:
         if st.button("📝 KEY-IN WIZARD", use_container_width=True, type="primary" if st.session_state.sys_menu == "keyin" else "secondary"):
             st.session_state.sys_menu = "keyin"
             st.rerun()
     with m_col2:
-        if st.button("👁️ VIEWER", use_container_width=True, type="primary" if st.session_state.sys_menu == "viewer" else "secondary"):
-            st.session_state.sys_menu = "viewer"
-            st.rerun()
-    with m_col3:
-        if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu == "admin" else "secondary"):
+        if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu in ["admin", "viewer"] else "secondary"):
             st.session_state.sys_menu = "admin"
             st.rerun()
-    with m_col4:
+    with m_col3:
         if st.button("🚪 EXIT", use_container_width=True):
             st.session_state.sys_menu = "exit"
             st.rerun()
@@ -581,7 +577,7 @@ if st.session_state.sys_menu != "exit":
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD (원본 코드 완벽 보존)
+# 🚀 [라우팅 1] KEY-IN WIZARD
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -595,7 +591,7 @@ if st.session_state.sys_menu == "keyin":
     [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.2) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     
-    /* 기본 햄버거 토글 숨김 해제 */
+    /* 기본 숨김 해제 */
     [data-testid="collapsedControl"] { display: none !important; }
     
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
@@ -1321,10 +1317,71 @@ if st.session_state.sys_menu == "keyin":
 
 
 # ==========================================
-# 🚀 [라우팅 2] VIEWER 모드
+# 🚀 [라우팅 2] ADMINISTRATOR (관리자 패널 & 뷰어 진입)
+# ==========================================
+elif st.session_state.sys_menu == "admin":
+    # 어드민 모드일 때는 커스텀 토글 숨김
+    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
+
+    st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
+    
+    config = load_shared_config() or {}
+    df = load_universal_data()
+    all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
+    
+    with st.form("admin_config_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**1. 모니터링 대상 모델 선택**")
+            sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", all_models, default=[m for m in config.get("sel_std", []) if m in all_models])
+            sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", all_models, default=[m for m in config.get("sel_inc", []) if m in all_models])
+            
+            st.markdown("<br>**2. 뷰어 기본 설정**", unsafe_allow_html=True)
+            time_range = st.selectbox("기본 조회 기간 (Default Time Range)", ["6H", "24H", "48H", "72H", "96H"], index=["6H", "24H", "48H", "72H", "96H"].index(config.get("time_range", "48H")))
+            auto_rotate = st.checkbox("자동 로테이션 활성화 (10분 단위로 선택된 모델 순환 표출)", value=config.get("auto_rotate_active", False))
+            
+        with col2:
+            st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
+            sbl_limits = config.get("sbl_limits", {})
+            sbl_yield = st.number_input("📉 양품율 SBL (이하일 때 알람)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
+            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
+            sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
+            sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
+            sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.form_submit_button("💾 설정 저장 및 대시보드 클라우드 반영 (Save to Cloud)", use_container_width=True):
+            new_config = {
+                "sel_std": sel_std,
+                "sel_inc": sel_inc,
+                "time_range": time_range,
+                "auto_rotate_active": auto_rotate,
+                "sbl_limits": {
+                    "Yield_Default": sbl_yield,
+                    "Def_Comp": sbl_comp,
+                    "Def_Front": sbl_front,
+                    "Def_Rear": sbl_rear,
+                    "Def_Offset": sbl_offset
+                },
+                "model_color_dict": config.get("model_color_dict", {})
+            }
+            if save_shared_config(new_config):
+                st.cache_data.clear()
+                time.sleep(1.0)
+                st.rerun()
+
+    st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    st.info("💡 위에서 설정값을 저장한 후, 아래 버튼을 눌러 모니터링 뷰어 화면을 확인할 수 있습니다.")
+    
+    if st.button("👁️ 설정된 VIEWER 화면 실행하기", type="primary", use_container_width=True):
+        st.session_state.sys_menu = "viewer"
+        st.rerun()
+
+
+# ==========================================
+# 🚀 [라우팅 3] VIEWER 모드 (ADMIN에서 진입)
 # ==========================================
 elif st.session_state.sys_menu == "viewer":
-    
     # 뷰어 모드일 때는 커스텀 토글 숨김
     components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
     
@@ -1351,27 +1408,25 @@ elif st.session_state.sys_menu == "viewer":
     """
     components.html(auto_script, height=0, width=0)
 
-    col1, col2 = st.columns([0.7, 0.3])
+    col1, col2 = st.columns([0.65, 0.35])
     with col1:
-        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>AI DEEP-DIVE COMMAND CENTER (VIEWER)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='command-header' style='font-size: 1.8rem; margin-top: 5px;'><span class='live-dot'></span>VISION DATA KEY-IN SYSTEM (VIEWER)</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: #10b981; font-size: 0.85rem; margin-bottom: 15px; font-weight:bold;'>Shared Dashboard (View Only)</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        vc1, vc2 = st.columns(2)
+        vc1, vc2, vc3 = st.columns(3)
         with vc1:
-            if st.button("🔄 Manual Rotate", use_container_width=True, key="viewer_manual_rotate"):
-                st.session_state.rotate_idx += 1
+            if st.button("⬅️ ADMIN", use_container_width=True):
+                st.session_state.sys_menu = "admin"
                 st.rerun()
         with vc2:
+            if st.button("🔄 Rotate", use_container_width=True, key="viewer_manual_rotate"):
+                st.session_state.rotate_idx += 1
+                st.rerun()
+        with vc3:
             if st.button("RELOAD", type="primary", use_container_width=True, key="viewer_reload"):
                 st.cache_data.clear()
                 st.rerun()
-
-    rad_c1, rad_c2 = st.columns([0.8, 0.2])
-    with rad_c2:
-        options_list = ["6H", "24H", "48H", "72H", "96H"]
-        idx = options_list.index(st.session_state.viewer_time_range) if st.session_state.viewer_time_range in options_list else 2
-        st.session_state.viewer_time_range = st.radio("조회 기간", options_list, index=idx, horizontal=True, label_visibility="collapsed", key='v_time_range_radio')
 
     time_range = st.session_state.viewer_time_range
     now_kst = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
@@ -1669,64 +1724,6 @@ elif st.session_state.sys_menu == "viewer":
             </div>
             """
             st.markdown(html_combined, unsafe_allow_html=True)
-
-
-# ==========================================
-# 🚀 [라우팅 3] ADMINISTRATOR 모드
-# ==========================================
-elif st.session_state.sys_menu == "admin":
-    # 어드민 모드일 때는 커스텀 토글 숨김
-    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
-
-    st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
-    
-    config = load_shared_config() or {}
-    df = load_universal_data()
-    all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
-    
-    with st.form("admin_config_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**1. 모니터링 대상 모델 선택**")
-            sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", all_models, default=[m for m in config.get("sel_std", []) if m in all_models])
-            sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", all_models, default=[m for m in config.get("sel_inc", []) if m in all_models])
-            
-            st.markdown("<br>**2. 뷰어 기본 설정**", unsafe_allow_html=True)
-            time_range = st.selectbox("기본 조회 기간 (Default Time Range)", ["6H", "24H", "48H", "72H", "96H"], index=["6H", "24H", "48H", "72H", "96H"].index(config.get("time_range", "48H")))
-            auto_rotate = st.checkbox("자동 로테이션 활성화 (10분 단위로 선택된 모델 순환 표출)", value=config.get("auto_rotate_active", False))
-            
-        with col2:
-            st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
-            sbl_limits = config.get("sbl_limits", {})
-            sbl_yield = st.number_input("📉 양품율 SBL (이하일 때 알람)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
-            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
-            sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
-            sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
-            sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.form_submit_button("💾 설정 저장 및 대시보드 클라우드 반영 (Save to Cloud)", use_container_width=True):
-            new_config = {
-                "sel_std": sel_std,
-                "sel_inc": sel_inc,
-                "time_range": time_range,
-                "auto_rotate_active": auto_rotate,
-                "sbl_limits": {
-                    "Yield_Default": sbl_yield,
-                    "Def_Comp": sbl_comp,
-                    "Def_Front": sbl_front,
-                    "Def_Rear": sbl_rear,
-                    "Def_Offset": sbl_offset
-                },
-                "model_color_dict": config.get("model_color_dict", {})
-            }
-            if save_shared_config(new_config):
-                st.cache_data.clear()
-                time.sleep(1.0)
-                st.rerun()
-
-    st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 30px;'>", unsafe_allow_html=True)
-    st.info("💡 위에서 저장된 설정은 아래 시스템 전체와, 공유된 외부 모니터링 화면(VIEWER)에 즉시 적용됩니다.")
 
 
 # ==========================================
