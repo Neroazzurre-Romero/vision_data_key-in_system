@@ -23,10 +23,10 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_list = ["한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
+worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -199,7 +199,6 @@ def load_universal_data():
             mapped_std_cols.add(matched_col)
 
     df = df.rename(columns=rename_dict)
-    
     ext_cols = EXCEL_COLUMNS + ['옵셋불량율']
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
@@ -371,7 +370,6 @@ if "unlocked" in st.query_params:
     st.session_state.unlocked = True
     st.query_params.clear()
 
-# Config 불러오기
 config = load_shared_config() or {}
 st.session_state.sbl_limits = config.get("sbl_limits", {
     "Yield_Default": 85.0, "Yield_Centaur": 91.4, "Yield_MEM": 93.2,
@@ -401,16 +399,34 @@ for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 # ==========================================
-# 🛡️ 전역 CSS (모든 화면 공통 적용)
+# 🛡️ 전역 CSS (깜빡임 완벽 차단 & UI 최적화)
 # ==========================================
 global_theme_css = """
 <style>
 /* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
-header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
-header[data-testid="stHeader"] > div:nth-child(2),
-[data-testid="stToolbar"],
-[data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
+header[data-testid="stHeader"] { display: none !important; }
+#MainMenu { display: none !important; visibility: hidden !important; }
+[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
+
+/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 (1차 CSS 방어) */
+[data-testid="manage-app-button"],
+[data-testid="stAppDeployButton"],
+.stDeployButton,
+div[class^="viewerBadge"],
+div[class*="viewerBadge"],
+#creatorBadge {
+    display: none !important; opacity: 0 !important; visibility: hidden !important;
+    z-index: -1000 !important; pointer-events: none !important;
+}
+
+/* iframe 텍스트 깜빡임 방지 (크기 0으로 축소) */
+iframe[title="streamlit_components.components.html"] {
+    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important;
+}
+
+/* 히든 버튼 완전 은닉 (DOM 상에서 존재를 감춤) */
+.hidden-btn { display: none !important; visibility: hidden !important; height: 0px !important; width: 0px !important; overflow: hidden !important; position: absolute !important; z-index: -9999 !important; }
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
 ::-webkit-scrollbar { display: none; }
@@ -429,24 +445,10 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
 
-/* 🛡️ 히든 버튼 완벽 은닉용 클래스 (UI/UX 보호) */
-.hidden-btn-wrapper { 
-    display: none !important; 
-    visibility: hidden !important; 
-    height: 0px !important; 
-    width: 0px !important; 
-    overflow: hidden !important; 
-    position: absolute !important; 
-    z-index: -9999 !important; 
-}
-
-/* 🛡️ 깜빡임 유발하는 컴포넌트 iframe 영구 투명화 */
-iframe[title="streamlit_components.components.html"] { 
-    display: none !important; 
-    opacity: 0 !important; 
-    width: 0 !important; 
-    height: 0 !important; 
-    position: absolute !important; 
+/* 🛡️ CSS 우측 하단 절대 방어막 (클릭 불가) */
+.stApp::after {
+    content: "" !important; position: fixed !important; bottom: 0 !important; right: 0 !important; width: 300px !important; height: 150px !important;
+    background: transparent !important; z-index: 2147483647 !important; pointer-events: auto !important; cursor: default !important;
 }
 </style>
 """
@@ -469,17 +471,19 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            # 💡 mix-blend-mode: multiply를 적용하여 흰색 배경을 투명하게 스며들게 만듭니다.
+            # 💡 로고 최대 크기 400px 반영 및 배경 투명화
             st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px; mix-blend-mode: multiply;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
-        # 💡 히든 버튼 래퍼 적용
-        st.markdown("<div class='hidden-btn-wrapper'>", unsafe_allow_html=True)
-        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
-            st.session_state.unlocked = True
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        # 💡 히든 버튼 완전 격리
+        hidden_container = st.empty()
+        with hidden_container.container():
+            st.markdown("<div class='hidden-btn'>", unsafe_allow_html=True)
+            if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
+                st.session_state.unlocked = True
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
             
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
@@ -539,7 +543,9 @@ if not st.session_state.unlocked:
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
-        components.html(slider_html, height=0, width=0)
+        # 스크립트 실행 박스를 높이 0으로 처리해 화면 밀림 방지
+        components.html(slider_html, height=100, width=0)
+        
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -560,18 +566,20 @@ if st.session_state.sys_menu != "exit":
             st.session_state.sys_menu = "admin"
             st.rerun()
             
-    # 💡 플로팅 EXIT 버튼용 히든 트리거
-    st.markdown("<div class='hidden-btn-wrapper'>", unsafe_allow_html=True)
-    if st.button("HIDDEN_EXIT_TRIGGER"):
-        st.session_state.sys_menu = "exit"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 💡 플로팅 EXIT 버튼용 히든 트리거 완전 격리
+    hidden_exit_container = st.empty()
+    with hidden_exit_container.container():
+        st.markdown("<div class='hidden-btn'>", unsafe_allow_html=True)
+        if st.button("HIDDEN_EXIT_TRIGGER"):
+            st.session_state.sys_menu = "exit"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 메뉴 + 어드민 분리)
+# 🚀 [라우팅 1] KEY-IN WIZARD
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -585,6 +593,9 @@ if st.session_state.sys_menu == "keyin":
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover p { color: #ffffff !important; }
     
+    /* 기본 숨김 해제 */
+    [data-testid="collapsedControl"] { display: none !important; }
+    
     /* 폼 영역 디자인 */
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
     div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; }
@@ -594,7 +605,7 @@ if st.session_state.sys_menu == "keyin":
     </style>
     """, unsafe_allow_html=True)
     
-    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 분리 적용)
+    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 재배치 적용)
     with st.sidebar:
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
@@ -1171,7 +1182,7 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # 💡 [데이터 수정] 모드 (표 먼저 렌더링 후 하단 비밀번호 입력)
+    # 💡 [데이터 수정] 모드 최적화 (비밀번호 및 내역 남기기)
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1184,12 +1195,14 @@ if st.session_state.sys_menu == "keyin":
                     display_df = display_df.iloc[::-1].head(20).copy()
                     
                     if not st.session_state.get("edit_unlocked", False):
+                        # 💡 표를 먼저 보여주고 그 아래에 1:1 비율로 입력칸/버튼 배치
                         st.dataframe(display_df, hide_index=True, use_container_width=True) 
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        st.info("🔒 데이터 수정을 위해 아래에 비밀번호를 입력해주세요.")
-                        c1, c2 = st.columns([0.8, 0.2])
+                        st.markdown("<hr style='border-color: #cbd5e1;'>", unsafe_allow_html=True)
+                        st.info("🔒 데이터를 직접 수정하려면 아래에 관리자 비밀번호를 입력해주세요.")
+                        
+                        c1, c2 = st.columns(2)
                         with c1:
-                            edit_pwd = st.text_input("수정 비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력 (6233)")
+                            edit_pwd = st.text_input("수정 비밀번호", type="password", label_visibility="collapsed", placeholder="비밀번호 입력 (6233)")
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1246,6 +1259,7 @@ elif st.session_state.sys_menu == "admin":
     df = load_universal_data()
     all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
     
+    # 💡 모델 중복 선택 방지 로직 (Dynamic Options)
     opt_std = [m for m in all_models if m not in st.session_state.sel_inc]
     opt_inc = [m for m in all_models if m not in st.session_state.sel_std]
     
@@ -1265,6 +1279,8 @@ elif st.session_state.sys_menu == "admin":
         with col2:
             st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
             sbl_limits = config.get("sbl_limits", {})
+            
+            # 💡 각 모델별 양품율 SBL 세분화 적용
             sbl_yield_def = st.number_input("📉 양품율 SBL (기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
             sbl_yield_cen = st.number_input("📉 양품율 SBL (Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
             sbl_yield_mem = st.number_input("📉 양품율 SBL (MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
