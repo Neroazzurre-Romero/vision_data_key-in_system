@@ -26,7 +26,7 @@ except ImportError:
 worker_list = ["작업자A", "작업자B", "작업자C", "작업자D", "작업자E", "작업자F"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -396,7 +396,7 @@ for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 # ==========================================
-# 🛡️ 전역 CSS & Manage App 핵폭탄 스크립트 (모든 화면 공통)
+# 🛡️ 전역 CSS (모든 화면 공통)
 # ==========================================
 global_theme_css = """
 <style>
@@ -425,44 +425,6 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
 
-badge_killer_script = """
-<script>
-const setupBadgeBlocker = () => {
-    let docs = [document];
-    try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
-    try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
-
-    docs.forEach(doc => {
-        try {
-            const selectors = '[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], div[class*="viewerBadge"], #creatorBadge, a[href*="streamlit.io/cloud"]';
-            doc.querySelectorAll(selectors).forEach(el => {
-                el.style.setProperty('display', 'none', 'important');
-                el.style.setProperty('pointer-events', 'none', 'important');
-            });
-            
-            doc.querySelectorAll('div, a, button, span').forEach(el => {
-                if (el.textContent && (el.textContent.includes('< Manage app') || el.textContent.includes('View profile'))) {
-                    el.style.setProperty('display', 'none', 'important');
-                    if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
-                }
-            });
-
-            if (!doc.getElementById('ultimate-blocker-shield')) {
-                const blocker = doc.createElement('div');
-                blocker.id = 'ultimate-blocker-shield';
-                blocker.style.cssText = 'position:fixed !important; bottom:0 !important; right:0 !important; width:300px !important; height:150px !important; background:transparent !important; z-index:2147483647 !important; cursor:default !important; pointer-events:auto !important;';
-                const killEvent = (e) => { e.stopPropagation(); e.preventDefault(); return false; };
-                ['click', 'mousedown', 'mouseup', 'pointerdown', 'touchstart'].forEach(ev => blocker.addEventListener(ev, killEvent, true));
-                doc.body.appendChild(blocker);
-            }
-        } catch(e) {}
-    });
-};
-setupBadgeBlocker();
-setInterval(setupBadgeBlocker, 100); 
-</script>
-"""
-components.html(badge_killer_script, height=0, width=0)
 
 # ==========================================
 # 💡 잠금 화면 (슬라이더 언락)
@@ -550,6 +512,31 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
+    
+    # 잠금 화면용 배지 제거 (깜빡임 방지용 하단 배치)
+    components.html("""
+    <script>
+    const nukeManageApp = () => {
+        let docs = [document];
+        try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
+        try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
+        docs.forEach(doc => {
+            try {
+                const selectors = '[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], div[class*="viewerBadge"], #creatorBadge, a[href*="streamlit.io/cloud"]';
+                doc.querySelectorAll(selectors).forEach(el => { el.style.setProperty('display', 'none', 'important'); el.style.setProperty('pointer-events', 'none', 'important'); });
+                if (!doc.getElementById('ultimate-blocker-shield')) {
+                    const blocker = doc.createElement('div');
+                    blocker.id = 'ultimate-blocker-shield';
+                    blocker.style.cssText = 'position:fixed !important; bottom:0 !important; right:0 !important; width:300px !important; height:150px !important; background:transparent !important; z-index:2147483647 !important; cursor:default !important; pointer-events:auto !important;';
+                    ['click', 'mousedown', 'touchstart'].forEach(ev => blocker.addEventListener(ev, (e)=>{e.stopPropagation(); e.preventDefault(); return false;}, true));
+                    doc.body.appendChild(blocker);
+                }
+            } catch(e) {}
+        });
+    };
+    nukeManageApp(); setInterval(nukeManageApp, 100); 
+    </script>
+    """, height=0, width=0)
     st.stop()
 
 
@@ -598,113 +585,7 @@ if st.session_state.sys_menu == "keyin":
     </style>
     """, unsafe_allow_html=True)
     
-    # 💡 커스텀 플로팅 사이드바 토글 및 스캐너, 버튼 색상 변경 설정
-    components.html(
-        """
-        <script>
-        const pDoc = window.parent.document;
-        
-        // 커스텀 사이드바 토글 버튼 생성
-        let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
-        if (!toggleBtn) {
-            toggleBtn = pDoc.createElement('div');
-            toggleBtn.id = 'custom-sidebar-toggle';
-            toggleBtn.innerHTML = '<span style="font-size:1.4rem; line-height:1;">☰</span> <span style="margin-top:2px;">사이드바 토글</span>';
-            toggleBtn.style.cssText = 'position:fixed; top:20px; left:20px; z-index:999999; background:#1e293b; color:#ffffff; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; border:2px solid #cbd5e1; transition:all 0.2s; font-family:sans-serif;';
-            toggleBtn.onmouseover = () => { toggleBtn.style.background = '#3b82f6'; toggleBtn.style.borderColor = '#ffffff'; };
-            toggleBtn.onmouseout = () => { toggleBtn.style.background = '#1e293b'; toggleBtn.style.borderColor = '#cbd5e1'; };
-            toggleBtn.onclick = function() {
-                // Streamlit 1.x 버전의 사이드바 제어 DOM 추적
-                const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
-                const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
-                
-                if (collapseDiv && collapseDiv.getBoundingClientRect().width > 0) {
-                    const btn = collapseDiv.querySelector('button') || collapseDiv;
-                    btn.click();
-                } else if (expandDiv) {
-                    const btn = expandDiv.querySelector('button') || expandDiv;
-                    btn.click();
-                }
-            };
-            pDoc.body.appendChild(toggleBtn);
-        }
-        toggleBtn.style.display = 'flex'; 
-
-        if (!window.parent.appPluginLoadedFull) {
-            window.parent.appPluginLoadedFull = true;
-            
-            const formatNavButtons = () => {
-                const buttons = pDoc.querySelectorAll('button');
-                buttons.forEach(btn => {
-                    const text = btn.innerText || "";
-                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
-                        btn.style.setProperty('background', '#305496', 'important');
-                        btn.style.setProperty('background-color', '#305496', 'important');
-                        btn.style.setProperty('border', '1px solid #203864', 'important');
-                        btn.style.setProperty('color', '#ffffff', 'important');
-                        
-                        // 하위 p태그의 글자색도 무조건 흰색으로 덮어쓰기
-                        const pTag = btn.querySelector('p');
-                        if(pTag) pTag.style.setProperty('color', '#ffffff', 'important');
-                    }
-                    if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
-                        btn.style.setProperty('height', '70px', 'important'); 
-                        btn.style.setProperty('font-size', '1.2rem', 'important');
-                    }
-                });
-            };
-            
-            const styleScanner = () => {
-                pDoc.querySelectorAll('input').forEach(el => {
-                    if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
-                        el.style.setProperty('font-size', '1.2rem', 'important');
-                        el.style.setProperty('font-weight', '900', 'important');
-                        let parentDiv = el.parentElement;
-                        let grandParent = el.closest('div[data-baseweb="input"]');
-                        if (parentDiv) parentDiv.style.setProperty('border', 'none', 'important');
-                        if (grandParent) grandParent.style.setProperty('border', '2px solid #eab308', 'important');
-                        if (!el.getAttribute('data-scanner-listener')) {
-                            el.setAttribute('data-scanner-listener', 'true');
-                            el.addEventListener('focus', () => { el.setAttribute('data-focused', 'true'); });
-                            el.addEventListener('blur', () => { el.removeAttribute('data-focused'); });
-                        }
-                        if (el.getAttribute('data-focused')) {
-                            el.style.setProperty('color', '#ffffff', 'important');
-                            if (parentDiv) parentDiv.style.setProperty('background-color', '#1e293b', 'important');
-                            if (grandParent) grandParent.style.setProperty('background-color', '#1e293b', 'important');
-                        } else {
-                            el.style.setProperty('color', '#000000', 'important');
-                            if (parentDiv) parentDiv.style.setProperty('background-color', '#fef08a', 'important');
-                            if (grandParent) grandParent.style.setProperty('background-color', '#fef08a', 'important');
-                        }
-                    }
-                });
-            };
-            
-            const disableKeyboard = () => {
-                pDoc.querySelectorAll('input').forEach(el => {
-                    const placeholder = el.getAttribute('placeholder') || '';
-                    const ariaLabel = el.getAttribute('aria-label') || '';
-                    const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
-                    const isDatepicker = el.closest('div[data-baseweb="datepicker"]') !== null;
-                    if (placeholder.includes('YYYY') || placeholder.includes('MM') || placeholder.includes('DD') || 
-                        ariaLabel.toLowerCase().includes('date') || ariaLabel.toLowerCase().includes('select') || 
-                        isDropdown || isDatepicker) {
-                        el.setAttribute('inputmode', 'none');
-                        el.setAttribute('readonly', 'readonly');
-                        el.addEventListener('focus', function(e) { e.target.blur(); });
-                    }
-                });
-            };
-            const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
-            if (pDoc.body) { observer.observe(pDoc.body, { childList: true, subtree: true }); }
-            disableKeyboard(); formatNavButtons(); styleScanner();
-        }
-        </script>
-        """, height=0, width=0
-    )
-
-    # 💡 사이드바 렌더링
+    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 분리 적용)
     with st.sidebar:
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
@@ -736,12 +617,13 @@ if st.session_state.sys_menu == "keyin":
             st.session_state.step = 2
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 관리자 기능</h4><br>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ DATA LIST</h4><br>", unsafe_allow_html=True)
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
             st.rerun()
-        # 💡 ADMINISTRATOR 버튼을 메인 화면 상단에서 사이드바 내부로 이동
+            
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 관리자 기능</h4><br>", unsafe_allow_html=True)
         if st.button("⚙️ ADMINISTRATOR", type="secondary", use_container_width=True):
             st.session_state.sys_menu = "admin"
             st.rerun()
@@ -1315,13 +1197,33 @@ if st.session_state.sys_menu == "keyin":
                             st.info("수정된 항목이 없습니다.")
             else:
                 st.caption("저장된 데이터가 없습니다.")
-
+                
+    # 💡 최하단: 깜빡임 없는 스크립트 모음 (플로팅 토글 등 UI 초기화)
+    components.html("""
+    <script>
+    const pDoc = window.parent.document;
+    let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
+    if(toggleBtn) {
+        // 사이드바 버튼 클릭 이벤트 리스너 재부착
+        toggleBtn.onclick = function() {
+            const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
+            const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
+            if (collapseDiv && collapseDiv.getBoundingClientRect().width > 0) {
+                const btn = collapseDiv.querySelector('button') || collapseDiv;
+                btn.click();
+            } else if (expandDiv) {
+                const btn = expandDiv.querySelector('button') || expandDiv;
+                btn.click();
+            }
+        };
+    }
+    </script>
+    """, height=0, width=0)
 
 # ==========================================
 # 🚀 [라우팅 2] ADMINISTRATOR (관리자 패널 & 뷰어 진입)
 # ==========================================
 elif st.session_state.sys_menu == "admin":
-    # 어드민 모드일 때는 커스텀 토글 숨김
     components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
 
     st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
@@ -1383,7 +1285,6 @@ elif st.session_state.sys_menu == "admin":
 # 🚀 [라우팅 3] VIEWER 모드 (ADMIN에서 진입)
 # ==========================================
 elif st.session_state.sys_menu == "viewer":
-    # 뷰어 모드일 때는 커스텀 토글 숨김
     components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
     
     config = load_shared_config()
