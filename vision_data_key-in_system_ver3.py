@@ -23,10 +23,10 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_list = ["한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
+worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -400,11 +400,11 @@ for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 # ==========================================
-# 🛡️ 전역 CSS (모든 화면 공통 적용)
+# 🛡️ 전역 CSS (모든 화면 공통 적용 - 깜빡임 방지)
 # ==========================================
 global_theme_css = """
 <style>
-/* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
+/* 🚫 헤더 및 상단 메뉴 완벽 은닉 */
 header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; z-index: -1 !important; }
 header[data-testid="stHeader"] > div:nth-child(2),
 [data-testid="stToolbar"],
@@ -441,8 +441,9 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
 
 /* 💡 사이드바 텍스트 _double_ 겹침 완벽 차단 */
 [data-testid="collapsedControl"] { display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; background: transparent !important; z-index: 999999 !important; color: transparent !important; }
-[data-testid="collapsedControl"] svg { display: none !important; }
-[data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; position: absolute !important; display: block !important; }
+[data-testid="collapsedControl"] svg { display: none !important; opacity: 0 !important; width: 0px !important; height: 0px !important; }
+[data-testid="collapsedControl"] span { display: none !important; opacity: 0 !important; font-size: 0px !important; }
+[data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; display: block !important; position: absolute !important; }
 [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
 [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; }
 </style>
@@ -451,13 +452,15 @@ st.markdown(global_theme_css, unsafe_allow_html=True)
 
 
 # ==========================================
-# 💡 잠금 화면 (슬라이더 언락)
+# 💡 잠금 화면 (로고 클릭 언락 적용)
 # ==========================================
 if not st.session_state.unlocked:
     st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
+        /* 잠금화면에선 모든 stButton을 CSS로 1차 완벽 은닉 */
+        div[data-testid="stButton"] { display: none !important; opacity: 0 !important; position: absolute !important; z-index: -9999 !important; height: 0 !important; }
     </style>
     """, unsafe_allow_html=True)
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
@@ -466,96 +469,31 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            # 💡 로고 최대 크기 400px 반영 및 배경 투명화
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px; mix-blend-mode: multiply;'></div>", unsafe_allow_html=True)
+            # 💡 슬라이더 대신 로고 자체에 클릭 이벤트(onclick) 적용
+            logo_html = f"""
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin-top: -100px;">
+                <img src="{logo_l_data}" style="max-width: 100%; max-height: 400px; object-fit: contain; cursor: pointer; mix-blend-mode: multiply; transition: transform 0.2s;" 
+                     onmouseover="this.style.transform='scale(1.05)'" 
+                     onmouseout="this.style.transform='scale(1)'"
+                     onclick="
+                         const pDoc = window.parent.document;
+                         const btns = pDoc.querySelectorAll('button');
+                         for(let b of btns) {{
+                             if(b.textContent.includes('UNLOCK_TRIGGER')) {{ b.click(); break; }}
+                         }}
+                     ">
+                <p style="color: #64748b; font-family: sans-serif; font-size: 1.2rem; font-weight: bold; margin-top: 20px; pointer-events: none;">로고를 클릭하여 시스템에 진입하세요</p>
+            </div>
+            """
+            components.html(logo_html, height=500)
         else:
-            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px; cursor: pointer;'>VISION DATA KEY-IN SYSTEM</h1>", unsafe_allow_html=True)
         
-        # 💡 히든 버튼을 렌더링하지만 자바스크립트로 0.01초만에 숨김
-        st.button("UNLOCK_SYSTEM_BTN_HIDDEN", key="unlock_btn")
-            
-        slider_html = """
-        <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
-            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
-            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
-            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #1e293b; font-size: 24px;">▶</div>
-        </div>
-        <script>
-            // 버튼 숨김 및 Manage App 강제 파괴 (Unlock 화면용)
-            const killUI = () => {
-                const pDoc = window.parent.document;
-                if(!pDoc) return;
-                pDoc.querySelectorAll('button').forEach(b => {
-                    if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) {
-                        b.style.display = 'none'; b.style.position = 'absolute'; b.style.opacity = '0'; b.style.zIndex = '-9999';
-                    }
-                });
-                pDoc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(el => {
-                    if(el && el.parentNode) el.parentNode.removeChild(el);
-                });
-                pDoc.querySelectorAll('a, div, span').forEach(el => {
-                    if(el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile')) {
-                        if(el && el.parentNode) el.parentNode.removeChild(el);
-                    }
-                });
-            };
-            killUI();
-            setInterval(killUI, 10);
+        # 💡 히든 트리거 버튼 (위 CSS에 의해 화면에 보이지 않음)
+        if st.button("UNLOCK_TRIGGER", key="unlock_btn"):
+            st.session_state.unlocked = True
+            st.rerun()
 
-            const container = document.getElementById('slider-container');
-            const thumb = document.getElementById('slider-thumb');
-            const fill = document.getElementById('slider-fill');
-            const text = document.getElementById('slider-text');
-            const unlockSystem = () => {
-                const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) { if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
-            };
-            let isDragging = false;
-            let startX, currentX = 0;
-            function startDrag(e) {
-                isDragging = true;
-                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-                startX = clientX - currentX;
-            }
-            function drag(e) {
-                if (!isDragging) return;
-                if(e.cancelable) e.preventDefault();
-                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-                currentX = clientX - startX;
-                const maxDrag = container.clientWidth - thumb.clientWidth - 8; 
-                if (currentX < 0) currentX = 0;
-                if (currentX > maxDrag) currentX = maxDrag;
-                thumb.style.transform = `translateX(${currentX}px)`;
-                fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
-                if (currentX > maxDrag * 0.4) { text.style.color = '#ffffff'; } else { text.style.color = '#94a3b8'; }
-                if (currentX >= maxDrag) {
-                    isDragging = false;
-                    text.innerText = "Unlocked!";
-                    thumb.innerHTML = "✔";
-                    setTimeout(() => { unlockSystem(); }, 200);
-                }
-            }
-            function endDrag(e) {
-                if (!isDragging) return;
-                isDragging = false;
-                const maxDrag = container.clientWidth - thumb.clientWidth - 8;
-                if (currentX < maxDrag) {
-                    thumb.style.transition = 'transform 0.3s ease';
-                    fill.style.transition = 'width 0.3s ease';
-                    currentX = 0;
-                    thumb.style.transform = `translateX(0px)`;
-                    fill.style.width = '0px';
-                    text.style.color = '#94a3b8';
-                    setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
-                }
-            }
-            thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
-            thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
-        </script>
-        """
-        # 스크립트 실행 박스를 적정 높이로 처리하여 슬라이더 표시
-        components.html(slider_html, height=100, width=0)
-        
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -575,9 +513,6 @@ if st.session_state.sys_menu != "exit":
         if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu in ["admin", "viewer"] else "secondary"):
             st.session_state.sys_menu = "admin"
             st.rerun()
-            
-    # 💡 플로팅 EXIT 버튼용 히든 트리거 
-    st.button("HIDDEN_EXIT_TRIGGER", key="hidden_exit")
 
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
@@ -1210,7 +1145,8 @@ if st.session_state.sys_menu == "keyin":
                         
                         c1, c2 = st.columns([0.8, 0.2])
                         with c1:
-                            edit_pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
+                            # 💡 텍스트 노출 방지를 위해 공백 라벨 전달
+                            edit_pwd = st.text_input("수정 비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1273,8 +1209,8 @@ elif st.session_state.sys_menu == "admin":
             st.markdown("**1. 모니터링 대상 모델 선택 (중복 불가)**")
             def update_std(): pass
             def update_inc(): pass
-            sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", opt_std, default=st.session_state.get('sel_std', []), key="sel_std")
-            sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", opt_inc, default=st.session_state.get('sel_inc', []), key="sel_inc")
+            sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", opt_std, default=st.session_state.get('sel_std', []), key="sel_std", on_change=update_std)
+            sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", opt_inc, default=st.session_state.get('sel_inc', []), key="sel_inc", on_change=update_inc)
             
             st.markdown("<br>**2. 뷰어 기본 설정**", unsafe_allow_html=True)
             time_range = st.selectbox("기본 조회 기간 (Default Time Range)", ["6H", "24H", "48H", "72H", "96H"], index=["6H", "24H", "48H", "72H", "96H"].index(config.get("time_range", "48H")))
@@ -1758,7 +1694,7 @@ if (pDoc) {{
         {'setInterval(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 
-    // 💡 3. Streamlit Cloud UI 및 히든 버튼 0.01초 주기 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
+    // 💡 3. Streamlit Cloud UI 및 히든 버튼 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
     const nukeNode = (el) => {{ if(el && el.parentNode) el.parentNode.removeChild(el); }};
     
     const destroyStreamlitUI = () => {{
@@ -1770,12 +1706,12 @@ if (pDoc) {{
             try {{
                 // iframe 및 배지 DOM 자체를 뜯어내서 삭제
                 doc.querySelectorAll('iframe').forEach(f => {{ if(f.src && (f.src.includes('badge') || f.title.includes('Toolbar'))) nukeNode(f); }});
-                doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(nukeNode);
+                doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], #creatorBadge').forEach(nukeNode);
                 
                 doc.querySelectorAll('div, a, button, span').forEach(el => {{
-                    if (el.textContent && (el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile'))) {{
-                        el.style.setProperty('display', 'none', 'important');
-                        if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
+                    const txt = el.textContent || "";
+                    if (txt === '< Manage app' || txt === 'Manage app' || txt.includes('View profile') || txt.includes('Hosted with Streamlit')) {{
+                        nukeNode(el);
                     }}
                 }});
                 
