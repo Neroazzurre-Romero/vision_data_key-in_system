@@ -55,226 +55,6 @@ def get_image_base64(base_name):
     return None
 
 # ==========================================
-# 💡 세션 상태 초기화 (전역 통합)
-# ==========================================
-if "unlocked" not in st.session_state: st.session_state.unlocked = False
-if "sys_menu" not in st.session_state: st.session_state.sys_menu = "keyin"
-if "app_mode" not in st.session_state: st.session_state.app_mode = "START" 
-if "step" not in st.session_state: st.session_state.step = 1
-if "rotate_idx" not in st.session_state: st.session_state.rotate_idx = 0
-if "unlocked" in st.query_params:
-    st.session_state.unlocked = True
-    st.query_params.clear()
-
-default_state = {
-    "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "worker": "작업자A",
-    "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
-    "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
-    "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
-    "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
-    "painting_order": "", "painting_line": "A Line", 
-    "clip_val": "1", "clip_type": "일반",
-    "base_val": "1", "cover_val": "1",
-    "assembler_val": "1호기",
-    "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
-    "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
-    "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
-    "rear_warned": False, "offset_warned": False,
-    "numpad_buffer": "", "timepad_buffer": "", "target_unique_id": ""
-}
-for key, value in default_state.items():
-    if key not in st.session_state: st.session_state[key] = value
-
-# ==========================================
-# 🛡️ 1차 방어막: 전역 CSS 및 UI 최적화
-# ==========================================
-global_theme_css = """
-<style>
-/* 🚫 Streamlit 기본 상단 헤더, 메뉴, 툴바, 뱃지 완벽 은닉 */
-header[data-testid="stHeader"] { display: none !important; }
-#MainMenu { display: none !important; visibility: hidden !important; }
-[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
-footer { display: none !important; } 
-[data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"] { display: none !important; }
-
-body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
-::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
-
-/* 💡 공통 라이트 테마 설정 */
-h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
-[data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; color: #1e293b !important; }
-
-/* 💡 버튼 디자인 통일 (Hover 흰글씨 적용) */
-div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; border-radius: 8px !important; background-color: #E7E6E6 !important; border: 1px solid #cbd5e1 !important; transition: all 0.2s ease; }
-div[data-testid="stButton"] button p { color: #000000 !important; }
-div[data-testid="stButton"] button:hover { background-color: #1e293b !important; border-color: #1e293b !important; }
-div[data-testid="stButton"] button:hover p { color: #ffffff !important; }
-div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; border: 1px solid #0f172a !important; }
-div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
-div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
-
-/* 💡 라디오 버튼(조회 기간) 우측 정렬 강제 적용 (뷰어/어드민) */
-div[data-testid="stRadio"] { display: flex; justify-content: flex-end !important; width: 100%; margin-right: 0px !important; }
-div[role="radiogroup"] { justify-content: flex-end !important; flex-wrap: nowrap !important; gap: 15px !important; }
-div[role="radiogroup"] label { white-space: nowrap !important; cursor: pointer !important; font-weight: bold !important; color: #1e293b !important; }
-
-/* 💡 프리미엄 KPI 카드 */
-.model-card { background: #000000; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; }
-.model-card div, .model-card span { color: #FFFFFF !important; }
-.kpi-card { background: linear-gradient(135deg, #000000, #4472C4); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; }
-.kpi-card div, .kpi-card span { color: #FFC000 !important; }
-.metric-label { color: #1e293b !important; font-size: 1.1rem !important; font-weight: 800 !important; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
-.command-header { color: #1e293b !important; font-weight: 900 !important; letter-spacing: 1px; }
-
-/* 💡 SBL 카드 및 뷰어 라이브 닷 */
-.sbl-card { background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #ef4444; border-radius: 8px; padding: 12px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-.sbl-title { color: #b91c1c !important; font-weight: 900; font-size: 0.95rem; margin-bottom: 5px; border-bottom: 1px solid #fecaca; padding-bottom: 3px; }
-.sbl-text { color: #334155 !important; font-size: 0.85rem; line-height: 1.5; font-weight: 500; }
-@keyframes blink { 0% { opacity: 1; box-shadow: 0 0 10px #3b82f6; } 50% { opacity: 0.3; box-shadow: 0 0 2px #3b82f6; } 100% { opacity: 1; box-shadow: 0 0 10px #3b82f6; } }
-.live-dot { height: 12px; width: 12px; background-color: #3b82f6; border-radius: 50%; display: inline-block; margin-right: 12px; margin-bottom: 2px; animation: blink 1.5s ease-in-out infinite; }
-
-/* 💡 기존 입력 폼 디자인 병합 (stVerticalBlockBorderWrapper, inputs 등) */
-div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
-div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; }
-div[data-baseweb="input"] input { color: #1e293b !important; font-weight: bold !important; }
-div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
-div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
-</style>
-"""
-st.markdown(global_theme_css, unsafe_allow_html=True)
-
-# 🛡️ 2차 방어막: 자바스크립트로 Manage App 배지 및 외부 링크를 0.1초마다 박멸하는 끝판왕 핵폭탄
-badge_killer_script = """
-<script>
-const setupBadgeBlocker = () => {
-    let docs = [document];
-    try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
-    try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
-
-    docs.forEach(doc => {
-        try {
-            const selectors = '[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], div[class*="viewerBadge"], #creatorBadge, a[href*="streamlit.io/cloud"]';
-            doc.querySelectorAll(selectors).forEach(el => {
-                el.style.setProperty('display', 'none', 'important');
-                el.style.setProperty('pointer-events', 'none', 'important');
-            });
-            
-            doc.querySelectorAll('div, a, button, span').forEach(el => {
-                if (el.textContent && (el.textContent.includes('< Manage app') || el.textContent.includes('View profile'))) {
-                    el.style.setProperty('display', 'none', 'important');
-                    if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
-                }
-            });
-
-            if (!doc.getElementById('ultimate-blocker-shield')) {
-                const blocker = doc.createElement('div');
-                blocker.id = 'ultimate-blocker-shield';
-                blocker.style.cssText = 'position:fixed !important; bottom:0 !important; right:0 !important; width:300px !important; height:150px !important; background:transparent !important; z-index:2147483647 !important; cursor:default !important; pointer-events:auto !important;';
-                
-                const killEvent = (e) => { e.stopPropagation(); e.preventDefault(); return false; };
-                ['click', 'mousedown', 'mouseup', 'pointerdown', 'touchstart'].forEach(ev => blocker.addEventListener(ev, killEvent, true));
-                doc.body.appendChild(blocker);
-            }
-        } catch(e) {}
-    });
-};
-setupBadgeBlocker();
-setInterval(setupBadgeBlocker, 100); 
-</script>
-"""
-components.html(badge_killer_script, height=0, width=0)
-
-# ==========================================
-# 💡 슬라이더 언락 페이지 (로고 반영)
-# ==========================================
-if not st.session_state.unlocked:
-    st.markdown("""
-    <style>
-        [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="collapsedControl"] { display: none !important; }
-    </style>
-    """, unsafe_allow_html=True)
-    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        logo_l_data = get_image_base64("logo")
-        if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 200px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA COMMAND CENTER</h1><br><br>", unsafe_allow_html=True)
-        
-        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
-            st.session_state.unlocked = True
-            st.rerun()
-            
-        slider_html = """
-        <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
-            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
-            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
-            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #1e293b; font-size: 24px;">▶</div>
-        </div>
-        <script>
-            const container = document.getElementById('slider-container');
-            const thumb = document.getElementById('slider-thumb');
-            const fill = document.getElementById('slider-fill');
-            const text = document.getElementById('slider-text');
-            const unlockSystem = () => {
-                const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
-            };
-            const btns = window.parent.document.querySelectorAll('button');
-            for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
-            let isDragging = false;
-            let startX, currentX = 0;
-            function startDrag(e) {
-                isDragging = true;
-                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-                startX = clientX - currentX;
-            }
-            function drag(e) {
-                if (!isDragging) return;
-                if(e.cancelable) e.preventDefault();
-                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-                currentX = clientX - startX;
-                const maxDrag = container.clientWidth - thumb.clientWidth - 8; 
-                if (currentX < 0) currentX = 0;
-                if (currentX > maxDrag) currentX = maxDrag;
-                thumb.style.transform = `translateX(${currentX}px)`;
-                fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
-                if (currentX > maxDrag * 0.4) { text.style.color = '#ffffff'; } else { text.style.color = '#94a3b8'; }
-                if (currentX >= maxDrag) {
-                    isDragging = false;
-                    text.innerText = "Unlocked!";
-                    thumb.innerHTML = "✔";
-                    setTimeout(() => { unlockSystem(); }, 200);
-                }
-            }
-            function endDrag(e) {
-                if (!isDragging) return;
-                isDragging = false;
-                const maxDrag = container.clientWidth - thumb.clientWidth - 8;
-                if (currentX < maxDrag) {
-                    thumb.style.transition = 'transform 0.3s ease';
-                    fill.style.transition = 'width 0.3s ease';
-                    currentX = 0;
-                    thumb.style.transform = `translateX(0px)`;
-                    fill.style.width = '0px';
-                    text.style.color = '#94a3b8';
-                    setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
-                }
-            }
-            thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
-            thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
-        </script>
-        """
-        components.html(slider_html, height=90)
-    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
-    st.stop()
-
-# ==========================================
 # 💡 구글 시트 연동 및 데이터 관리 함수
 # ==========================================
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -306,11 +86,8 @@ def get_spreadsheet_doc():
 def get_sheet():
     doc = get_spreadsheet_doc()
     if doc:
-        try: 
-            return doc.worksheet(TAB_NAME)
-        except Exception as e: 
-            st.error(f"🚨 '{TAB_NAME}' 시트 탭을 찾을 수 없습니다: {e}")
-            return doc.sheet1
+        try: return doc.worksheet(TAB_NAME)
+        except Exception as e: return doc.sheet1
     return None
 
 def load_shared_config():
@@ -345,11 +122,9 @@ def load_universal_data():
         ws = doc.worksheet(TAB_NAME)
         raw_data = ws.get_all_values()
     except Exception as e:
-        st.error(f"🚨 '{TAB_NAME}' 시트 접근 에러: {e}")
         return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row', 'DateTime', 'DateOnly'])
     
-    if len(raw_data) < 24: 
-        return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row', 'DateTime', 'DateOnly'])
+    if len(raw_data) < 24: return pd.DataFrame(columns=EXCEL_COLUMNS + ['_sheet_row', 'DateTime', 'DateOnly'])
     
     header_idx = 22
     data_start_idx = 23
@@ -424,7 +199,6 @@ def load_universal_data():
             mapped_std_cols.add(matched_col)
 
     df = df.rename(columns=rename_dict)
-    
     ext_cols = EXCEL_COLUMNS + ['옵셋불량율']
     for col in ext_cols:
         if col not in df.columns: df[col] = ""
@@ -482,7 +256,7 @@ def save_data_append(df):
         return False
 
 # ==========================================
-# 💡 키인 폼 입력용 다이얼로그 및 콜백
+# 💡 키인 폼 입력용 다이얼로그 및 콜백 함수
 # ==========================================
 def parse_scanned_data():
     raw_val = st.session_state.get("scanned_raw_data", "")
@@ -584,80 +358,297 @@ def render_grid_buttons(options, state_key, columns, use_width=True):
                         st.rerun()
 
 # ==========================================
-# 💡 상단 통합 네비게이션
+# 💡 세션 상태 및 설정 동기화
 # ==========================================
-st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA COMMAND CENTER</h2>", unsafe_allow_html=True)
+if "unlocked" not in st.session_state: st.session_state.unlocked = False
+if "sys_menu" not in st.session_state: st.session_state.sys_menu = "keyin"
+if "app_mode" not in st.session_state: st.session_state.app_mode = "START" 
+if "step" not in st.session_state: st.session_state.step = 1
+if "rotate_idx" not in st.session_state: st.session_state.rotate_idx = 0
+if "unlocked" in st.query_params:
+    st.session_state.unlocked = True
+    st.query_params.clear()
 
-m_col1, m_col2, m_col3, m_col4 = st.columns([0.28, 0.28, 0.28, 0.16])
-with m_col1:
-    if st.button("📝 KEY-IN WIZARD", use_container_width=True, type="primary" if st.session_state.sys_menu == "keyin" else "secondary"):
-        st.session_state.sys_menu = "keyin"
-        st.rerun()
-with m_col2:
-    if st.button("👁️ VIEWER", use_container_width=True, type="primary" if st.session_state.sys_menu == "viewer" else "secondary"):
-        st.session_state.sys_menu = "viewer"
-        st.rerun()
-with m_col3:
-    if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu == "admin" else "secondary"):
-        st.session_state.sys_menu = "admin"
-        st.rerun()
-with m_col4:
-    if st.button("🔒 LOGOUT", use_container_width=True):
-        st.session_state.unlocked = False
-        st.session_state.sys_menu = "keyin"
-        st.rerun()
+config = load_shared_config() or {}
+st.session_state.sbl_limits = config.get("sbl_limits", {
+    "Yield_Default": 85.0, "Def_Comp": 10.0, "Def_Front": 5.0, "Def_Rear": 5.0, "Def_Offset": 5.0
+})
+
+default_state = {
+    "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
+    "shift_type": "주간", "worker": "작업자A",
+    "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
+    "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
+    "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
+    "category": "1차 검사", "idle_time": 0, "painting_date": datetime.now(timezone(timedelta(hours=9))).date(),
+    "painting_order": "", "painting_line": "A Line", 
+    "clip_val": "1", "clip_type": "일반",
+    "base_val": "1", "cover_val": "1",
+    "assembler_val": "1호기",
+    "good_qty": 0, "comp_def": 0, "front_def": 0, "rear_def": 0, "offset_def": 0,
+    "shortage_qty": 0, "etc_def": 0, "oqc_status": "선택안함", "remarks": "",
+    "scanned_raw_data": "", "comp_warned": False, "front_warned": False, 
+    "rear_warned": False, "offset_warned": False,
+    "numpad_buffer": "", "timepad_buffer": "", "target_unique_id": ""
+}
+for key, value in default_state.items():
+    if key not in st.session_state: st.session_state[key] = value
+
+# ==========================================
+# 🛡️ 전역 CSS & Manage App 핵폭탄 스크립트 (모든 화면 공통)
+# ==========================================
+global_theme_css = """
+<style>
+header[data-testid="stHeader"] { display: none !important; }
+#MainMenu { display: none !important; visibility: hidden !important; }
+[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
+footer { display: none !important; } 
+
+body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
+::-webkit-scrollbar { display: none; }
+.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
+
+h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
+[data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; color: #1e293b !important; }
+
+/* 공통 버튼 스타일 */
+div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; border-radius: 8px !important; background-color: #E7E6E6 !important; border: 1px solid #cbd5e1 !important; transition: all 0.2s ease; }
+div[data-testid="stButton"] button p { color: #000000 !important; }
+div[data-testid="stButton"] button:hover { background-color: #1e293b !important; border-color: #1e293b !important; }
+div[data-testid="stButton"] button:hover p { color: #ffffff !important; }
+
+div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; border: 1px solid #0f172a !important; }
+div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
+div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
+</style>
+"""
+st.markdown(global_theme_css, unsafe_allow_html=True)
+
+badge_killer_script = """
+<script>
+const setupBadgeBlocker = () => {
+    let docs = [document];
+    try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
+    try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
+
+    docs.forEach(doc => {
+        try {
+            const selectors = '[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], div[class*="viewerBadge"], #creatorBadge, a[href*="streamlit.io/cloud"]';
+            doc.querySelectorAll(selectors).forEach(el => {
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+            });
+            
+            doc.querySelectorAll('div, a, button, span').forEach(el => {
+                if (el.textContent && (el.textContent.includes('< Manage app') || el.textContent.includes('View profile'))) {
+                    el.style.setProperty('display', 'none', 'important');
+                    if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
+                }
+            });
+
+            if (!doc.getElementById('ultimate-blocker-shield')) {
+                const blocker = doc.createElement('div');
+                blocker.id = 'ultimate-blocker-shield';
+                blocker.style.cssText = 'position:fixed !important; bottom:0 !important; right:0 !important; width:300px !important; height:150px !important; background:transparent !important; z-index:2147483647 !important; cursor:default !important; pointer-events:auto !important;';
+                const killEvent = (e) => { e.stopPropagation(); e.preventDefault(); return false; };
+                ['click', 'mousedown', 'mouseup', 'pointerdown', 'touchstart'].forEach(ev => blocker.addEventListener(ev, killEvent, true));
+                doc.body.appendChild(blocker);
+            }
+        } catch(e) {}
+    });
+};
+setupBadgeBlocker();
+setInterval(setupBadgeBlocker, 100); 
+</script>
+"""
+components.html(badge_killer_script, height=0, width=0)
+
+# ==========================================
+# 💡 잠금 화면 (슬라이더 언락)
+# ==========================================
+if not st.session_state.unlocked:
+    st.markdown("""
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="collapsedControl"] { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        logo_l_data = get_image_base64("logo")
+        if logo_l_data:
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 200px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA COMMAND CENTER</h1><br><br>", unsafe_allow_html=True)
         
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
+            st.session_state.unlocked = True
+            st.rerun()
+            
+        slider_html = """
+        <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+            <div id="slider-fill" style="position: absolute; left: 0; top: 0; height: 100%; width: 0; background-color: #1e293b; border-radius: 40px 0 0 40px;"></div>
+            <div id="slider-text" style="position: absolute; width: 100%; text-align: center; color: #94a3b8; font-size: 20px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 2; transition: color 0.3s;">Slide to Unlock</div>
+            <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #1e293b; font-size: 24px;">▶</div>
+        </div>
+        <script>
+            const container = document.getElementById('slider-container');
+            const thumb = document.getElementById('slider-thumb');
+            const fill = document.getElementById('slider-fill');
+            const text = document.getElementById('slider-text');
+            const unlockSystem = () => {
+                const btns = window.parent.document.querySelectorAll('button');
+                for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
+            };
+            const btns = window.parent.document.querySelectorAll('button');
+            for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
+            let isDragging = false;
+            let startX, currentX = 0;
+            function startDrag(e) {
+                isDragging = true;
+                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                startX = clientX - currentX;
+            }
+            function drag(e) {
+                if (!isDragging) return;
+                if(e.cancelable) e.preventDefault();
+                let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                currentX = clientX - startX;
+                const maxDrag = container.clientWidth - thumb.clientWidth - 8; 
+                if (currentX < 0) currentX = 0;
+                if (currentX > maxDrag) currentX = maxDrag;
+                thumb.style.transform = `translateX(${currentX}px)`;
+                fill.style.width = (currentX + thumb.clientWidth / 2) + 'px';
+                if (currentX > maxDrag * 0.4) { text.style.color = '#ffffff'; } else { text.style.color = '#94a3b8'; }
+                if (currentX >= maxDrag) {
+                    isDragging = false;
+                    text.innerText = "Unlocked!";
+                    thumb.innerHTML = "✔";
+                    setTimeout(() => { unlockSystem(); }, 200);
+                }
+            }
+            function endDrag(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                const maxDrag = container.clientWidth - thumb.clientWidth - 8;
+                if (currentX < maxDrag) {
+                    thumb.style.transition = 'transform 0.3s ease';
+                    fill.style.transition = 'width 0.3s ease';
+                    currentX = 0;
+                    thumb.style.transform = `translateX(0px)`;
+                    fill.style.width = '0px';
+                    text.style.color = '#94a3b8';
+                    setTimeout(() => { thumb.style.transition = 'none'; fill.style.transition = 'none'; }, 300);
+                }
+            }
+            thumb.addEventListener('mousedown', startDrag); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', endDrag);
+            thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
+        </script>
+        """
+        components.html(slider_html, height=90)
+    st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
+    st.stop()
 
 
 # ==========================================
-# 💡 1. KEY-IN WIZARD 모드 (원본 코드 100% 보존)
+# 💡 최상단 통합 네비게이션
+# ==========================================
+if st.session_state.sys_menu != "exit":
+    st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA COMMAND CENTER</h2>", unsafe_allow_html=True)
+
+    m_col1, m_col2, m_col3, m_col4 = st.columns([0.28, 0.28, 0.28, 0.16])
+    with m_col1:
+        if st.button("📝 KEY-IN WIZARD", use_container_width=True, type="primary" if st.session_state.sys_menu == "keyin" else "secondary"):
+            st.session_state.sys_menu = "keyin"
+            st.rerun()
+    with m_col2:
+        if st.button("👁️ VIEWER", use_container_width=True, type="primary" if st.session_state.sys_menu == "viewer" else "secondary"):
+            st.session_state.sys_menu = "viewer"
+            st.rerun()
+    with m_col3:
+        if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu == "admin" else "secondary"):
+            st.session_state.sys_menu = "admin"
+            st.rerun()
+    with m_col4:
+        if st.button("🚪 EXIT", use_container_width=True):
+            st.session_state.sys_menu = "exit"
+            st.rerun()
+            
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+
+
+# ==========================================
+# 🚀 [라우팅 1] KEY-IN WIZARD (원본 코드 완벽 보존)
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
     <style>
+    /* 사이드바 UI 100% 화이트닝 및 레이아웃 유지 */
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #cbd5e1 !important; }
-    [data-testid="stSidebar"] * { color: #f8fafc !important; }
-    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid transparent !important; color: #8B9CB6 !important; box-shadow: none !important; }
-    [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #1e293b !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #8B9CB6 !important; border: 1px solid transparent !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: #1e293b !important; color: #ffffff !important; border: 1px solid transparent !important; }
-    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; pointer-events: auto !important; }
-    [data-testid="collapsedControl"] span, [data-testid="collapsedControl"] svg, [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; color: transparent !important; font-size: 0px !important; }
-    [data-testid="collapsedControl"] button::before { content: '☰'; font-size: 24px; color: #1e293b; visibility: visible; }
-    [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
+    [data-testid="stSidebar"] * { color: #ffffff !important; }
+    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #ffffff !important; box-shadow: none !important; }
+    [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; color: #ffffff !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.2) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
+    
+    /* 기본 숨김 해제 */
+    [data-testid="collapsedControl"] { display: none !important; }
+    
+    div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
+    div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; }
+    div[data-baseweb="input"] input { color: #1e293b !important; font-weight: bold !important; }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; }
+    div[data-testid="stNumberInput"] input { color: #1e293b !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
     
+    # 💡 커스텀 플로팅 사이드바 토글 및 스캐너 설정
     components.html(
         """
         <script>
-        if (window.parent && !window.parent.appPluginLoadedFull) {
+        const pDoc = window.parent.document;
+        
+        // 커스텀 토글 버튼 생성
+        let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
+        if (!toggleBtn) {
+            toggleBtn = pDoc.createElement('div');
+            toggleBtn.id = 'custom-sidebar-toggle';
+            toggleBtn.innerHTML = '<span style="font-size:1.4rem; line-height:1;">☰</span> <span style="margin-top:2px;">사이드바 토글</span>';
+            toggleBtn.style.cssText = 'position:fixed; top:20px; left:20px; z-index:999999; background:#1e293b; color:#ffffff; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; border:2px solid #cbd5e1; transition:all 0.2s; font-family:sans-serif;';
+            toggleBtn.onmouseover = () => { toggleBtn.style.background = '#3b82f6'; toggleBtn.style.borderColor = '#ffffff'; };
+            toggleBtn.onmouseout = () => { toggleBtn.style.background = '#1e293b'; toggleBtn.style.borderColor = '#cbd5e1'; };
+            toggleBtn.onclick = function() {
+                const closedBtn = pDoc.querySelector('[data-testid="collapsedControl"]');
+                const openBtn = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
+                if (openBtn) { openBtn.click(); }
+                else if (closedBtn) { closedBtn.click(); }
+            };
+            pDoc.body.appendChild(toggleBtn);
+        }
+        toggleBtn.style.display = 'flex'; // 현재 모드에서만 보임
+
+        if (!window.parent.appPluginLoadedFull) {
             window.parent.appPluginLoadedFull = true;
             const formatNavButtons = () => {
-                if (!window.parent.document) return;
-                const buttons = window.parent.document.querySelectorAll('button');
+                const buttons = pDoc.querySelectorAll('button');
                 buttons.forEach(btn => {
                     const text = btn.innerText || "";
                     if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
                         btn.style.setProperty('background', '#305496', 'important');
-                        btn.style.setProperty('background-color', '#305496', 'important');
                         btn.style.setProperty('border', '1px solid #203864', 'important');
                         btn.style.setProperty('color', '#ffffff', 'important');
-                        btn.style.setProperty('box-shadow', 'none', 'important');
                     }
                     if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('신규 작업 등록') || text.includes('작업시작 등록') || text.includes('Data 최종 저장')) {
                         btn.style.setProperty('height', '70px', 'important'); 
-                        btn.style.setProperty('max-height', '70px', 'important');
                         btn.style.setProperty('font-size', '1.2rem', 'important');
-                        btn.style.setProperty('margin-top', '0px', 'important');
                     }
                 });
             };
             const styleScanner = () => {
-                if (!window.parent.document) return;
-                window.parent.document.querySelectorAll('input').forEach(el => {
+                pDoc.querySelectorAll('input').forEach(el => {
                     if (el.getAttribute('placeholder') && el.getAttribute('placeholder').includes('SCAN APP')) {
                         el.style.setProperty('font-size', '1.2rem', 'important');
                         el.style.setProperty('font-weight', '900', 'important');
@@ -683,9 +674,7 @@ if st.session_state.sys_menu == "keyin":
                 });
             };
             const disableKeyboard = () => {
-                if (!window.parent.document) return;
-                const inputs = window.parent.document.querySelectorAll('input');
-                inputs.forEach(el => {
+                pDoc.querySelectorAll('input').forEach(el => {
                     const placeholder = el.getAttribute('placeholder') || '';
                     const ariaLabel = el.getAttribute('aria-label') || '';
                     const isDropdown = el.closest('div[data-baseweb="select"]') !== null;
@@ -700,19 +689,20 @@ if st.session_state.sys_menu == "keyin":
                 });
             };
             const observer = new MutationObserver(() => { disableKeyboard(); formatNavButtons(); styleScanner(); });
-            if (window.parent.document.body) { observer.observe(window.parent.document.body, { childList: true, subtree: true }); }
+            if (pDoc.body) { observer.observe(pDoc.body, { childList: true, subtree: true }); }
             disableKeyboard(); formatNavButtons(); styleScanner();
         }
         </script>
         """, height=0, width=0
     )
 
+    # 💡 사이드바 렌더링
     with st.sidebar:
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
-        st.markdown(f"<div style='text-align: center; color: #000000 !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; color: #1e293b !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
         st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 시작 프로세스</h4><br>", unsafe_allow_html=True)
         if st.button("작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
@@ -1272,9 +1262,6 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # ==========================================
-    # 💡 3. [데이터 수정] 모드
-    # ==========================================
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1318,9 +1305,13 @@ if st.session_state.sys_menu == "keyin":
                 st.caption("저장된 데이터가 없습니다.")
 
 # ==========================================
-# 💡 2. VIEWER 모드 
+# 🚀 [라우팅 2] VIEWER 모드
 # ==========================================
 elif st.session_state.sys_menu == "viewer":
+    
+    # 뷰어 모드일 때는 커스텀 토글 숨김
+    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
+    
     config = load_shared_config()
     if not config:
         st.warning("📡 설정값이 없습니다. ADMINISTRATOR 메뉴에서 설정을 완료하세요.")
@@ -1665,9 +1656,12 @@ elif st.session_state.sys_menu == "viewer":
 
 
 # ==========================================
-# 💡 3. ADMINISTRATOR (관리자) 화면
+# 🚀 [라우팅 3] ADMINISTRATOR 모드
 # ==========================================
 elif st.session_state.sys_menu == "admin":
+    # 어드민 모드일 때는 커스텀 토글 숨김
+    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
+
     st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
     
     config = load_shared_config() or {}
@@ -1689,7 +1683,7 @@ elif st.session_state.sys_menu == "admin":
             st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
             sbl_limits = config.get("sbl_limits", {})
             sbl_yield = st.number_input("📉 양품율 SBL (이하일 때 알람)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
-            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 5.0)), step=0.1)
+            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
             sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
             sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
             sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
@@ -1716,4 +1710,30 @@ elif st.session_state.sys_menu == "admin":
                 st.rerun()
 
     st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 30px;'>", unsafe_allow_html=True)
-    st.info("💡 위에서 저장된 설정은 아래 VIEWER 대시보드 및 공유된 외부 모니터링 화면에 즉시 적용됩니다.")
+    st.info("💡 위에서 저장된 설정은 아래 시스템 전체와, 공유된 외부 모니터링 화면(VIEWER)에 즉시 적용됩니다.")
+
+
+# ==========================================
+# 🚀 [라우팅 4] EXIT (시스템 안전 종료)
+# ==========================================
+elif st.session_state.sys_menu == "exit":
+    # 어드민 모드일 때는 커스텀 토글 숨김
+    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
+    
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    
+    exit_script = """
+    <script>
+    setTimeout(function() {
+        try { window.parent.close(); } catch(e) {}
+        window.parent.document.body.innerHTML = `
+            <div style="display:flex; justify-content:center; align-items:center; height:100vh; background-color:#f1f5f9; flex-direction:column;">
+                <h1 style="color:#1e293b; font-family:sans-serif; font-size:3rem; margin-bottom:10px;">VISION DATA COMMAND CENTER</h1>
+                <h2 style="color:#ef4444; font-family:sans-serif; font-size:2rem; margin-bottom:20px;">시스템이 안전하게 종료되었습니다.</h2>
+                <p style="color:#64748b; font-family:sans-serif; font-size:1.2rem; font-weight:bold;">보안을 위해 현재 열려있는 브라우저 창(탭)을 닫아주세요.</p>
+            </div>
+        `;
+    }, 500);
+    </script>
+    """
+    components.html(exit_script, height=0, width=0)
