@@ -23,10 +23,10 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_list = ["작업자A", "작업자B", "작업자C", "작업자D", "작업자E", "작업자F"]
+worker_list = ["한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -400,14 +400,26 @@ for key, value in default_state.items():
 # ==========================================
 global_theme_css = """
 <style>
-/* 🚫 헤더 자체를 투명하게 만들되, 사이드바 버튼은 남김 */
+/* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
 header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
-/* 🚫 우측에 나타나는 Deploy, Settings, Github 뱃지 등 모든 버튼 완벽 은닉 */
 header[data-testid="stHeader"] > div:nth-child(2),
 [data-testid="stToolbar"],
-[data-testid="stActionElements"],
-.stAppDeployButton { display: none !important; visibility: hidden !important; }
+[data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
+
+/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 */
+[data-testid="manage-app-button"],
+[data-testid="stAppDeployButton"],
+.stDeployButton,
+div[class^="viewerBadge"],
+div[class*="viewerBadge"],
+#creatorBadge {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    z-index: -1000 !important;
+    pointer-events: none !important;
+}
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
 ::-webkit-scrollbar { display: none; }
@@ -416,7 +428,7 @@ body { overscroll-behavior-y: none !important; background-color: #f8fafc !import
 h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
 [data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; color: #1e293b !important; }
 
-/* 공통 버튼 스타일 */
+/* 💡 공통 버튼 스타일 */
 div[data-testid="stButton"] button { height: 2.6rem !important; min-height: 2.6rem !important; font-size: 1.1rem !important; font-weight: bold !important; border-radius: 8px !important; background-color: #E7E6E6 !important; border: 1px solid #cbd5e1 !important; transition: all 0.2s ease; }
 div[data-testid="stButton"] button p { color: #000000 !important; }
 div[data-testid="stButton"] button:hover { background-color: #1e293b !important; border-color: #1e293b !important; }
@@ -426,17 +438,18 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
 
-/* CSS를 활용한 우측 하단 뱃지 가림막 */
-.stApp::before {
+/* 🛡️ CSS를 활용한 우측 하단 절대 방어막 (클릭 불가) */
+.stApp::after {
     content: "" !important;
     position: fixed !important;
     bottom: 0 !important;
     right: 0 !important;
-    width: 250px !important;
+    width: 300px !important;
     height: 150px !important;
     background: transparent !important;
     z-index: 2147483647 !important;
     pointer-events: auto !important;
+    cursor: default !important;
 }
 
 /* iframe 깜빡임 숨김 처리 */
@@ -444,6 +457,7 @@ iframe[title="streamlit_components.components.html"] { display: none !important;
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
+
 
 # ==========================================
 # 💡 잠금 화면 (슬라이더 언락)
@@ -453,7 +467,7 @@ if not st.session_state.unlocked:
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
-        /* 💡 언락 화면의 "UNLOCK_SYSTEM_BTN_HIDDEN" 버튼을 투명하게 만들어 숨김 (기능은 유지) */
+        /* 💡 언락 화면의 "UNLOCK_SYSTEM_BTN_HIDDEN" 버튼 투명화 */
         div[data-testid="stButton"] { opacity: 0 !important; position: absolute !important; z-index: -100 !important; top: -1000px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -463,7 +477,8 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            # 💡 mix-blend-mode: multiply를 적용하여 흰색 배경을 투명하게 스며들게 만듭니다.[cite: 4]
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px; mix-blend-mode: multiply;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
@@ -562,14 +577,14 @@ if st.session_state.sys_menu == "keyin":
     /* 사이드바 UI 100% 화이트닝 및 레이아웃 유지 */
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #cbd5e1 !important; }
     [data-testid="stSidebar"] * { color: #ffffff !important; }
-    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #ffffff !important; box-shadow: none !important; }
+    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #ffffff !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; color: #ffffff !important; }
     [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: #ffffff !important; border: none !important; border-left: 4px solid #FFC000 !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover p { color: #ffffff !important; }
     
-    /* 순정 사이드바 토글 버튼 디자인 변경 (아이콘 대체) */
-    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; z-index: 999999 !important; color: #1e293b !important; }
+    /* 기본 숨김 해제 및 순정 토글 버튼 활용 */
+    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; pointer-events: auto !important; z-index: 999999 !important; color: #1e293b !important; }
     [data-testid="collapsedControl"] span, [data-testid="collapsedControl"] svg, [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; color: transparent !important; font-size: 0px !important; }
     [data-testid="collapsedControl"] button::before { content: '☰'; font-size: 26px; color: #1e293b; visibility: visible; }
     [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
@@ -1201,7 +1216,6 @@ if st.session_state.sys_menu == "keyin":
 # 🚀 [라우팅 2] ADMINISTRATOR (관리자 패널 & 뷰어 진입)
 # ==========================================
 elif st.session_state.sys_menu == "admin":
-
     st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
     
     config = load_shared_config() or {}
@@ -1587,7 +1601,7 @@ elif st.session_state.sys_menu == "viewer":
 
 
 # ==========================================
-# 🚀 [라우팅 4] EXIT (시스템 완전 종료)
+# 🚀 [라우팅 4] EXIT (시스템 안전 종료)
 # ==========================================
 elif st.session_state.sys_menu == "exit":
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
@@ -1609,17 +1623,25 @@ elif st.session_state.sys_menu == "exit":
     """
     components.html(exit_script, height=0, width=0)
 
-
 # ==========================================
-# 🛡️ 최하단: 깜빡임 없는 스크립트 모음 (뷰어 회전 및 스캐너, 버튼 디자인 등)
+# 🛡️ 최하단: 깜빡임 없는 플로팅 토글 및 뷰어 자동 리로드 스크립트 모음
 # ==========================================
 bottom_js = f"""
 <script>
 const pDoc = window.parent.document;
 if (pDoc) {{
-    // 1. 사이드바 플로팅 토글 작동
     let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
-    if(toggleBtn) {{
+    if ("{st.session_state.sys_menu}" === "keyin" && "{st.session_state.unlocked}" === "True") {{
+        if (!toggleBtn) {{
+            toggleBtn = pDoc.createElement('div');
+            toggleBtn.id = 'custom-sidebar-toggle';
+            toggleBtn.innerHTML = '<span style="font-size:1.4rem; line-height:1;">☰</span> <span style="margin-top:2px;">사이드바 토글</span>';
+            toggleBtn.style.cssText = 'position:fixed; top:20px; left:20px; z-index:999999; background:#1e293b; color:#ffffff; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; border:2px solid #cbd5e1; transition:all 0.2s; font-family:sans-serif;';
+            toggleBtn.onmouseover = () => {{ toggleBtn.style.background = '#3b82f6'; toggleBtn.style.borderColor = '#ffffff'; }};
+            toggleBtn.onmouseout = () => {{ toggleBtn.style.background = '#1e293b'; toggleBtn.style.borderColor = '#cbd5e1'; }};
+            pDoc.body.appendChild(toggleBtn);
+        }}
+        toggleBtn.style.display = 'flex';
         toggleBtn.onclick = function() {{
             const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
             const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
@@ -1631,15 +1653,17 @@ if (pDoc) {{
                 btn.click();
             }}
         }};
+    }} else {{
+        if (toggleBtn) toggleBtn.style.display = 'none';
     }}
 
-    // 2. 뷰어 화면 오토 로테이션 및 리로드 (뷰어 상태일 때만)
+    // 뷰어 모드 전용 오토 로테이션 & 리로드 기능 연동
     if ("{st.session_state.sys_menu}" === "viewer") {{
         setTimeout(function() {{
             const btns = pDoc.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){{ if(btns[i].textContent && btns[i].textContent.includes('RELOAD')){{ btns[i].click(); break; }} }}
         }}, 1800000); 
-        {'setTimeout(function() { const btns = window.parent.document.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
+        {'setTimeout(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 }}
 </script>
