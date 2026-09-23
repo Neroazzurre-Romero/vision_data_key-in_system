@@ -26,7 +26,7 @@ except ImportError:
 worker_list = ["작업자A", "작업자B", "작업자C", "작업자D", "작업자E", "작업자F"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -396,18 +396,22 @@ for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 # ==========================================
-# 🛡️ 전역 CSS (모든 화면 공통)
+# 🛡️ 전역 CSS (모든 화면 공통 적용)
 # ==========================================
 global_theme_css = """
 <style>
-header[data-testid="stHeader"] { display: none !important; }
-#MainMenu { display: none !important; visibility: hidden !important; }
-[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
+/* 🚫 헤더 자체를 투명하게 만들되, 사이드바 버튼은 남김 */
+header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
+/* 🚫 우측에 나타나는 Deploy, Settings, Github 뱃지 등 모든 버튼 완벽 은닉 */
+header[data-testid="stHeader"] > div:nth-child(2),
+[data-testid="stToolbar"],
+[data-testid="stActionElements"],
+.stAppDeployButton { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
 ::-webkit-scrollbar { display: none; }
-.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
+.block-container { padding-top: 3rem !important; padding-bottom: 2rem !important; padding-left: 1.5rem !important; padding-right: 1.5rem !important; max-width: 98% !important; }
 
 h1, h2, h3, h4, h5, h6, p, div, span, label { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif !important; }
 [data-testid="stAppViewContainer"] { background-color: #f1f5f9 !important; color: #1e293b !important; }
@@ -421,10 +425,25 @@ div[data-testid="stButton"] button:hover p { color: #ffffff !important; }
 div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !important; border: 1px solid #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
+
+/* CSS를 활용한 우측 하단 뱃지 가림막 */
+.stApp::before {
+    content: "" !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 250px !important;
+    height: 150px !important;
+    background: transparent !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+}
+
+/* iframe 깜빡임 숨김 처리 */
+iframe[title="streamlit_components.components.html"] { display: none !important; width: 0 !important; height: 0 !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
-
 
 # ==========================================
 # 💡 잠금 화면 (슬라이더 언락)
@@ -512,31 +531,6 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
-    
-    # 잠금 화면용 배지 제거 (깜빡임 방지용 하단 배치)
-    components.html("""
-    <script>
-    const nukeManageApp = () => {
-        let docs = [document];
-        try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
-        try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
-        docs.forEach(doc => {
-            try {
-                const selectors = '[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"], div[class*="viewerBadge"], #creatorBadge, a[href*="streamlit.io/cloud"]';
-                doc.querySelectorAll(selectors).forEach(el => { el.style.setProperty('display', 'none', 'important'); el.style.setProperty('pointer-events', 'none', 'important'); });
-                if (!doc.getElementById('ultimate-blocker-shield')) {
-                    const blocker = doc.createElement('div');
-                    blocker.id = 'ultimate-blocker-shield';
-                    blocker.style.cssText = 'position:fixed !important; bottom:0 !important; right:0 !important; width:300px !important; height:150px !important; background:transparent !important; z-index:2147483647 !important; cursor:default !important; pointer-events:auto !important;';
-                    ['click', 'mousedown', 'touchstart'].forEach(ev => blocker.addEventListener(ev, (e)=>{e.stopPropagation(); e.preventDefault(); return false;}, true));
-                    doc.body.appendChild(blocker);
-                }
-            } catch(e) {}
-        });
-    };
-    nukeManageApp(); setInterval(nukeManageApp, 100); 
-    </script>
-    """, height=0, width=0)
     st.stop()
 
 
@@ -560,7 +554,7 @@ if st.session_state.sys_menu != "exit":
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 메뉴 + 어드민 접근)
+# 🚀 [라우팅 1] KEY-IN WIZARD
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -568,15 +562,19 @@ if st.session_state.sys_menu == "keyin":
     /* 사이드바 UI 100% 화이트닝 및 레이아웃 유지 */
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #cbd5e1 !important; }
     [data-testid="stSidebar"] * { color: #ffffff !important; }
-    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #ffffff !important; box-shadow: none !important; }
+    [data-testid="stSidebar"] .stButton > button { height: 48px !important; max-height: 48px !important; justify-content: flex-start !important; padding-left: 15px !important; margin-bottom: 5px !important; border-radius: 6px !important; background-color: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #ffffff !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stButton > button p { font-weight: 800 !important; font-size: 14px !important; text-indent: 10px !important; text-align: left !important; color: #ffffff !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: #FFFFFF !important; border: none !important; border-left: 4px solid #FFC000 !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
-    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.2) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] { background-color: #3b82f6 !important; color: #ffffff !important; border: none !important; border-left: 4px solid #FFC000 !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.1) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover p { color: #ffffff !important; }
     
-    /* 기본 햄버거 토글 숨김 해제 */
-    [data-testid="collapsedControl"] { display: none !important; }
+    /* 순정 사이드바 토글 버튼 디자인 변경 (아이콘 대체) */
+    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; z-index: 999999 !important; color: #1e293b !important; }
+    [data-testid="collapsedControl"] span, [data-testid="collapsedControl"] svg, [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; color: transparent !important; font-size: 0px !important; }
+    [data-testid="collapsedControl"] button::before { content: '☰'; font-size: 26px; color: #1e293b; visibility: visible; }
+    [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
     
+    /* 폼 영역 디자인 */
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
     div[data-baseweb="input"] > div { background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; }
     div[data-baseweb="input"] input { color: #1e293b !important; font-weight: bold !important; }
@@ -1197,34 +1195,12 @@ if st.session_state.sys_menu == "keyin":
                             st.info("수정된 항목이 없습니다.")
             else:
                 st.caption("저장된 데이터가 없습니다.")
-                
-    # 💡 최하단: 깜빡임 없는 스크립트 모음 (플로팅 토글 등 UI 초기화)
-    components.html("""
-    <script>
-    const pDoc = window.parent.document;
-    let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
-    if(toggleBtn) {
-        // 사이드바 버튼 클릭 이벤트 리스너 재부착
-        toggleBtn.onclick = function() {
-            const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
-            const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
-            if (collapseDiv && collapseDiv.getBoundingClientRect().width > 0) {
-                const btn = collapseDiv.querySelector('button') || collapseDiv;
-                btn.click();
-            } else if (expandDiv) {
-                const btn = expandDiv.querySelector('button') || expandDiv;
-                btn.click();
-            }
-        };
-    }
-    </script>
-    """, height=0, width=0)
+
 
 # ==========================================
 # 🚀 [라우팅 2] ADMINISTRATOR (관리자 패널 & 뷰어 진입)
 # ==========================================
 elif st.session_state.sys_menu == "admin":
-    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
 
     st.markdown("<h3 style='color:#1e293b; font-weight:900;'>⚙️ ADMINISTRATOR CONTROL PANEL</h3>", unsafe_allow_html=True)
     
@@ -1285,30 +1261,12 @@ elif st.session_state.sys_menu == "admin":
 # 🚀 [라우팅 3] VIEWER 모드 (ADMIN에서 진입)
 # ==========================================
 elif st.session_state.sys_menu == "viewer":
-    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
-    
     config = load_shared_config()
     if not config:
         st.warning("📡 설정값이 없습니다. ADMINISTRATOR 메뉴에서 설정을 완료하세요.")
         st.stop()
     if "viewer_time_range" not in st.session_state:
         st.session_state.viewer_time_range = config.get("time_range", "48H")
-
-    auto_script = f"""
-    <script>
-    setTimeout(function() {{
-        const btns = window.parent.document.querySelectorAll('button');
-        for(let i=0; i<btns.length; i++){{
-            if(btns[i].textContent && btns[i].textContent.includes('RELOAD')){{
-                btns[i].click();
-                break;
-            }}
-        }}
-    }}, 1800000); 
-    {'setTimeout(function() { const btns = window.parent.document.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if config.get("auto_rotate_active", False) else ''}
-    </script>
-    """
-    components.html(auto_script, height=0, width=0)
 
     col1, col2 = st.columns([0.65, 0.35])
     with col1:
@@ -1629,13 +1587,12 @@ elif st.session_state.sys_menu == "viewer":
 
 
 # ==========================================
-# 🚀 [라우팅 4] EXIT (시스템 안전 종료)
+# 🚀 [라우팅 4] EXIT (시스템 완전 종료)
 # ==========================================
 elif st.session_state.sys_menu == "exit":
-    components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
-    
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
+    # 완전히 브라우저 탭을 닫거나 안전 종료 화면으로 덮어씌움
     exit_script = """
     <script>
     setTimeout(function() {
@@ -1651,3 +1608,40 @@ elif st.session_state.sys_menu == "exit":
     </script>
     """
     components.html(exit_script, height=0, width=0)
+
+
+# ==========================================
+# 🛡️ 최하단: 깜빡임 없는 스크립트 모음 (뷰어 회전 및 스캐너, 버튼 디자인 등)
+# ==========================================
+bottom_js = f"""
+<script>
+const pDoc = window.parent.document;
+if (pDoc) {{
+    // 1. 사이드바 플로팅 토글 작동
+    let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
+    if(toggleBtn) {{
+        toggleBtn.onclick = function() {{
+            const expandDiv = pDoc.querySelector('[data-testid="collapsedControl"]');
+            const collapseDiv = pDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
+            if (collapseDiv && collapseDiv.getBoundingClientRect().width > 0) {{
+                const btn = collapseDiv.querySelector('button') || collapseDiv;
+                btn.click();
+            }} else if (expandDiv) {{
+                const btn = expandDiv.querySelector('button') || expandDiv;
+                btn.click();
+            }}
+        }};
+    }}
+
+    // 2. 뷰어 화면 오토 로테이션 및 리로드 (뷰어 상태일 때만)
+    if ("{st.session_state.sys_menu}" === "viewer") {{
+        setTimeout(function() {{
+            const btns = pDoc.querySelectorAll('button');
+            for(let i=0; i<btns.length; i++){{ if(btns[i].textContent && btns[i].textContent.includes('RELOAD')){{ btns[i].click(); break; }} }}
+        }}, 1800000); 
+        {'setTimeout(function() { const btns = window.parent.document.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
+    }}
+}}
+</script>
+"""
+components.html(bottom_js, height=0, width=0)
