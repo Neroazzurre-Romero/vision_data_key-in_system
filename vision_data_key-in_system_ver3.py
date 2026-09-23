@@ -26,7 +26,7 @@ except ImportError:
 worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -399,14 +399,13 @@ default_state = {
 for key, value in default_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
-
 # ==========================================
 # 🛡️ 전역 CSS (모든 화면 공통 적용)
 # ==========================================
 global_theme_css = """
 <style>
-/* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
-header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
+/* 🚫 헤더 및 상단 메뉴 완벽 은닉 */
+header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; z-index: -1 !important; }
 header[data-testid="stHeader"] > div:nth-child(2),
 [data-testid="stToolbar"],
 [data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
@@ -428,7 +427,7 @@ div[class*="viewerBadge"],
 
 /* iframe 깜빡임(Flashing) 방지 (크기 0으로 강제) */
 iframe[title="streamlit_components.components.html"] {
-    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important;
+    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important; margin: 0 !important; padding: 0 !important;
 }
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
@@ -448,7 +447,7 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
 
-/* 🛡️ CSS 우측 하단 절대 방어막 (Manage app 클릭 불가) */
+/* 🛡️ CSS를 활용한 우측 하단 절대 방어막 (Manage app 클릭 불가) */
 .stApp::after {
     content: "" !important; position: fixed !important; bottom: 0 !important; right: 0 !important; width: 300px !important; height: 150px !important;
     background: transparent !important; z-index: 2147483647 !important; pointer-events: auto !important; cursor: default !important;
@@ -461,7 +460,8 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
 
 /* 💡 사이드바 텍스트 _double_ 겹침 완벽 차단 */
 [data-testid="collapsedControl"] { display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; background: transparent !important; z-index: 999999 !important; }
-[data-testid="collapsedControl"] * { display: none !important; opacity: 0 !important; font-size: 0px !important; color: transparent !important; }
+[data-testid="collapsedControl"] svg { display: none !important; opacity: 0 !important; width: 0px !important; height: 0px !important; color: transparent !important; }
+[data-testid="collapsedControl"] span { display: none !important; opacity: 0 !important; font-size: 0px !important; color: transparent !important; }
 [data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; display: block !important; position: absolute !important; }
 [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
 [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; }
@@ -486,18 +486,17 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
+            # 💡 로고 최대 크기 400px 반영 및 배경 투명화
             st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px; mix-blend-mode: multiply;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
-        # 💡 히든 버튼을 st.empty()와 CSS 클래스로 완벽하게 소멸
-        hidden_container = st.empty()
-        with hidden_container.container():
-            st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
-            if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
-                st.session_state.unlocked = True
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+        # 💡 히든 버튼 완전 격리 렌더링
+        st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
+        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
+            st.session_state.unlocked = True
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
             
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
@@ -512,7 +511,9 @@ if not st.session_state.unlocked:
             const text = document.getElementById('slider-text');
             const unlockSystem = () => {
                 const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) { if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
+                for(let b of btns) { 
+                    if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } 
+                }
             };
             let isDragging = false;
             let startX, currentX = 0;
@@ -557,8 +558,8 @@ if not st.session_state.unlocked:
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
-        # 스크립트 실행 박스를 적정 높이로 처리
-        components.html(slider_html, height=90, width=0)
+        # 스크립트 실행 박스를 적정 높이로 처리하여 슬라이더 표시
+        components.html(slider_html, height=100, width=0)
         
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
@@ -581,13 +582,11 @@ if st.session_state.sys_menu != "exit":
             st.rerun()
             
     # 💡 플로팅 EXIT 버튼용 히든 트리거 완전 격리
-    hidden_exit_container = st.empty()
-    with hidden_exit_container.container():
-        st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
-        if st.button("HIDDEN_EXIT_TRIGGER"):
-            st.session_state.sys_menu = "exit"
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
+    if st.button("HIDDEN_EXIT_TRIGGER"):
+        st.session_state.sys_menu = "exit"
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
@@ -1196,7 +1195,7 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # 💡 [데이터 수정] 
+    # 💡 [데이터 수정] 모드 (비밀번호 및 표 정렬 최적화)
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1213,10 +1212,11 @@ if st.session_state.sys_menu == "keyin":
                         st.markdown("<hr style='border-color: #cbd5e1;'>", unsafe_allow_html=True)
                         st.info("🔒 데이터를 직접 수정하려면 아래에 관리자 비밀번호를 입력해주세요.")
                         
-                        c1, c2 = st.columns(2)
+                        c1, c2 = st.columns([0.8, 0.2])
                         with c1:
-                            # 💡 텍스트 노출 방지를 위해 공백 라벨 전달
-                            edit_pwd = st.text_input(" ", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
+                            st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
+                            edit_pwd = st.text_input("수정 비밀번호 입력", type="password", placeholder="비밀번호 입력", label_visibility="collapsed")
+                            st.markdown("</div>", unsafe_allow_html=True)
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1266,7 +1266,6 @@ elif st.session_state.sys_menu == "admin":
     df = load_universal_data()
     all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
     
-    # 💡 동적 옵션으로 모델 중복 선택 차단 (form 외부에서 처리)
     if 'sel_std' not in st.session_state: st.session_state.sel_std = config.get("sel_std", [])
     if 'sel_inc' not in st.session_state: st.session_state.sel_inc = config.get("sel_inc", [])
     
@@ -1277,6 +1276,8 @@ elif st.session_state.sys_menu == "admin":
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**1. 모니터링 대상 모델 선택 (중복 불가)**")
+            def update_std(): pass
+            def update_inc(): pass
             sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", opt_std, default=st.session_state.get('sel_std', []), key="sel_std")
             sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", opt_inc, default=st.session_state.get('sel_inc', []), key="sel_inc")
             
@@ -1288,14 +1289,17 @@ elif st.session_state.sys_menu == "admin":
             st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
             sbl_limits = config.get("sbl_limits", {})
             
-            sbl_yield_def = st.number_input("📉 양품율 SBL (기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
-            sbl_yield_cen = st.number_input("📉 양품율 SBL (Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
-            sbl_yield_mem = st.number_input("📉 양품율 SBL (MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
+            sbl_y_c1, sbl_y_c2, sbl_y_c3 = st.columns(3)
+            with sbl_y_c1: sbl_yield_def = st.number_input("📉 양품율(기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
+            with sbl_y_c2: sbl_yield_cen = st.number_input("📉 양품율(Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
+            with sbl_y_c3: sbl_yield_mem = st.number_input("📉 양품율(MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
             
-            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
-            sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
-            sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
-            sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
+            st.markdown("<br>", unsafe_allow_html=True)
+            sbl_d_c1, sbl_d_c2, sbl_d_c3, sbl_d_c4 = st.columns(4)
+            with sbl_d_c1: sbl_comp = st.number_input("📈 완전불량", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
+            with sbl_d_c2: sbl_front = st.number_input("📈 전면불량", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
+            with sbl_d_c3: sbl_rear = st.number_input("📈 배면불량", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
+            with sbl_d_c4: sbl_offset = st.number_input("📈 옵셋불량", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("💾 설정 저장 및 대시보드 클라우드 반영 (Save to Cloud)", use_container_width=True, type="primary"):
@@ -1332,6 +1336,21 @@ elif st.session_state.sys_menu == "admin":
 # 🚀 [라우팅 3] VIEWER 모드 (ADMIN에서 진입)
 # ==========================================
 elif st.session_state.sys_menu == "viewer":
+    st.markdown("""
+    <style>
+    /* 💡 프리미엄 KPI 카드 색상 복원 */
+    .model-card { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; border: 1px solid #334155; }
+    .model-card div, .model-card span { color: #FFFFFF !important; }
+    .kpi-card { background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; border: 1px solid #2563eb; }
+    .kpi-card div, .kpi-card span { color: #FFFFFF !important; }
+    
+    /* 💡 알람 내역 빨간색 강조 복원 */
+    .sbl-card { background-color: #fef2f2 !important; border: 1px solid #fecaca !important; border-left: 5px solid #ef4444 !important; border-radius: 8px; padding: 12px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .sbl-title { color: #b91c1c !important; font-weight: 900; font-size: 0.95rem; margin-bottom: 5px; border-bottom: 1px solid #fecaca; padding-bottom: 3px; }
+    .sbl-text { color: #1e293b !important; font-size: 0.85rem; line-height: 1.5; font-weight: 500; }
+    </style>
+    """, unsafe_allow_html=True)
+    
     config = load_shared_config()
     if not config:
         st.warning("📡 설정값이 없습니다. ADMINISTRATOR 메뉴에서 설정을 완료하세요.")
@@ -1679,7 +1698,7 @@ elif st.session_state.sys_menu == "exit":
     components.html(exit_script, height=0, width=0)
 
 # ==========================================
-# 🛡️ 최하단: 화면 렌더링 완료 후 깜빡임 없는 DOM 제어 스크립트 실행
+# 🛡️ 최하단: 화면 렌더링 완료 후 작동하는 무결점 자바스크립트
 # ==========================================
 bottom_js = f"""
 <script>
@@ -1714,8 +1733,8 @@ if (pDoc) {{
         if (!exitBtn) {{
             exitBtn = pDoc.createElement('div');
             exitBtn.id = 'custom-exit-toggle';
-            exitBtn.innerHTML = '<span style="font-size:1.2rem; font-weight:900;">EXIT</span>';
-            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#7f1d1d; color:#ffffff; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; border:2px solid #7f1d1d; transition:all 0.2s; font-family:sans-serif; letter-spacing:1px;';
+            exitBtn.innerHTML = '<span style="font-size:1.0rem; font-weight:900;">EXIT</span>';
+            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#7f1d1d; color:#ffffff; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; border:2px solid #991b1b; transition:all 0.2s; font-family:sans-serif; letter-spacing:1px;';
             exitBtn.onmouseover = () => {{ exitBtn.style.background = '#450a0a'; }};
             exitBtn.onmouseout = () => {{ exitBtn.style.background = '#7f1d1d'; }};
             exitBtn.onclick = function() {{
@@ -1733,16 +1752,18 @@ if (pDoc) {{
         if (exitBtn) exitBtn.style.display = 'none';
     }}
 
-    // 💡 2. 뷰어 화면 오토 로테이션 및 리로드 연동
+    // 💡 2. 뷰어 화면 오토 로테이션 및 데이터 리로드
     if ("{st.session_state.sys_menu}" === "viewer") {{
-        setTimeout(function() {{
+        // 리로드 30분(1800000)
+        setInterval(function() {{
             const btns = pDoc.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){{ if(btns[i].textContent && btns[i].textContent.includes('RELOAD')){{ btns[i].click(); break; }} }}
         }}, 1800000); 
-        {'setTimeout(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
+        // 로테이트 10분(600000)
+        {'setInterval(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 
-    // 💡 3. Streamlit Cloud UI 및 히든 버튼 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
+    // 💡 3. Streamlit Cloud 배지, 불필요한 iframe 즉시 박멸 (0.01초 주기 폭격)
     const nukeNode = (el) => {{ if(el && el.parentNode) el.parentNode.removeChild(el); }};
     
     const destroyStreamlitUI = () => {{
@@ -1752,28 +1773,12 @@ if (pDoc) {{
         
         docs.forEach(doc => {{
             try {{
-                // iframe 및 배지 DOM 자체를 뜯어내서 삭제
                 doc.querySelectorAll('iframe').forEach(f => {{ if(f.src && (f.src.includes('badge') || f.title.includes('Toolbar'))) nukeNode(f); }});
                 doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(nukeNode);
                 
                 doc.querySelectorAll('div, a, button, span').forEach(el => {{
                     if (el.textContent && (el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile'))) {{
-                        el.style.setProperty('display', 'none', 'important');
-                        if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
-                    }}
-                }});
-                
-                // 💡 히든 트리거 버튼 완벽 투명화 (공간 차지 방지)
-                doc.querySelectorAll('button').forEach(btn => {{
-                    if(btn.innerText.includes('HIDDEN')) {{
-                        const container = btn.closest('div[data-testid="stButton"]');
-                        if(container) {{
-                            container.style.setProperty('display', 'none', 'important');
-                            container.style.setProperty('position', 'absolute', 'important');
-                            container.style.setProperty('opacity', '0', 'important');
-                            container.style.setProperty('height', '0px', 'important');
-                            container.style.setProperty('width', '0px', 'important');
-                        }}
+                        nukeNode(el);
                     }}
                 }});
                 
@@ -1781,11 +1786,10 @@ if (pDoc) {{
         }});
     }};
     
-    // MutationObserver를 통해 변경사항 즉시 파괴
     const observer = new MutationObserver((mutations) => {{ destroyStreamlitUI(); }});
     try {{ observer.observe(pDoc.body, {{ childList: true, subtree: true }}); }} catch(e) {{}}
     destroyStreamlitUI(); 
-    setInterval(destroyStreamlitUI, 50); 
+    setInterval(destroyStreamlitUI, 10); 
 }}
 </script>
 """
