@@ -26,7 +26,7 @@ except ImportError:
 worker_list = ["작업자A", "작업자B", "작업자C", "작업자D", "작업자E", "작업자F"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
-st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="VISION DATA KEY-IN SYSTEM", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 💡 이미지 & 헬퍼 함수 모음
@@ -472,6 +472,8 @@ if not st.session_state.unlocked:
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
+        /* 💡 언락 화면의 "UNLOCK_SYSTEM_BTN_HIDDEN" 버튼을 투명하게 만들어 숨김 (기능은 유지) */
+        div[data-testid="stButton"] { opacity: 0 !important; position: absolute !important; z-index: -100 !important; top: -1000px !important; }
     </style>
     """, unsafe_allow_html=True)
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
@@ -480,9 +482,9 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 200px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px;'></div>", unsafe_allow_html=True)
         else:
-            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA COMMAND CENTER</h1><br><br>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
@@ -503,8 +505,6 @@ if not st.session_state.unlocked:
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
             };
-            const btns = window.parent.document.querySelectorAll('button');
-            for(let b of btns) { if(b.innerText.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.style.display = 'none'; } }
             let isDragging = false;
             let startX, currentX = 0;
             function startDrag(e) {
@@ -557,9 +557,9 @@ if not st.session_state.unlocked:
 # 💡 최상단 통합 네비게이션
 # ==========================================
 if st.session_state.sys_menu != "exit":
-    st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA COMMAND CENTER</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA KEY-IN SYSTEM</h2>", unsafe_allow_html=True)
 
-    m_col1, m_col2, m_col3, m_col4 = st.columns([0.28, 0.28, 0.28, 0.16])
+    m_col1, m_col2, m_col3, m_col4 = st.columns([0.25, 0.25, 0.25, 0.25])
     with m_col1:
         if st.button("📝 KEY-IN WIZARD", use_container_width=True, type="primary" if st.session_state.sys_menu == "keyin" else "secondary"):
             st.session_state.sys_menu = "keyin"
@@ -595,7 +595,7 @@ if st.session_state.sys_menu == "keyin":
     [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.2) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     
-    /* 기본 숨김 해제 */
+    /* 기본 햄버거 토글 숨김 해제 */
     [data-testid="collapsedControl"] { display: none !important; }
     
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
@@ -1744,7 +1744,7 @@ elif st.session_state.sys_menu == "exit":
         try { window.parent.close(); } catch(e) {}
         window.parent.document.body.innerHTML = `
             <div style="display:flex; justify-content:center; align-items:center; height:100vh; background-color:#f1f5f9; flex-direction:column;">
-                <h1 style="color:#1e293b; font-family:sans-serif; font-size:3rem; margin-bottom:10px;">VISION DATA COMMAND CENTER</h1>
+                <h1 style="color:#1e293b; font-family:sans-serif; font-size:3rem; margin-bottom:10px;">VISION DATA KEY-IN SYSTEM</h1>
                 <h2 style="color:#ef4444; font-family:sans-serif; font-size:2rem; margin-bottom:20px;">시스템이 안전하게 종료되었습니다.</h2>
                 <p style="color:#64748b; font-family:sans-serif; font-size:1.2rem; font-weight:bold;">보안을 위해 현재 열려있는 브라우저 창(탭)을 닫아주세요.</p>
             </div>
