@@ -429,10 +429,24 @@ div[data-testid="stButton"] button[kind="primary"] { background-color: #1e293b !
 div[data-testid="stButton"] button[kind="primary"]:hover { background-color: #0f172a !important; }
 div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important; }
 
-/* Hidden EXIT button for JS Trigger */
-div[data-testid="stButton"] button:has(p:contains("HIDDEN_EXIT_TRIGGER")),
-div[data-testid="stButton"]:has(button:contains("HIDDEN_EXIT_TRIGGER")) { 
-    opacity: 0 !important; position: absolute !important; z-index: -100 !important; top: -1000px !important; display: none !important; 
+/* 🛡️ 히든 버튼 완벽 은닉용 클래스 (UI/UX 보호) */
+.hidden-btn-wrapper { 
+    display: none !important; 
+    visibility: hidden !important; 
+    height: 0px !important; 
+    width: 0px !important; 
+    overflow: hidden !important; 
+    position: absolute !important; 
+    z-index: -9999 !important; 
+}
+
+/* 🛡️ 깜빡임 유발하는 컴포넌트 iframe 영구 투명화 */
+iframe[title="streamlit_components.components.html"] { 
+    display: none !important; 
+    opacity: 0 !important; 
+    width: 0 !important; 
+    height: 0 !important; 
+    position: absolute !important; 
 }
 </style>
 """
@@ -447,7 +461,6 @@ if not st.session_state.unlocked:
     <style>
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
-        div[data-testid="stButton"]:has(button:contains("UNLOCK_SYSTEM_BTN_HIDDEN")) { display: none !important; opacity: 0 !important; position: absolute !important; z-index: -100 !important; top: -1000px !important; }
     </style>
     """, unsafe_allow_html=True)
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
@@ -461,7 +474,8 @@ if not st.session_state.unlocked:
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
-        st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+        # 💡 히든 버튼 래퍼 적용
+        st.markdown("<div class='hidden-btn-wrapper'>", unsafe_allow_html=True)
         if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
             st.session_state.unlocked = True
             st.rerun()
@@ -525,7 +539,7 @@ if not st.session_state.unlocked:
             thumb.addEventListener('touchstart', startDrag, {passive: false}); document.addEventListener('touchmove', drag, {passive: false}); document.addEventListener('touchend', endDrag);
         </script>
         """
-        components.html(slider_html, height=90)
+        components.html(slider_html, height=0, width=0)
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
     st.stop()
 
@@ -546,8 +560,8 @@ if st.session_state.sys_menu != "exit":
             st.session_state.sys_menu = "admin"
             st.rerun()
             
-    # Hidden Trigger for Floating EXIT
-    st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+    # 💡 플로팅 EXIT 버튼용 히든 트리거
+    st.markdown("<div class='hidden-btn-wrapper'>", unsafe_allow_html=True)
     if st.button("HIDDEN_EXIT_TRIGGER"):
         st.session_state.sys_menu = "exit"
         st.rerun()
@@ -557,7 +571,7 @@ if st.session_state.sys_menu != "exit":
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 관리자 기능 분리 적용)
+# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 메뉴 + 어드민 분리)
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -580,7 +594,7 @@ if st.session_state.sys_menu == "keyin":
     </style>
     """, unsafe_allow_html=True)
     
-    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 재배치)
+    # 💡 사이드바 렌더링 (DATA LIST 와 관리자 기능 분리 적용)
     with st.sidebar:
         KST = timezone(timedelta(hours=9))
         now = datetime.now(KST)
@@ -1001,7 +1015,6 @@ if st.session_state.sys_menu == "keyin":
                 rear_rate = (st.session_state.get("rear_def", 0) / total_qty) * 100
                 offset_rate = (st.session_state.get("offset_def", 0) / total_qty) * 100
                 
-                # 💡 다중 SBL 적용 (Default / MEM / Centaur)
                 sbl_mod = st.session_state.get("model_name", "")
                 if sbl_mod in ["MEM", "Centaur"]:
                     limit_y = st.session_state.sbl_limits.get(f'Yield_{sbl_mod}', 85.0)
@@ -1158,7 +1171,7 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # 💡 [데이터 수정] 모드 (비밀번호 및 내역 남기기 적용)
+    # 💡 [데이터 수정] 모드 (표 먼저 렌더링 후 하단 비밀번호 입력)
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1166,16 +1179,17 @@ if st.session_state.sys_menu == "keyin":
             
             if not df_history.empty:
                 cols_to_show = [c for c in EXCEL_COLUMNS if c in df_history.columns]
-                
                 if cols_to_show:
                     display_df = df_history[cols_to_show].copy()
                     display_df = display_df.iloc[::-1].head(20).copy()
                     
                     if not st.session_state.get("edit_unlocked", False):
+                        st.dataframe(display_df, hide_index=True, use_container_width=True) 
+                        st.markdown("<br>", unsafe_allow_html=True)
                         st.info("🔒 데이터 수정을 위해 아래에 비밀번호를 입력해주세요.")
                         c1, c2 = st.columns([0.8, 0.2])
                         with c1:
-                            edit_pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
+                            edit_pwd = st.text_input("수정 비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력 (6233)")
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1183,8 +1197,6 @@ if st.session_state.sys_menu == "keyin":
                                     st.rerun()
                                 else:
                                     st.error("비밀번호가 일치하지 않습니다.")
-                        
-                        st.dataframe(display_df, hide_index=True, use_container_width=True) # View only
                     else:
                         edited_df = st.data_editor(
                             display_df, 
@@ -1192,7 +1204,6 @@ if st.session_state.sys_menu == "keyin":
                             hide_index=True,
                             column_config={"LOT NO.": st.column_config.TextColumn("LOT NO.")}
                         )
-                        
                         st.markdown("<br>", unsafe_allow_html=True)
                         edit_reason = st.text_input("📝 수정 사유 (수정 내역은 비고란에 자동으로 추가됩니다)", placeholder="예: 양품수량 오기입 수정")
                         
@@ -1235,58 +1246,56 @@ elif st.session_state.sys_menu == "admin":
     df = load_universal_data()
     all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
     
-    # 💡 모델 중복 선택 방지 로직 (Dynamic Options)
     opt_std = [m for m in all_models if m not in st.session_state.sel_inc]
     opt_inc = [m for m in all_models if m not in st.session_state.sel_std]
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**1. 모니터링 대상 모델 선택 (중복 불가)**")
-        def update_std(): pass
-        def update_inc(): pass
-        sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", opt_std, key="sel_std", on_change=update_std)
-        sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", opt_inc, key="sel_inc", on_change=update_inc)
-        
-        st.markdown("<br>**2. 뷰어 기본 설정**", unsafe_allow_html=True)
-        time_range = st.selectbox("기본 조회 기간 (Default Time Range)", ["6H", "24H", "48H", "72H", "96H"], index=["6H", "24H", "48H", "72H", "96H"].index(config.get("time_range", "48H")))
-        auto_rotate = st.checkbox("자동 로테이션 활성화 (10분 단위로 선택된 모델 순환 표출)", value=config.get("auto_rotate_active", False))
-        
-    with col2:
-        st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
-        sbl_limits = config.get("sbl_limits", {})
-        
-        # 💡 각 모델별 양품율 SBL 세분화
-        sbl_yield_def = st.number_input("📉 양품율 SBL (기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
-        sbl_yield_cen = st.number_input("📉 양품율 SBL (Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
-        sbl_yield_mem = st.number_input("📉 양품율 SBL (MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
-        
-        sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
-        sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
-        sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
-        sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
+    with st.form("admin_config_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**1. 모니터링 대상 모델 선택 (중복 불가)**")
+            def update_std(): pass
+            def update_inc(): pass
+            sel_std = st.multiselect("기본 양품율 적용 모델 (Yield 1)", opt_std, key="sel_std", on_change=update_std)
+            sel_inc = st.multiselect("전/배 포함 양품율 적용 모델 (Yield 2)", opt_inc, key="sel_inc", on_change=update_inc)
+            
+            st.markdown("<br>**2. 뷰어 기본 설정**", unsafe_allow_html=True)
+            time_range = st.selectbox("기본 조회 기간 (Default Time Range)", ["6H", "24H", "48H", "72H", "96H"], index=["6H", "24H", "48H", "72H", "96H"].index(config.get("time_range", "48H")))
+            auto_rotate = st.checkbox("자동 로테이션 활성화 (10분 단위로 선택된 모델 순환 표출)", value=config.get("auto_rotate_active", False))
+            
+        with col2:
+            st.markdown("**3. SBL (Sub-Block Limit) 알람 임계치 설정 (%)**")
+            sbl_limits = config.get("sbl_limits", {})
+            sbl_yield_def = st.number_input("📉 양품율 SBL (기본)", value=float(sbl_limits.get("Yield_Default", 85.0)), step=0.1)
+            sbl_yield_cen = st.number_input("📉 양품율 SBL (Centaur)", value=float(sbl_limits.get("Yield_Centaur", 91.4)), step=0.1)
+            sbl_yield_mem = st.number_input("📉 양품율 SBL (MEM)", value=float(sbl_limits.get("Yield_MEM", 93.2)), step=0.1)
+            
+            sbl_comp = st.number_input("📈 완전불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Comp", 10.0)), step=0.1)
+            sbl_front = st.number_input("📈 전면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Front", 5.0)), step=0.1)
+            sbl_rear = st.number_input("📈 배면불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Rear", 5.0)), step=0.1)
+            sbl_offset = st.number_input("📈 옵셋불량 SBL (이상일 때 알람)", value=float(sbl_limits.get("Def_Offset", 5.0)), step=0.1)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("💾 설정 저장 및 대시보드 클라우드 반영 (Save to Cloud)", use_container_width=True, type="primary"):
-        new_config = {
-            "sel_std": sel_std,
-            "sel_inc": sel_inc,
-            "time_range": time_range,
-            "auto_rotate_active": auto_rotate,
-            "sbl_limits": {
-                "Yield_Default": sbl_yield_def,
-                "Yield_Centaur": sbl_yield_cen,
-                "Yield_MEM": sbl_yield_mem,
-                "Def_Comp": sbl_comp,
-                "Def_Front": sbl_front,
-                "Def_Rear": sbl_rear,
-                "Def_Offset": sbl_offset
-            },
-            "model_color_dict": config.get("model_color_dict", {})
-        }
-        if save_shared_config(new_config):
-            st.cache_data.clear()
-            time.sleep(1.0)
-            st.rerun()
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.form_submit_button("💾 설정 저장 및 대시보드 클라우드 반영 (Save to Cloud)", use_container_width=True, type="primary"):
+            new_config = {
+                "sel_std": sel_std,
+                "sel_inc": sel_inc,
+                "time_range": time_range,
+                "auto_rotate_active": auto_rotate,
+                "sbl_limits": {
+                    "Yield_Default": sbl_yield_def,
+                    "Yield_Centaur": sbl_yield_cen,
+                    "Yield_MEM": sbl_yield_mem,
+                    "Def_Comp": sbl_comp,
+                    "Def_Front": sbl_front,
+                    "Def_Rear": sbl_rear,
+                    "Def_Offset": sbl_offset
+                },
+                "model_color_dict": config.get("model_color_dict", {})
+            }
+            if save_shared_config(new_config):
+                st.cache_data.clear()
+                time.sleep(1.0)
+                st.rerun()
 
     st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 30px;'>", unsafe_allow_html=True)
     st.info("💡 위에서 설정값을 저장한 후, 아래 버튼을 눌러 모니터링 뷰어 화면을 확인할 수 있습니다.")
@@ -1647,13 +1656,13 @@ elif st.session_state.sys_menu == "exit":
     components.html(exit_script, height=0, width=0)
 
 # ==========================================
-# 🛡️ 최하단: 깜빡임 없는 DOM 제어 및 이벤트 스크립트 모음
+# 🛡️ 최하단: 화면 렌더링 완료 후 깜빡임 없는 스크립트 실행 (Flashing 방지)
 # ==========================================
 bottom_js = f"""
 <script>
 const pDoc = window.parent.document;
 if (pDoc) {{
-    // 💡 1. 사이드바 플로팅 토글 작동
+    // 💡 1. 커스텀 플로팅 토글 및 EXIT 버튼 설정
     if ("{st.session_state.sys_menu}" === "keyin" && "{st.session_state.unlocked}" === "True") {{
         let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
         if (!toggleBtn) {{
@@ -1677,9 +1686,28 @@ if (pDoc) {{
                 btn.click();
             }}
         }};
+        
+        let exitBtn = pDoc.getElementById('custom-exit-toggle');
+        if (!exitBtn) {{
+            exitBtn = pDoc.createElement('div');
+            exitBtn.id = 'custom-exit-toggle';
+            exitBtn.innerHTML = '<span style="font-size:1.4rem; line-height:1;">🚪</span> <span style="margin-top:2px;">EXIT</span>';
+            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#ef4444; color:#ffffff; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; border:2px solid #fca5a5; transition:all 0.2s; font-family:sans-serif;';
+            exitBtn.onmouseover = () => {{ exitBtn.style.background = '#dc2626'; }};
+            exitBtn.onmouseout = () => {{ exitBtn.style.background = '#ef4444'; }};
+            exitBtn.onclick = function() {{
+                const btns = pDoc.querySelectorAll('button');
+                for(let b of btns) {{ if(b.innerText.includes('HIDDEN_EXIT_TRIGGER')) {{ b.click(); break; }} }}
+            }};
+            pDoc.body.appendChild(exitBtn);
+        }}
+        exitBtn.style.display = 'flex';
+
     }} else {{
         let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
+        let exitBtn = pDoc.getElementById('custom-exit-toggle');
         if (toggleBtn) toggleBtn.style.display = 'none';
+        if (exitBtn) exitBtn.style.display = 'none';
     }}
 
     // 💡 2. 뷰어 화면 오토 로테이션 및 리로드 연동
@@ -1703,6 +1731,13 @@ if (pDoc) {{
                 // iframe 및 배지 DOM 자체를 뜯어내서 삭제
                 doc.querySelectorAll('iframe').forEach(f => {{ if(f.src && (f.src.includes('badge') || f.title.includes('Toolbar'))) nukeNode(f); }});
                 doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(nukeNode);
+                
+                doc.querySelectorAll('div, a, button, span').forEach(el => {{
+                    if (el.textContent && (el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile'))) {{
+                        el.style.setProperty('display', 'none', 'important');
+                        if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
+                    }}
+                }});
             }} catch(e) {{}}
         }});
     }};
