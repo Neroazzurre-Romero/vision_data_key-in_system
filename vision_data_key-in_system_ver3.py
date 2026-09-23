@@ -23,7 +23,8 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
+# 💡 작업자 명단에서 '작업자 선택'을 제외하고 리스트업
+worker_list = ["한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
 st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
@@ -377,7 +378,7 @@ st.session_state.sbl_limits = config.get("sbl_limits", {
 
 default_state = {
     "unique_id": "", "work_date": datetime.now(timezone(timedelta(hours=9))).date(), 
-    "shift_type": "주간", "worker": "작업자A",
+    "shift_type": "주간", "worker": None,
     "model_name": "D65S(KRIOS)", "lot_input_field": "", "in_date_field": datetime.now(timezone(timedelta(hours=9))).date(),
     "plating_type": "A", "start_date": datetime.now(timezone(timedelta(hours=9))).date(), "start_time": datetime.now(timezone(timedelta(hours=9))).time(),
     "end_date": datetime.now(timezone(timedelta(hours=9))).date(), "end_time": datetime.now(timezone(timedelta(hours=9))).time(), "unit": "1호기",
@@ -407,7 +408,7 @@ header[data-testid="stHeader"] > div:nth-child(2),
 [data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
 
-/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 */
+/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 (1차 CSS 방어) */
 [data-testid="manage-app-button"],
 [data-testid="stAppDeployButton"],
 .stDeployButton,
@@ -451,9 +452,6 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
     pointer-events: auto !important;
     cursor: default !important;
 }
-
-/* iframe 깜빡임 숨김 처리 */
-iframe[title="streamlit_components.components.html"] { display: none !important; width: 0 !important; height: 0 !important; }
 </style>
 """
 st.markdown(global_theme_css, unsafe_allow_html=True)
@@ -477,7 +475,7 @@ if not st.session_state.unlocked:
     with c2:
         logo_l_data = get_image_base64("logo")
         if logo_l_data:
-            # 💡 mix-blend-mode: multiply를 적용하여 흰색 배경을 투명하게 스며들게 만듭니다.[cite: 4]
+            # 💡 mix-blend-mode: multiply를 적용하여 흰색 배경을 투명하게 스며들게 만듭니다.
             st.markdown(f"<div style='text-align: center;'><img src='{logo_l_data}' style='max-width: 100%; max-height: 400px; object-fit: contain; margin-bottom: 20px; mix-blend-mode: multiply;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
@@ -546,6 +544,25 @@ if not st.session_state.unlocked:
         """
         components.html(slider_html, height=90)
     st.markdown("<div style='position: fixed; bottom: 10%; left: 0; width: 100%; text-align: center; font-size: 10pt; color: #FFC000 !important; font-weight: bold;'>Created by --- Romero.K</div>", unsafe_allow_html=True)
+    
+    # 🛡️ 2차 방어막: DOM 강제 파괴 렌더링 (하단 배치로 깜빡임 방지)
+    components.html("""
+    <script>
+    const nukeNode = (el) => { if(el && el.parentNode) el.parentNode.removeChild(el); };
+    const setupBadgeBlocker = () => {
+        let docs = [document];
+        try { if (window.parent && window.parent.document) docs.push(window.parent.document); } catch(e){}
+        try { if (window.top && window.top.document && window.top !== window.parent) docs.push(window.top.document); } catch(e){}
+        docs.forEach(doc => {
+            try {
+                doc.querySelectorAll('iframe').forEach(f => { if(f.src && (f.src.includes('badge') || f.title.includes('Toolbar'))) nukeNode(f); });
+                doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(nukeNode);
+            } catch(e) {}
+        });
+    };
+    setupBadgeBlocker(); setInterval(setupBadgeBlocker, 100); 
+    </script>
+    """, height=0, width=0)
     st.stop()
 
 
@@ -604,7 +621,7 @@ if st.session_state.sys_menu == "keyin":
         now = datetime.now(KST)
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
         current_time_str = f"{now.strftime('%Y년 %m월 %d일')} ({weekdays[now.weekday()]}) {now.strftime('%p %I:%M').replace('AM', '오전').replace('PM', '오후')}"
-        st.markdown(f"<div style='text-align: center; color: #1e293b !important; background-color: #f1f5f9 !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; color: #ffffff !important; background-color: rgba(255,255,255,0.1) !important; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; margin-bottom: 20px;'>{current_time_str}</div>", unsafe_allow_html=True)
         
         st.markdown("<h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 시작 프로세스</h4><br>", unsafe_allow_html=True)
         if st.button("작업 등록", type="primary" if (st.session_state.app_mode=="START" and st.session_state.step==1) else "secondary", use_container_width=True):
@@ -664,8 +681,11 @@ if st.session_state.sys_menu == "keyin":
                     render_grid_buttons(["주간", "야간"], "shift_type", 2, use_width=True)
                 with c4:
                     st.markdown("**작업자**")
-                    w_val = st.session_state.get("worker", worker_list[0])
-                    st.session_state.worker = st.selectbox("작업자", worker_list, index=worker_list.index(w_val) if w_val in worker_list else 0, label_visibility="collapsed")
+                    # 💡 '작업자 선택' 플레이스홀더 적용 및 name default = None 설정
+                    w_val = st.session_state.get("worker", None)
+                    try: w_idx = worker_list.index(w_val) if w_val in worker_list else None
+                    except ValueError: w_idx = None
+                    st.session_state.worker = st.selectbox("작업자", worker_list, index=w_idx, placeholder="작업자 선택", label_visibility="collapsed")
 
             with st.container(border=True):
                 st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ LOT 정보</h4><br>", unsafe_allow_html=True)
@@ -694,8 +714,11 @@ if st.session_state.sys_menu == "keyin":
             c_nav = st.columns(6)
             with c_nav[5]:
                 if st.button("다음 ➡️", use_container_width=True):
-                    st.session_state.step = 2
-                    st.rerun()
+                    if not st.session_state.get("worker"):
+                        st.warning("작업자를 선택해주세요.")
+                    else:
+                        st.session_state.step = 2
+                        st.rerun()
 
         elif step == 2:
             with st.container(border=True):
@@ -1605,8 +1628,6 @@ elif st.session_state.sys_menu == "viewer":
 # ==========================================
 elif st.session_state.sys_menu == "exit":
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    
-    # 완전히 브라우저 탭을 닫거나 안전 종료 화면으로 덮어씌움
     exit_script = """
     <script>
     setTimeout(function() {
@@ -1624,12 +1645,13 @@ elif st.session_state.sys_menu == "exit":
     components.html(exit_script, height=0, width=0)
 
 # ==========================================
-# 🛡️ 최하단: 깜빡임 없는 플로팅 토글 및 뷰어 자동 리로드 스크립트 모음
+# 🛡️ 최하단: 모든 스크립트를 랜더링 마지막에 실행하여 깜빡임(Flashing) 원천 차단
 # ==========================================
 bottom_js = f"""
 <script>
 const pDoc = window.parent.document;
 if (pDoc) {{
+    // 1. 사이드바 플로팅 토글 작동
     let toggleBtn = pDoc.getElementById('custom-sidebar-toggle');
     if ("{st.session_state.sys_menu}" === "keyin" && "{st.session_state.unlocked}" === "True") {{
         if (!toggleBtn) {{
@@ -1657,13 +1679,13 @@ if (pDoc) {{
         if (toggleBtn) toggleBtn.style.display = 'none';
     }}
 
-    // 뷰어 모드 전용 오토 로테이션 & 리로드 기능 연동
+    // 2. 뷰어 화면 오토 로테이션 및 리로드 연동
     if ("{st.session_state.sys_menu}" === "viewer") {{
         setTimeout(function() {{
             const btns = pDoc.querySelectorAll('button');
             for(let i=0; i<btns.length; i++){{ if(btns[i].textContent && btns[i].textContent.includes('RELOAD')){{ btns[i].click(); break; }} }}
         }}, 1800000); 
-        {'setTimeout(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
+        {'setTimeout(function() { const btns = window.parent.document.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 }}
 </script>
