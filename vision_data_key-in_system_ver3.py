@@ -23,7 +23,7 @@ try:
 except ImportError:
     QR_AVAILABLE = False
 
-worker_list = ["작업자 선택", "한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
+worker_list = ["한상일", "지한구", "노준혁", "이명희", "조난희", "김영민", "송민재", "배현정", "김환용", "허건", "김현정", "관리자"]
 model_list = ["D65S(KRIOS)", "MEM", "Centaur", "Sphinx-E", "Banff", "AV-J", "Seattle", "Juliet-O"]
 
 st.set_page_config(page_title="VISION DATA COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
@@ -404,30 +404,16 @@ for key, value in default_state.items():
 # ==========================================
 global_theme_css = """
 <style>
-/* 🚫 헤더 및 상단 메뉴 완벽 은닉 */
+/* 🚫 헤더 및 상단 메뉴, 툴바 완벽 은닉 */
 header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; z-index: -1 !important; }
 header[data-testid="stHeader"] > div:nth-child(2),
 [data-testid="stToolbar"],
 [data-testid="stActionElements"] { display: none !important; visibility: hidden !important; }
 footer { display: none !important; } 
 
-/* 🚫 Streamlit Deploy, 뱃지 등 강제 은닉 (1차 CSS 방어) */
-[data-testid="manage-app-button"],
-[data-testid="stAppDeployButton"],
-.stDeployButton,
-div[class^="viewerBadge"],
-div[class*="viewerBadge"],
-#creatorBadge {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    z-index: -1000 !important;
-    pointer-events: none !important;
-}
-
-/* iframe 깜빡임(Flashing) 방지 (크기 0으로 강제) */
+/* iframe 깜빡임(Flashing) 원천 방지 (크기 0으로 강제 고정) */
 iframe[title="streamlit_components.components.html"] {
-    display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important; margin: 0 !important; padding: 0 !important;
+    display: none !important; opacity: 0 !important; width: 0px !important; height: 0px !important; position: absolute !important; margin: 0 !important; padding: 0 !important; border: 0 !important;
 }
 
 body { overscroll-behavior-y: none !important; background-color: #f8fafc !important; } 
@@ -453,16 +439,10 @@ div[data-testid="stButton"] button[kind="primary"] p { color: #ffffff !important
     background: transparent !important; z-index: 2147483647 !important; pointer-events: auto !important; cursor: default !important;
 }
 
-/* 💡 히든 요소 숨김을 위한 고유 클래스 */
-.hidden-element {
-    display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0px !important; width: 0px !important; position: absolute !important; z-index: -9999 !important; margin: 0 !important; padding: 0 !important;
-}
-
 /* 💡 사이드바 텍스트 _double_ 겹침 완벽 차단 */
-[data-testid="collapsedControl"] { display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; background: transparent !important; z-index: 999999 !important; }
-[data-testid="collapsedControl"] svg { display: none !important; opacity: 0 !important; width: 0px !important; height: 0px !important; color: transparent !important; }
-[data-testid="collapsedControl"] span { display: none !important; opacity: 0 !important; font-size: 0px !important; color: transparent !important; }
-[data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; display: block !important; position: absolute !important; }
+[data-testid="collapsedControl"] { display: flex !important; justify-content: center !important; align-items: center !important; width: 45px !important; height: 45px !important; background: transparent !important; z-index: 999999 !important; color: transparent !important; }
+[data-testid="collapsedControl"] svg { display: none !important; }
+[data-testid="collapsedControl"]::after { content: '☰' !important; font-size: 26px !important; color: #1e293b !important; position: absolute !important; display: block !important; }
 [data-testid="stSidebarCollapseButton"] button::before { content: '✖'; font-size: 20px; color: #f8fafc; visibility: visible; }
 [data-testid="stSidebarCollapseButton"] span, [data-testid="stSidebarCollapseButton"] svg { display: none !important; }
 </style>
@@ -491,12 +471,8 @@ if not st.session_state.unlocked:
         else:
             st.markdown("<h1 style='text-align: center; color: #1e293b; font-size: 45px; font-weight: 900; letter-spacing: 2px;'>VISION DATA KEY-IN SYSTEM</h1><br><br>", unsafe_allow_html=True)
         
-        # 💡 히든 버튼 완전 격리 렌더링
-        st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
-        if st.button("UNLOCK_SYSTEM_BTN_HIDDEN"):
-            st.session_state.unlocked = True
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        # 💡 히든 버튼을 렌더링하지만 자바스크립트로 0.01초만에 숨김
+        st.button("UNLOCK_SYSTEM_BTN_HIDDEN", key="unlock_btn")
             
         slider_html = """
         <div id="slider-container" style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 40px; position: relative; width: 100%; max-width: 400px; height: 68px; margin: 0 auto; overflow: hidden; display: flex; align-items: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
@@ -505,15 +481,34 @@ if not st.session_state.unlocked:
             <div id="slider-thumb" style="position: absolute; left: 4px; width: 56px; height: 56px; background: #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; z-index: 3; display: flex; align-items: center; justify-content: center; color: #1e293b; font-size: 24px;">▶</div>
         </div>
         <script>
+            // 버튼 숨김 및 Manage App 강제 파괴 (Unlock 화면용)
+            const killUI = () => {
+                const pDoc = window.parent.document;
+                if(!pDoc) return;
+                pDoc.querySelectorAll('button').forEach(b => {
+                    if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) {
+                        b.style.display = 'none'; b.style.position = 'absolute'; b.style.opacity = '0'; b.style.zIndex = '-9999';
+                    }
+                });
+                pDoc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(el => {
+                    if(el && el.parentNode) el.parentNode.removeChild(el);
+                });
+                pDoc.querySelectorAll('a, div, span').forEach(el => {
+                    if(el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile')) {
+                        if(el && el.parentNode) el.parentNode.removeChild(el);
+                    }
+                });
+            };
+            killUI();
+            setInterval(killUI, 10);
+
             const container = document.getElementById('slider-container');
             const thumb = document.getElementById('slider-thumb');
             const fill = document.getElementById('slider-fill');
             const text = document.getElementById('slider-text');
             const unlockSystem = () => {
                 const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) { 
-                    if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } 
-                }
+                for(let b of btns) { if(b.textContent.includes('UNLOCK_SYSTEM_BTN_HIDDEN')) { b.click(); break; } }
             };
             let isDragging = false;
             let startX, currentX = 0;
@@ -581,12 +576,8 @@ if st.session_state.sys_menu != "exit":
             st.session_state.sys_menu = "admin"
             st.rerun()
             
-    # 💡 플로팅 EXIT 버튼용 히든 트리거 완전 격리
-    st.markdown("<div class='hidden-element'>", unsafe_allow_html=True)
-    if st.button("HIDDEN_EXIT_TRIGGER"):
-        st.session_state.sys_menu = "exit"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 💡 플로팅 EXIT 버튼용 히든 트리거 
+    st.button("HIDDEN_EXIT_TRIGGER", key="hidden_exit")
 
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
@@ -654,6 +645,11 @@ if st.session_state.sys_menu == "keyin":
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
+            st.rerun()
+            
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 관리자 기능</h4><br>", unsafe_allow_html=True)
+        if st.button("⚙️ ADMINISTRATOR", type="secondary", use_container_width=True):
+            st.session_state.sys_menu = "admin"
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
@@ -832,7 +828,7 @@ if st.session_state.sys_menu == "keyin":
                             fmt_assembler = a_val.replace("호기", "") if a_val != "선택안함" else ""
                             fmt_worker = st.session_state.get("worker", "")
                             
-                            clip_t = st.session_state.get("clip_type", "일반")
+                            clip_t = st.session_state.get("clip_type_radio", "일반")
                             clip_v = str(st.session_state.get("clip_val", ""))
                             if clip_t == "일반":
                                 fmt_clip = clip_v
@@ -1195,7 +1191,7 @@ if st.session_state.sys_menu == "keyin":
                                         st.session_state.step = 1
                                         st.rerun()
 
-    # 💡 [데이터 수정] 모드 (비밀번호 및 표 정렬 최적화)
+    # 💡 [데이터 수정] 모드 (비밀번호 및 직접 수정 최적화)
     elif st.session_state.app_mode == "EDIT":
         with st.container(border=True):
             st.markdown("<h4 style='color: #1e293b; margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;'>■ 최근 저장 Data List</h4><br>", unsafe_allow_html=True)
@@ -1214,9 +1210,7 @@ if st.session_state.sys_menu == "keyin":
                         
                         c1, c2 = st.columns([0.8, 0.2])
                         with c1:
-                            st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
-                            edit_pwd = st.text_input("수정 비밀번호 입력", type="password", placeholder="비밀번호 입력", label_visibility="collapsed")
-                            st.markdown("</div>", unsafe_allow_html=True)
+                            edit_pwd = st.text_input("비밀번호", type="password", label_visibility="collapsed", placeholder="수정 비밀번호 입력")
                         with c2:
                             if st.button("🔓 잠금 해제", use_container_width=True):
                                 if edit_pwd == "6233":
@@ -1266,6 +1260,7 @@ elif st.session_state.sys_menu == "admin":
     df = load_universal_data()
     all_models = df['모델명(MI)'].dropna().unique().tolist() if not df.empty else ["ALL_MODELS"]
     
+    # 💡 동적 옵션으로 모델 중복 선택 차단 (form 외부에서 처리)
     if 'sel_std' not in st.session_state: st.session_state.sel_std = config.get("sel_std", [])
     if 'sel_inc' not in st.session_state: st.session_state.sel_inc = config.get("sel_inc", [])
     
@@ -1338,7 +1333,7 @@ elif st.session_state.sys_menu == "admin":
 elif st.session_state.sys_menu == "viewer":
     st.markdown("""
     <style>
-    /* 💡 프리미엄 KPI 카드 색상 복원 */
+    /* 💡 프리미엄 KPI 카드 디자인 (파란색 그라데이션) 복원 */
     .model-card { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; border: 1px solid #334155; }
     .model-card div, .model-card span { color: #FFFFFF !important; }
     .kpi-card { background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; border: 1px solid #2563eb; }
@@ -1698,7 +1693,7 @@ elif st.session_state.sys_menu == "exit":
     components.html(exit_script, height=0, width=0)
 
 # ==========================================
-# 🛡️ 최하단: 화면 렌더링 완료 후 작동하는 무결점 자바스크립트
+# 🛡️ 최하단: 화면 렌더링 완료 후 깜빡임 없는 DOM 제어 스크립트 실행
 # ==========================================
 bottom_js = f"""
 <script>
@@ -1734,12 +1729,12 @@ if (pDoc) {{
             exitBtn = pDoc.createElement('div');
             exitBtn.id = 'custom-exit-toggle';
             exitBtn.innerHTML = '<span style="font-size:1.0rem; font-weight:900;">EXIT</span>';
-            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#7f1d1d; color:#ffffff; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; border:2px solid #991b1b; transition:all 0.2s; font-family:sans-serif; letter-spacing:1px;';
+            exitBtn.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:#7f1d1d; color:#ffffff; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; border:2px solid #7f1d1d; transition:all 0.2s; font-family:sans-serif; letter-spacing:1px;';
             exitBtn.onmouseover = () => {{ exitBtn.style.background = '#450a0a'; }};
             exitBtn.onmouseout = () => {{ exitBtn.style.background = '#7f1d1d'; }};
             exitBtn.onclick = function() {{
                 const btns = pDoc.querySelectorAll('button');
-                for(let b of btns) {{ if(b.innerText.includes('HIDDEN_EXIT_TRIGGER')) {{ b.click(); break; }} }}
+                for(let b of btns) {{ if(b.textContent.includes('HIDDEN_EXIT_TRIGGER')) {{ b.click(); break; }} }}
             }};
             pDoc.body.appendChild(exitBtn);
         }}
@@ -1752,7 +1747,7 @@ if (pDoc) {{
         if (exitBtn) exitBtn.style.display = 'none';
     }}
 
-    // 💡 2. 뷰어 화면 오토 로테이션 및 데이터 리로드
+    // 💡 2. 뷰어 화면 오토 로테이션 및 데이터 리로드 주기 설정
     if ("{st.session_state.sys_menu}" === "viewer") {{
         // 리로드 30분(1800000)
         setInterval(function() {{
@@ -1763,7 +1758,7 @@ if (pDoc) {{
         {'setInterval(function() { const btns = pDoc.querySelectorAll("button"); for(let i=0; i<btns.length; i++){ if(btns[i].textContent && btns[i].textContent.includes("Manual Rotate")){ btns[i].click(); break; } } }, 600000);' if st.session_state.get('auto_rotate_active', False) else ''}
     }}
 
-    // 💡 3. Streamlit Cloud 배지, 불필요한 iframe 즉시 박멸 (0.01초 주기 폭격)
+    // 💡 3. Streamlit Cloud UI 및 히든 버튼 0.01초 주기 강제 삭제 (DOM Nuke) - 깜빡임 원천 차단
     const nukeNode = (el) => {{ if(el && el.parentNode) el.parentNode.removeChild(el); }};
     
     const destroyStreamlitUI = () => {{
@@ -1773,12 +1768,28 @@ if (pDoc) {{
         
         docs.forEach(doc => {{
             try {{
+                // iframe 및 배지 DOM 자체를 뜯어내서 삭제
                 doc.querySelectorAll('iframe').forEach(f => {{ if(f.src && (f.src.includes('badge') || f.title.includes('Toolbar'))) nukeNode(f); }});
                 doc.querySelectorAll('[data-testid="manage-app-button"], [data-testid="stAppDeployButton"], .stDeployButton, div[class^="viewerBadge"]').forEach(nukeNode);
                 
                 doc.querySelectorAll('div, a, button, span').forEach(el => {{
                     if (el.textContent && (el.textContent === '< Manage app' || el.textContent === 'Manage app' || el.textContent.includes('View profile'))) {{
-                        nukeNode(el);
+                        el.style.setProperty('display', 'none', 'important');
+                        if (el.parentElement) el.parentElement.style.setProperty('display', 'none', 'important');
+                    }}
+                }});
+                
+                // 💡 히든 트리거 버튼 완벽 투명화 (공간 차지 방지)
+                doc.querySelectorAll('button').forEach(btn => {{
+                    if(btn.textContent.includes('HIDDEN')) {{
+                        const container = btn.closest('div[data-testid="stButton"]');
+                        if(container) {{
+                            container.style.setProperty('display', 'none', 'important');
+                            container.style.setProperty('position', 'absolute', 'important');
+                            container.style.setProperty('opacity', '0', 'important');
+                            container.style.setProperty('height', '0px', 'important');
+                            container.style.setProperty('width', '0px', 'important');
+                        }}
                     }}
                 }});
                 
@@ -1786,6 +1797,7 @@ if (pDoc) {{
         }});
     }};
     
+    // MutationObserver를 통해 변경사항 즉시 파괴
     const observer = new MutationObserver((mutations) => {{ destroyStreamlitUI(); }});
     try {{ observer.observe(pDoc.body, {{ childList: true, subtree: true }}); }} catch(e) {{}}
     destroyStreamlitUI(); 
