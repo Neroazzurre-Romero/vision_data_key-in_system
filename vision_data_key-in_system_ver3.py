@@ -554,21 +554,17 @@ if not st.session_state.unlocked:
 
 
 # ==========================================
-# 💡 최상단 3단 통합 네비게이션
+# 💡 최상단 2단 통합 네비게이션 (8:2 배열)
 # ==========================================
 if st.session_state.sys_menu != "exit":
     st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 900; margin-bottom: 20px;'>VISION DATA KEY-IN SYSTEM</h2>", unsafe_allow_html=True)
 
-    m_col1, m_col2, m_col3 = st.columns([0.33, 0.34, 0.33])
+    m_col1, m_col2 = st.columns([0.8, 0.2])
     with m_col1:
         if st.button("📝 KEY-IN WIZARD", use_container_width=True, type="primary" if st.session_state.sys_menu == "keyin" else "secondary"):
             st.session_state.sys_menu = "keyin"
             st.rerun()
     with m_col2:
-        if st.button("⚙️ ADMINISTRATOR", use_container_width=True, type="primary" if st.session_state.sys_menu in ["admin", "viewer"] else "secondary"):
-            st.session_state.sys_menu = "admin"
-            st.rerun()
-    with m_col3:
         if st.button("🚪 EXIT", use_container_width=True):
             st.session_state.sys_menu = "exit"
             st.rerun()
@@ -577,7 +573,7 @@ if st.session_state.sys_menu != "exit":
 
 
 # ==========================================
-# 🚀 [라우팅 1] KEY-IN WIZARD
+# 🚀 [라우팅 1] KEY-IN WIZARD (사이드바 메뉴 + 어드민 접근)
 # ==========================================
 if st.session_state.sys_menu == "keyin":
     st.markdown("""
@@ -591,7 +587,7 @@ if st.session_state.sys_menu == "keyin":
     [data-testid="stSidebar"] .stButton > button[kind="secondary"] { background-color: transparent !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
     [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover { background-color: rgba(255,255,255,0.2) !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.5) !important; }
     
-    /* 기본 숨김 해제 */
+    /* 기본 햄버거 토글 숨김 해제 */
     [data-testid="collapsedControl"] { display: none !important; }
     
     div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; padding: 1.5rem !important; margin-bottom: 0.8rem !important; }
@@ -632,7 +628,7 @@ if st.session_state.sys_menu == "keyin":
             };
             pDoc.body.appendChild(toggleBtn);
         }
-        toggleBtn.style.display = 'flex'; // 현재 모드에서만 보임
+        toggleBtn.style.display = 'flex'; 
 
         if (!window.parent.appPluginLoadedFull) {
             window.parent.appPluginLoadedFull = true;
@@ -643,6 +639,7 @@ if st.session_state.sys_menu == "keyin":
                     const text = btn.innerText || "";
                     if (text.includes('⬅️ 이전') || text.includes('다음 ➡️') || text.includes('Data 최종 저장') || text.includes('작업시작 등록') || text.trim() === '적용' || text.includes('신규 작업 등록')) { 
                         btn.style.setProperty('background', '#305496', 'important');
+                        btn.style.setProperty('background-color', '#305496', 'important');
                         btn.style.setProperty('border', '1px solid #203864', 'important');
                         btn.style.setProperty('color', '#ffffff', 'important');
                         
@@ -739,10 +736,14 @@ if st.session_state.sys_menu == "keyin":
             st.session_state.step = 2
             st.rerun()
 
-        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 데이터 관리</h4><br>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 8px;'>■ 관리자 기능</h4><br>", unsafe_allow_html=True)
         if st.button("최근 저장 Data List", type="primary" if st.session_state.app_mode=="EDIT" else "secondary", use_container_width=True):
             st.session_state.app_mode = "EDIT"
             st.session_state.step = 1
+            st.rerun()
+        # 💡 ADMINISTRATOR 버튼을 메인 화면 상단에서 사이드바 내부로 이동
+        if st.button("⚙️ ADMINISTRATOR", type="secondary", use_container_width=True):
+            st.session_state.sys_menu = "admin"
             st.rerun()
             
         st.markdown("<hr style='border-color: #334155; margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
@@ -1370,7 +1371,7 @@ elif st.session_state.sys_menu == "admin":
                 time.sleep(1.0)
                 st.rerun()
 
-    st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color: #cbd5e1; margin-top: 30px; margin-bottom: 30px;'>", unsafe_allow_html=True)
     st.info("💡 위에서 설정값을 저장한 후, 아래 버튼을 눌러 모니터링 뷰어 화면을 확인할 수 있습니다.")
     
     if st.button("👁️ 설정된 VIEWER 화면 실행하기", type="primary", use_container_width=True):
@@ -1730,7 +1731,6 @@ elif st.session_state.sys_menu == "viewer":
 # 🚀 [라우팅 4] EXIT (시스템 안전 종료)
 # ==========================================
 elif st.session_state.sys_menu == "exit":
-    # 어드민 모드일 때는 커스텀 토글 숨김
     components.html("<script>const btn=window.parent.document.getElementById('custom-sidebar-toggle');if(btn)btn.style.display='none';</script>", height=0, width=0)
     
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
